@@ -1,236 +1,182 @@
 import React, { useState } from "react";
-import { Calendar, Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-const PatientRegistrationForm: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"patient" | "hospital">("patient");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: "",
-    nationalId: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    dateOfBirth: "",
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = () => {
-    console.log("Form submitted:", formData);
-  };
+const DoctorDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("Dashboard");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-emerald-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        {/* Main Form Card */}
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-          <div className="p-8 md:p-12">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                <span className="text-green-600">
-                  Create Your Patient Passport
-                </span>
-                <br />
-                <span className="text-gray-800">Account</span>
-              </h1>
-              <p className="text-gray-600 mt-3">
-                Join Patient Passport to manage your medical records securely
-              </p>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-xl">
-              <button
-                onClick={() => setActiveTab("patient")}
-                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
-                  activeTab === "patient"
-                    ? "bg-white text-green-600 shadow-md"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                Patient Registration
-              </button>
-              <button
-                onClick={() => setActiveTab("hospital")}
-                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
-                  activeTab === "hospital"
-                    ? "bg-white text-green-600 shadow-md"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                Hospital Registration
-              </button>
-            </div>
-
-            {/* Form Fields */}
-            <div className="space-y-6">
-              {/* Full Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  placeholder="John Doe"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all"
-                />
-              </div>
-
-              {/* National ID */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  National ID
-                </label>
-                <input
-                  type="text"
-                  name="nationalId"
-                  value={formData.nationalId}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 1234567890"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all"
-                />
-                <p className="text-xs text-red-500 mt-1">
-                  National ID must be 16 digits
-                </p>
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="john.doe@example.com"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all"
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Enter your password"
-                    className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    placeholder="Confirm your password"
-                    className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Date of Birth */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date of Birth
-                </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all"
-                  />
-                  <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                onClick={handleSubmit}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
-              >
-                Register as Patient
-              </button>
-
-              {/* Login Link */}
-              <p className="text-center text-gray-600 text-sm">
-                Already have an account?{" "}
-                <a
-                  href="#"
-                  className="text-green-600 font-semibold hover:text-green-700 hover:underline"
-                >
-                  Log In Here
-                </a>
-              </p>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-white shadow-lg">
+        <div className="p-6">
+          <div className="flex items-center">
+            <svg className="w-8 h-8 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
+            </svg>
+            <span className="text-xl font-semibold text-green-600">Patient Passport</span>
           </div>
         </div>
 
-        {/* Bottom Banner */}
-        <div className="mt-6 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl p-6 text-center shadow-xl">
-          <p className="text-white font-semibold text-lg mb-3">
-            Empowering Patients and Hospitals
-          </p>
-          <div className="flex justify-center items-center gap-4 flex-wrap">
-            <button className="bg-white/20 backdrop-blur-sm text-white px-6 py-2 rounded-lg border border-white/40 hover:bg-white/30 transition-all font-medium">
-              Learn More
+        <nav className="mt-6">
+          <div className="px-6 space-y-2">
+            <button
+              onClick={() => setActiveTab("Dashboard")}
+              className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
+                activeTab === "Dashboard"
+                  ? "bg-green-100 text-green-700"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <svg className="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+              </svg>
+              Dashboard
             </button>
-            <div className="bg-white px-4 py-2 rounded-lg">
-              <span className="text-blue-600 font-bold text-xl">Google</span>
+            <button
+              onClick={() => navigate('/my-patients')}
+              className="w-full flex items-center px-4 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100"
+            >
+              <svg className="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              My Patients
+            </button>
+            <button
+              onClick={() => navigate('/search-patient')}
+              className="w-full flex items-center px-4 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100"
+            >
+              <svg className="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Search Patient
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1">
+        {/* Header */}
+        <header className="bg-white shadow-sm">
+          <div className="px-8 py-4 flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => navigate('/admin-dashboard')}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Admin
+              </button>
+              <button 
+                onClick={() => navigate('/')}
+                className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Logout
+              </button>
             </div>
           </div>
-        </div>
+        </header>
+
+        {/* Dashboard Content */}
+        <main className="p-8">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Patients</p>
+                  <p className="text-2xl font-bold text-gray-900">142</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Today's Appointments</p>
+                  <p className="text-2xl font-bold text-gray-900">8</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Pending Reviews</p>
+                  <p className="text-2xl font-bold text-gray-900">5</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white rounded-lg shadow-md">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Recent Patient Activity</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-blue-600">JD</span>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900">John Doe</p>
+                      <p className="text-xs text-gray-500">Updated medical records</p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">2 hours ago</div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-green-600">MS</span>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900">Mary Smith</p>
+                      <p className="text-xs text-gray-500">New appointment scheduled</p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">4 hours ago</div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-purple-600">RJ</span>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900">Robert Johnson</p>
+                      <p className="text-xs text-gray-500">Lab results available</p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">1 day ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
 };
 
-export default PatientRegistrationForm;
+export default DoctorDashboard;

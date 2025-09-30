@@ -1,6 +1,8 @@
 import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const PatientPassportLanding: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -13,9 +15,9 @@ const PatientPassportLanding: React.FC = () => {
             <span className="text-lg font-semibold text-green-600">logo</span>
           </div>
           <nav className="flex items-center space-x-8">
-            <a href="#" className="text-sm text-gray-700 hover:text-gray-900">Home</a>
-            <a href="#" className="text-sm text-gray-700 hover:text-gray-900">Register</a>
-            <a href="#" className="text-sm text-gray-700 hover:text-gray-900">Login</a>
+            <Link to="/" className="text-sm text-gray-700 hover:text-gray-900">Home</Link>
+            <Link to="/patient-register" className="text-sm text-gray-700 hover:text-gray-900">Register</Link>
+            <Link to="/patient-login" className="text-sm text-gray-700 hover:text-gray-900">Login</Link>
           </nav>
         </div>
       </header>
@@ -29,13 +31,37 @@ const PatientPassportLanding: React.FC = () => {
           <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
             Securely manage your medical records, access vital health information, and collaborate with your doctors, all in one intuitive platform.
           </p>
-          <div className="flex items-center justify-center space-x-4">
-            <button className="bg-green-600 hover:bg-green-700 text-white font-medium px-8 py-3 rounded-md transition-colors">
+          <div className="flex items-center justify-center space-x-4 mb-8">
+            <button 
+              onClick={() => navigate('/patient-register')}
+              className="bg-green-600 hover:bg-green-700 text-white font-medium px-8 py-3 rounded-md transition-colors"
+            >
               Register Now
             </button>
-            <button className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-8 py-3 rounded-md transition-colors">
+            <button 
+              onClick={() => navigate('/patient-login')}
+              className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-8 py-3 rounded-md transition-colors"
+            >
               Login
             </button>
+          </div>
+          
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-4">Are you a healthcare provider?</p>
+            <div className="flex items-center justify-center space-x-4">
+              <button 
+                onClick={() => navigate('/hospital-login')}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-md transition-colors text-sm"
+              >
+                Hospital Login
+              </button>
+              <button 
+                onClick={() => navigate('/hospital-register')}
+                className="bg-white border border-blue-300 hover:bg-blue-50 text-blue-700 font-medium px-6 py-2 rounded-md transition-colors text-sm"
+              >
+                Hospital Register
+              </button>
+            </div>
           </div>
         </div>
       </section>

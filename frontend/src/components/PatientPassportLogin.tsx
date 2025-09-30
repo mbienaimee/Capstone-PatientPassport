@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const PatientPassportLogin: React.FC = () => {
+  const navigate = useNavigate();
   const [loginType, setLoginType] = useState<"patient" | "hospital">("patient");
   const [formData, setFormData] = useState({
     nationalId: "",
@@ -34,9 +36,12 @@ const PatientPassportLogin: React.FC = () => {
   const handleLogin = () => {
     if (validateForm()) {
       console.log("Login attempt:", { loginType, ...formData });
-      alert(
-        `${loginType === "patient" ? "Patient" : "Hospital"} login successful!`
-      );
+      // Navigate based on login type
+      if (loginType === "patient") {
+        navigate('/patient-passport');
+      } else {
+        navigate('/admin-dashboard');
+      }
     }
   };
 
@@ -137,21 +142,21 @@ const PatientPassportLogin: React.FC = () => {
         </div>
 
         <div className="mt-6 space-y-2 text-center">
-          <a
-            href="#"
-            className="block text-sm text-green-600 hover:text-green-700 font-medium"
-          >
-            Forgot password?
-          </a>
           <p className="text-sm text-gray-600">
             Don't have an account?{" "}
-            <a
-              href="#"
+            <Link
+              to="/patient-register"
               className="text-green-600 hover:text-green-700 font-medium"
             >
               Register
-            </a>
+            </Link>
           </p>
+          <Link
+            to="/"
+            className="block text-xs text-gray-600 hover:text-green-600"
+          >
+            Back to Home
+          </Link>
         </div>
       </div>
     </div>

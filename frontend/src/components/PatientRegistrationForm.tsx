@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { Calendar, Eye, EyeOff } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 
 const PatientRegistrationForm: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"patient" | "hospital">("patient");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -23,6 +25,8 @@ const PatientRegistrationForm: React.FC = () => {
 
   const handleSubmit = () => {
     console.log("Form submitted:", formData);
+    // Navigate to login page after successful registration
+    navigate('/patient-login');
   };
 
   return (
@@ -214,19 +218,23 @@ const PatientRegistrationForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Banner */}
-        <div className="mt-6 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl p-6 text-center shadow-xl">
-          <p className="text-white font-semibold text-lg mb-3">
-            Empowering Patients and Hospitals
+        {/* Navigation Links */}
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-gray-600">
+            Already have an account?{" "}
+            <Link
+              to="/patient-login"
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
+              Sign In
+            </Link>
           </p>
-          <div className="flex justify-center items-center gap-4 flex-wrap">
-            <button className="bg-white/20 backdrop-blur-sm text-white px-6 py-2 rounded-lg border border-white/40 hover:bg-white/30 transition-all font-medium">
-              Learn More
-            </button>
-            <div className="bg-white px-4 py-2 rounded-lg">
-              <span className="text-blue-600 font-bold text-xl">Google</span>
-            </div>
-          </div>
+          <Link
+            to="/"
+            className="block text-xs text-gray-600 hover:text-green-600"
+          >
+            Back to Home
+          </Link>
         </div>
       </div>
     </div>

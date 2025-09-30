@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface MedicalCondition {
   name: string;
@@ -26,6 +27,7 @@ interface HospitalVisit {
 }
 
 const PatientPassport: React.FC = () => {
+  const navigate = useNavigate();
   const [expandedCondition, setExpandedCondition] = useState<number | null>(
     null
   );
@@ -130,18 +132,27 @@ const PatientPassport: React.FC = () => {
             <span className="text-lg font-semibold text-green-600">logo</span>
           </div>
           <nav className="flex items-center space-x-6">
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
+            <button 
+              onClick={() => navigate('/')}
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
               Home
-            </a>
-            <a href="#" className="text-sm text-green-600 font-medium">
+            </button>
+            <button className="text-sm text-green-600 font-medium">
               My Passport
-            </a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
-              My Patients
-            </a>
-            <a href="#" className="text-sm text-gray-600 hover:text-gray-900">
+            </button>
+            <button 
+              onClick={() => navigate('/update-passport')}
+              className="text-sm text-blue-600 hover:text-blue-900"
+            >
+              Update Passport
+            </button>
+            <button 
+              onClick={() => navigate('/')}
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
               Logout
-            </a>
+            </button>
           </nav>
           <div className="flex items-center space-x-3">
             <button className="p-2 text-gray-400 hover:text-gray-600">

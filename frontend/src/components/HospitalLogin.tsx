@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const HospitalLogin: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     hospitalName: "",
     password: "",
@@ -33,7 +35,8 @@ const HospitalLogin: React.FC = () => {
   const handleLogin = () => {
     if (validateForm()) {
       console.log("Hospital login attempt:", formData);
-      alert("Hospital login successful!");
+      // Navigate to admin dashboard for hospital login
+      navigate('/admin-dashboard');
     }
   };
 
@@ -121,14 +124,21 @@ const HospitalLogin: React.FC = () => {
           </button>
         </div>
 
-        <div className="mt-6 space-y-1 text-center">
-          <a
-            href="#"
-            className="block text-xs text-gray-600 hover:text-green-600"
-          >
-            Forgot Password?
-          </a>
-          <p className="text-xs text-gray-600">Need to Register?</p>
+        <div className="mt-6 space-y-2 text-center">
+          <div className="space-y-1">
+            <Link
+              to="/hospital-register"
+              className="block text-sm text-green-600 hover:text-green-700"
+            >
+              Need to Register?
+            </Link>
+            <Link
+              to="/"
+              className="block text-xs text-gray-600 hover:text-green-600"
+            >
+              Back to Home
+            </Link>
+          </div>
         </div>
       </div>
     </div>

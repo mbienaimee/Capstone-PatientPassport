@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   LineChart,
   Line,
@@ -20,6 +21,7 @@ interface Registration {
 }
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
     "Admin Dashboard" | "Hospitals" | "Patients" | "Activity Status"
   >("Admin Dashboard");
@@ -206,20 +208,23 @@ const AdminDashboard: React.FC = () => {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+              <button 
+                onClick={() => navigate('/patient-list')}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                Patients
+              </button>
+              <button 
+                onClick={() => navigate('/doctor-dashboard')}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Doctors
+              </button>
+              <button 
+                onClick={() => navigate('/')}
+                className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Logout
               </button>
               <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
             </div>
