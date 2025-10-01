@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Home, Search, Users, FileText, Facebook, Twitter, Instagram, Linkedin, Menu } from 'lucide-react';
 
 interface Patient {
@@ -9,6 +10,7 @@ interface Patient {
 }
 
 const SearchPatient: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [patients] = useState<Patient[]>([
     { id: 1, name: 'Alice Smith', nationalId: '12345678901', status: 'Active' },
@@ -33,22 +35,31 @@ const SearchPatient: React.FC = () => {
           </div>
 
           <nav className="space-y-2">
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group">
+            <button 
+              onClick={() => navigate('/doctor-dashboard')}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <Home className="w-5 h-5" />
               <span className="font-medium">Doctor Dashboard</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 bg-green-50 text-green-600 rounded-lg transition-colors">
+            </button>
+            <button className="w-full flex items-center space-x-3 px-4 py-3 bg-green-50 text-green-600 rounded-lg transition-colors">
               <Search className="w-5 h-5" />
               <span className="font-medium">Search Patient</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group">
+            </button>
+            <button 
+              onClick={() => navigate('/my-patients')}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <Users className="w-5 h-5" />
               <span className="font-medium">My Patients</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group">
+            </button>
+            <button 
+              onClick={() => navigate('/update-passport')}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <FileText className="w-5 h-5" />
               <span className="font-medium">Update Passport</span>
-            </a>
+            </button>
           </nav>
         </div>
       </aside>
@@ -75,9 +86,24 @@ const SearchPatient: React.FC = () => {
               </button>
 
               <nav className="hidden md:flex items-center space-x-8">
-                <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">Home</a>
-                <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">Doctor Dashboard</a>
-                <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">Logout</a>
+                <button 
+                  onClick={() => navigate('/')}
+                  className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                >
+                  Home
+                </button>
+                <button 
+                  onClick={() => navigate('/doctor-dashboard')}
+                  className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                >
+                  Doctor Dashboard
+                </button>
+                <button 
+                  onClick={() => navigate('/')}
+                  className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                >
+                  Logout
+                </button>
               </nav>
 
               <div className="flex items-center space-x-4">

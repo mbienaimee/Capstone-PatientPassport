@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Heart, Activity, Users, CheckCircle, ArrowRight, Menu } from 'lucide-react';
 
 const PatientPassportLanding = () => {
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const features = [
@@ -50,13 +52,22 @@ const PatientPassportLanding = () => {
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-4">
-            <a href="/" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+            <button 
+              onClick={() => navigate("/")} 
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            >
               Home
-            </a>
-            <a href="/register" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+            </button>
+            <button 
+              onClick={() => navigate("/patient-register")} 
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            >
               Register
-            </a>
-            <button className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors">
+            </button>
+            <button 
+              onClick={() => navigate("/patient-login")} 
+              className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors"
+            >
               Login
             </button>
           </nav>
@@ -74,15 +85,24 @@ const PatientPassportLanding = () => {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white">
             <nav className="flex flex-col p-4 space-y-2">
-              <a href="/" className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded">
+              <button 
+                onClick={() => { navigate("/"); setMobileMenuOpen(false); }} 
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded text-left"
+              >
                 Home
-              </a>
-              <a href="/register" className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded">
+              </button>
+              <button 
+                onClick={() => { navigate("/patient-register"); setMobileMenuOpen(false); }} 
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded text-left"
+              >
                 Register
-              </a>
-              <a href="/login" className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded">
+              </button>
+              <button 
+                onClick={() => { navigate("/patient-login"); setMobileMenuOpen(false); }} 
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded text-left"
+              >
                 Login
-              </a>
+              </button>
             </nav>
           </div>
         )}
@@ -112,11 +132,17 @@ const PatientPassportLanding = () => {
               </p>
               
               <div className="flex flex-wrap gap-4">
-                <button className="btn-primary shadow-lg hover:shadow-xl flex items-center gap-2">
+                <button 
+                  onClick={() => navigate("/patient-register")}
+                  className="btn-primary shadow-lg hover:shadow-xl flex items-center gap-2"
+                >
                   Get Started Free
                   <ArrowRight className="w-5 h-5" />
                 </button>
-                <button className="btn-secondary border border-slate-300 hover:border-slate-400">
+                <button 
+                  onClick={() => navigate("/patient-login")}
+                  className="btn-secondary border border-slate-300 hover:border-slate-400"
+                >
                   Sign In
                 </button>
               </div>
@@ -124,10 +150,16 @@ const PatientPassportLanding = () => {
               <div className="mt-8 p-6 rounded-xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 shadow-sm">
                 <p className="text-sm font-medium text-slate-900 mb-3">Healthcare Provider?</p>
                 <div className="flex flex-wrap gap-3">
-                  <button className="px-4 py-2 text-sm font-medium border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-green-400 transition-all">
+                  <button 
+                    onClick={() => navigate("/hospital-login")}
+                    className="px-4 py-2 text-sm font-medium border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-green-400 transition-all"
+                  >
                     Hospital Login
                   </button>
-                  <button className="px-4 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-50 transition-all">
+                  <button 
+                    onClick={() => navigate("/hospital-register")}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-50 transition-all"
+                  >
                     Hospital Register
                   </button>
                 </div>
@@ -258,7 +290,10 @@ const PatientPassportLanding = () => {
             <p className="text-lg text-emerald-100 max-w-xl mx-auto">
               Free to start. No credit card needed. Takes less than 2 minutes.
             </p>
-            <button className="px-6 py-3 bg-white text-emerald-600 rounded-lg font-medium hover:bg-emerald-50 shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2">
+            <button 
+              onClick={() => navigate("/patient-register")}
+              className="px-6 py-3 bg-white text-emerald-600 rounded-lg font-medium hover:bg-emerald-50 shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2"
+            >
               Create your free account
               <ArrowRight className="w-4 h-4" />
             </button>

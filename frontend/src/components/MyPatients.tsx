@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Home, Search, Users, FileText, Facebook, Twitter, Instagram, Linkedin, Menu } from 'lucide-react';
 
 interface Patient {
@@ -9,6 +10,7 @@ interface Patient {
 }
 
 const MyPatients: React.FC = () => {
+  const navigate = useNavigate();
   const [patients] = useState<Patient[]>([
     { id: 1, name: 'Aisha Rahman', nationalId: '123-456-7890', status: 'Stable' },
     { id: 2, name: 'Benjamin Chen', nationalId: '987-654-3210', status: 'Needs Review' },
@@ -45,22 +47,31 @@ const MyPatients: React.FC = () => {
           </div>
 
           <nav className="space-y-2">
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group">
+            <button 
+              onClick={() => navigate('/doctor-dashboard')}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <Home className="w-5 h-5" />
               <span className="font-medium">Doctor Dashboard</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group">
+            </button>
+            <button 
+              onClick={() => navigate('/search-patient')}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <Search className="w-5 h-5" />
               <span className="font-medium">Search Patient</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 bg-green-50 text-green-600 rounded-lg transition-colors">
+            </button>
+            <button className="w-full flex items-center space-x-3 px-4 py-3 bg-green-50 text-green-600 rounded-lg transition-colors">
               <Users className="w-5 h-5" />
               <span className="font-medium">My Patients</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group">
+            </button>
+            <button 
+              onClick={() => navigate('/update-passport')}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <FileText className="w-5 h-5" />
               <span className="font-medium">Update Passport</span>
-            </a>
+            </button>
           </nav>
         </div>
       </aside>
@@ -87,9 +98,24 @@ const MyPatients: React.FC = () => {
               </button>
 
               <nav className="hidden md:flex items-center space-x-8">
-                <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">Home</a>
-                <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">Doctor Dashboard</a>
-                <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">Logout</a>
+                <button 
+                  onClick={() => navigate('/')}
+                  className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                >
+                  Home
+                </button>
+                <button 
+                  onClick={() => navigate('/doctor-dashboard')}
+                  className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                >
+                  Doctor Dashboard
+                </button>
+                <button 
+                  onClick={() => navigate('/')}
+                  className="text-gray-700 hover:text-green-600 font-medium transition-colors"
+                >
+                  Logout
+                </button>
               </nav>
 
               <div className="flex items-center space-x-4 ml-auto">
