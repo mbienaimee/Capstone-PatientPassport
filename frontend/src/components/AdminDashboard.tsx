@@ -82,10 +82,10 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="dashboard-container flex">
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-lg">
-        <div className="p-6">
+        <div className="card-container">
           <div className="flex items-center mb-8">
             <svg
               className="w-5 h-5 text-green-600 mr-2"

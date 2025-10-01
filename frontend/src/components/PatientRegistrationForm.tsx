@@ -30,21 +30,21 @@ const PatientRegistrationForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-emerald-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        {/* Main Form Card */}
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-          <div className="p-8 md:p-12">
+    <>
+      <div className="app-container bg-gradient-to-br from-blue-50 via-green-50 to-emerald-50 flex items-center justify-center">
+        <div className="w-full max-w-2xl">
+          {/* Main Form Card */}
+          <div className="form-container rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">
+              <h1 className="heading-lg mb-2">
                 <span className="text-green-600">
                   Create Your Patient Passport
                 </span>
                 <br />
                 <span className="text-gray-800">Account</span>
               </h1>
-              <p className="text-gray-600 mt-3">
+              <p className="body-md text-gray-600 mt-3">
                 Join Patient Passport to manage your medical records securely
               </p>
             </div>
@@ -216,28 +216,28 @@ const PatientRegistrationForm: React.FC = () => {
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Navigation Links */}
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-gray-600">
-            Already have an account?{" "}
+          {/* Navigation Links */}
+          <div className="mt-6 text-center space-y-2">
+            <p className="text-sm text-gray-600">
+              Already have an account?{" "}
+              <Link
+                to="/patient-login"
+                className="text-green-600 hover:text-green-700 font-medium"
+              >
+                Sign In
+              </Link>
+            </p>
             <Link
-              to="/patient-login"
-              className="text-green-600 hover:text-green-700 font-medium"
+              to="/"
+              className="block text-xs text-gray-600 hover:text-green-600"
             >
-              Sign In
+              Back to Home
             </Link>
-          </p>
-          <Link
-            to="/"
-            className="block text-xs text-gray-600 hover:text-green-600"
-          >
-            Back to Home
-          </Link>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

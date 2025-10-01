@@ -15,7 +15,7 @@ import PatientListDashboard from './components/PatientListDashboard';
 export default function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50">
+      <div className="app-container bg-gradient-to-br from-slate-50 to-green-50">
         <Routes>
           {/* Landing and Authentication Routes */}
           <Route path="/" element={<PatientPassportLanding />} />
