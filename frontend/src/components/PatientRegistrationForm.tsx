@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { Calendar, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import Logo from "./Logo";
 
 const PatientRegistrationForm: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"patient" | "hospital">("patient");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -25,8 +25,10 @@ const PatientRegistrationForm: React.FC = () => {
 
   const handleSubmit = () => {
     console.log("Form submitted:", formData);
-    // Navigate to login page after successful registration
-    navigate('/patient-login');
+    // Show success message briefly before navigation
+    setTimeout(() => {
+      navigate('/patient-login');
+    }, 1000);
   };
 
   return (
@@ -37,6 +39,7 @@ const PatientRegistrationForm: React.FC = () => {
           <div className="form-container rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
             {/* Header */}
             <div className="text-center mb-8">
+              <Logo size="lg" className="justify-center mb-4" />
               <h1 className="heading-lg mb-2">
                 <span className="text-green-600">
                   Create Your Patient Passport
@@ -45,29 +48,18 @@ const PatientRegistrationForm: React.FC = () => {
                 <span className="text-gray-800">Account</span>
               </h1>
               <p className="body-md text-gray-600 mt-3">
-                Join Patient Passport to manage your medical records securely
+                Patient registration portal - Hospitals can register on the hospital registration page
               </p>
             </div>
 
             {/* Tabs */}
             <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-xl">
-              <button
-                onClick={() => setActiveTab("patient")}
-                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
-                  activeTab === "patient"
-                    ? "bg-white text-green-600 shadow-md"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
+              <div className="flex-1 py-3 px-6 rounded-lg font-semibold bg-white text-green-600 shadow-md">
                 Patient Registration
-              </button>
+              </div>
               <button
-                onClick={() => setActiveTab("hospital")}
-                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
-                  activeTab === "hospital"
-                    ? "bg-white text-green-600 shadow-md"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
+                onClick={() => navigate('/hospital-register')}
+                className="flex-1 py-3 px-6 rounded-lg font-semibold transition-all duration-300 text-gray-600 hover:text-gray-800 hover:bg-gray-50"
               >
                 Hospital Registration
               </button>
@@ -207,12 +199,12 @@ const PatientRegistrationForm: React.FC = () => {
               {/* Login Link */}
               <p className="text-center text-gray-600 text-sm">
                 Already have an account?{" "}
-                <a
-                  href="#"
+                <Link
+                  to="/patient-login"
                   className="text-green-600 font-semibold hover:text-green-700 hover:underline"
                 >
                   Log In Here
-                </a>
+                </Link>
               </p>
             </div>
           </div>

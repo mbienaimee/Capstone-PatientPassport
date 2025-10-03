@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Search, Users, FileText, Facebook, Twitter, Instagram, Linkedin, Menu } from 'lucide-react';
+import { Home, Search, Users, FileText, Menu } from 'lucide-react';
+import Logo from './Logo';
 
 interface Patient {
   id: number;
@@ -39,12 +40,7 @@ const MyPatients: React.FC = () => {
       {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="p-6">
-          <div className="flex items-center space-x-2 mb-8">
-            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">✚</span>
-            </div>
-            <span className="text-xl font-bold text-green-600">logo</span>
-          </div>
+          <Logo size="md" />
 
           <nav className="space-y-2">
             <button 
@@ -183,10 +179,16 @@ const MyPatients: React.FC = () => {
                         </td>
                         <td className="px-6 lg:px-8 py-5 text-right">
                           <div className="flex justify-end gap-2">
-                            <button className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-transparent hover:border-green-200">
+                            <button 
+                              onClick={() => navigate('/patient-passport')}
+                              className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-transparent hover:border-green-200"
+                            >
                               View Passport
                             </button>
-                            <button className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-green-600 hover:border-green-700">
+                            <button 
+                              onClick={() => navigate('/update-passport')}
+                              className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-green-600 hover:border-green-700"
+                            >
                               Update Passport
                             </button>
                           </div>
@@ -216,19 +218,8 @@ const MyPatients: React.FC = () => {
                 </a>
               </nav>
               
-              <div className="flex gap-4">
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Facebook className="w-4 h-4" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Twitter className="w-4 h-4" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Instagram className="w-4 h-4" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Linkedin className="w-4 h-4" />
-                </a>
+              <div className="text-sm text-gray-500">
+                © 2025 PatientPassport. All rights reserved.
               </div>
             </div>
           </div>

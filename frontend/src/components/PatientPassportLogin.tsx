@@ -1,14 +1,25 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
+import type { LoginFormData } from '../contexts/AuthContext';
+import Logo from "./Logo";
+import LoadingSpinner from './ui/LoadingSpinner';
+
+interface FormErrors {
+  [key: string]: string;
+}
 
 const PatientPassportLogin: React.FC = () => {
   const navigate = useNavigate();
-  const [loginType, setLoginType] = useState<"patient" | "hospital">("patient");
-  const [formData, setFormData] = useState({
+  const { login, isLoading } = useAuth();
+  const { showNotification } = useNotification();
+  
+  const [formData, setFormData] = useState<LoginFormData>({
     nationalId: "",
     password: "",
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -19,144 +30,189 @@ const PatientPassportLogin: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: FormErrors = {};
 
-    if (!formData.nationalId.trim()) {
+    if (!formData.nationalId?.trim()) {
       newErrors.nationalId = "National ID is required";
     }
 
     if (!formData.password) {
       newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = () => {
-    if (validateForm()) {
-      console.log("Login attempt:", { loginType, ...formData });
-      // Navigate based on login type
-      if (loginType === "patient") {
-        navigate('/patient-passport');
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      showNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fix the errors below'
+      });
+      return;
+    }
+
+    try {
+      const success = await login(formData);
+      
+      if (success) {
+        showNotification({
+          type: 'success',
+          title: 'Login Successful',
+          message: 'Welcome back! Redirecting to patient dashboard...'
+        });
+        
+        setTimeout(() => {
+          navigate('/patient-passport');
+        }, 1500);
       } else {
-        navigate('/admin-dashboard');
+        showNotification({
+          type: 'error',
+          title: 'Login Failed',
+          message: 'Invalid credentials. Please try again.'
+        });
       }
+    } catch {
+      showNotification({
+        type: 'error',
+        title: 'Login Error',
+        message: 'An unexpected error occurred. Please try again.'
+      });
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleLogin();
-    }
+  const handleForgotPassword = () => {
+    showNotification({
+      type: 'info',
+      title: 'Password Reset',
+      message: 'Password reset functionality will be implemented soon.'
+    });
+  };
+
+  const handleRegister = () => {
+    navigate('/patient-register');
+  };
+
+  const handleBackToHome = () => {
+    navigate('/');
   };
 
   return (
-    <div className="app-container bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-slate-50 flex items-center justify-center p-4">
       <div className="form-container w-full max-w-md">
-        <h2 className="heading-md text-gray-800 text-center mb-2">
-          Welcome Back
-        </h2>
-        <p className="body-sm text-gray-600 text-center mb-6">
-          Choose your login type to access Patient Passport.
-        </p>
+        <div className="text-center mb-8">
+          <Logo size="xl" className="justify-center mb-4" />
+          <h2 className="heading-md text-gray-900 mb-2">
+            Welcome Back
+          </h2>
+          <p className="body-sm text-gray-600">
+            Patient login portal - Hospital staff can access the hospital login page
+          </p>
+        </div>
 
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setLoginType("patient")}
-            className={`flex-1 py-2.5 px-4 rounded-md font-medium transition-colors duration-200 ${
-              loginType === "patient"
-                ? "bg-green-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
+        <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-xl">
+          <div className="flex-1 py-3 px-4 rounded-lg font-semibold bg-white text-green-600 shadow-md">
             Patient Login
-          </button>
+          </div>
           <button
-            onClick={() => setLoginType("hospital")}
-            className={`flex-1 py-2.5 px-4 rounded-md font-medium transition-colors duration-200 ${
-              loginType === "hospital"
-                ? "bg-green-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+            onClick={() => navigate('/hospital-login')}
+            className="flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-300 text-gray-600 hover:text-gray-800 hover:bg-gray-50"
           >
             Hospital Login
           </button>
         </div>
 
-        <div className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div className="form-group">
-            <label
-              htmlFor="nationalId"
-              className="form-label"
-            >
+            <label htmlFor="nationalId" className="form-label">
               National ID
             </label>
             <input
               type="text"
               id="nationalId"
               name="nationalId"
-              value={formData.nationalId}
+              value={formData.nationalId || ''}
               onChange={handleChange}
-              onKeyPress={handleKeyPress}
               placeholder="Enter your National ID"
-              className={`form-input ${
-                errors.nationalId ? "border-red-500" : ""
-              }`}
+              className={`form-input ${errors.nationalId ? 'form-input-error' : ''}`}
+              aria-describedby={errors.nationalId ? "nationalId-error" : undefined}
+              disabled={isLoading}
             />
             {errors.nationalId && (
-              <p className="mt-1 text-sm text-red-500">{errors.nationalId}</p>
+              <p id="nationalId-error" className="mt-2 text-sm text-red-600">
+                {errors.nationalId}
+              </p>
             )}
           </div>
 
           <div className="form-group">
-            <label
-              htmlFor="password"
-              className="form-label"
-            >
+            <label htmlFor="password" className="form-label">
               Password
             </label>
             <input
               type="password"
               id="password"
               name="password"
-              value={formData.password}
+              value={formData.password || ''}
               onChange={handleChange}
-              onKeyPress={handleKeyPress}
               placeholder="Enter your password"
-              className={`form-input ${
-                errors.password ? "border-red-500" : ""
-              }`}
+              className={`form-input ${errors.password ? 'form-input-error' : ''}`}
+              aria-describedby={errors.password ? "password-error" : undefined}
+              disabled={isLoading}
             />
             {errors.password && (
-              <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+              <p id="password-error" className="mt-2 text-sm text-red-600">
+                {errors.password}
+              </p>
             )}
           </div>
 
           <button
-            onClick={handleLogin}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            type="submit"
+            disabled={isLoading}
+            className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            aria-label="Login to Patient Passport"
           >
-            Login
+            {isLoading ? (
+              <LoadingSpinner size="sm" text="" />
+            ) : (
+              'Login'
+            )}
           </button>
-        </div>
+        </form>
 
-        <div className="mt-6 space-y-2 text-center">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link
-              to="/patient-register"
-              className="text-green-600 hover:text-green-700 font-medium"
-            >
-              Register
-            </Link>
-          </p>
-          <Link
-            to="/"
-            className="block text-xs text-gray-600 hover:text-green-600"
+        <div className="mt-8 space-y-3 text-center">
+          <button
+            onClick={handleForgotPassword}
+            className="block w-full text-sm text-gray-600 hover:text-green-600 transition-colors"
+            disabled={isLoading}
           >
-            Back to Home
-          </Link>
+            Forgot Password?
+          </button>
+          
+          <div className="flex items-center justify-center space-x-4 text-sm">
+            <button
+              onClick={handleRegister}
+              className="text-gray-600 hover:text-green-600 transition-colors"
+              disabled={isLoading}
+            >
+              Need to Register?
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={handleBackToHome}
+              className="text-gray-600 hover:text-green-600 transition-colors"
+              disabled={isLoading}
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
       </div>
     </div>

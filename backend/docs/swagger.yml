@@ -1,0 +1,1535 @@
+openapi: 3.0.0
+info:
+  title: PatientPassport API
+  version: 1.0.0
+  description: |
+    A comprehensive API for managing patient medical records and hospital operations.
+    
+    ## Features
+    - **Authentication & Authorization**: JWT-based authentication with role-based access control
+    - **Patient Management**: Complete patient profile and medical record management
+    - **Hospital Management**: Hospital registration, approval, and management system
+    - **Medical Records**: Medical conditions, medications, test results, and hospital visits
+    - **Dashboard Analytics**: Comprehensive dashboards for different user roles
+    - **Security**: Rate limiting, input validation, CORS, and security headers
+    
+    ## User Roles
+    - **Patient**: Can access their own medical records and dashboard
+    - **Doctor**: Can access assigned patients' records and medical management
+    - **Hospital**: Can access hospital-specific data and patients
+    - **Admin**: Full access to all resources and management functions
+  contact:
+    name: PatientPassport Team
+    email: support@patientpassport.com
+    url: https://patientpassport.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.patientpassport.com
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Health Check
+  /health:
+    get:
+      tags:
+        - System
+      summary: Health check endpoint
+      description: Returns the current status of the API
+      security: []
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "PatientPassport API is running"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  environment:
+                    type: string
+                    example: "development"
+                  version:
+                    type: string
+                    example: "1.0.0"
+
+  # Authentication Endpoints
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account with role-specific profile
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              patient:
+                summary: Patient Registration
+                value:
+                  name: "John Doe"
+                  email: "john.doe@example.com"
+                  password: "SecurePass123"
+                  confirmPassword: "SecurePass123"
+                  role: "patient"
+                  nationalId: "12345678901"
+                  dateOfBirth: "1990-01-15"
+                  contactNumber: "+1234567890"
+                  address: "123 Main St, City, State"
+                  emergencyContact:
+                    name: "Jane Doe"
+                    relationship: "Spouse"
+                    phone: "+1234567891"
+              hospital:
+                summary: Hospital Registration
+                value:
+                  name: "City General Hospital"
+                  email: "admin@citygeneral.com"
+                  password: "HospitalPass123"
+                  confirmPassword: "HospitalPass123"
+                  role: "hospital"
+                  hospitalName: "City General Hospital"
+                  adminContact: "admin@citygeneral.com"
+                  licenseNumber: "HOS123456"
+                  address: "456 Hospital Ave, City, State"
+                  contact: "+1234567890"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticate user and return JWT tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              email_login:
+                summary: Email Login
+                value:
+                  email: "john.doe@example.com"
+                  password: "SecurePass123"
+              national_id_login:
+                summary: National ID Login
+                value:
+                  nationalId: "12345678901"
+                  password: "SecurePass123"
+              hospital_login:
+                summary: Hospital Login
+                value:
+                  hospitalName: "City General Hospital"
+                  password: "HospitalPass123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Get current authenticated user profile
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          profile:
+                            oneOf:
+                              - $ref: '#/components/schemas/Patient'
+                              - $ref: '#/components/schemas/Doctor'
+                              - $ref: '#/components/schemas/Hospital'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/profile:
+    put:
+      tags:
+        - Authentication
+      summary: Update user profile
+      description: Update current user's profile information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "John Doe"
+                email:
+                  type: string
+                  format: email
+                  example: "john.doe@example.com"
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/change-password:
+    put:
+      tags:
+        - Authentication
+      summary: Change password
+      description: Change user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  example: "OldPassword123"
+                newPassword:
+                  type: string
+                  example: "NewPassword123"
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Patient Endpoints
+  /api/patients:
+    get:
+      tags:
+        - Patients
+      summary: Get all patients
+      description: Retrieve a paginated list of all patients
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by national ID or address
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, name, nationalId]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Patients retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Patient'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/patients/{id}:
+    get:
+      tags:
+        - Patients
+      summary: Get patient by ID
+      description: Retrieve a specific patient by their ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: objectId
+      responses:
+        '200':
+          description: Patient retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Patient'
+        '404':
+          description: Patient not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/patients/search:
+    get:
+      tags:
+        - Patients
+      summary: Search patients
+      description: Search patients by various criteria
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Search results retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Patient'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+  # Hospital Endpoints
+  /api/hospitals:
+    get:
+      tags:
+        - Hospitals
+      summary: Get all hospitals
+      description: Retrieve a paginated list of all hospitals
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, address, or license number
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, pending, inactive]
+      responses:
+        '200':
+          description: Hospitals retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Hospital'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+  /api/hospitals/pending:
+    get:
+      tags:
+        - Hospitals
+      summary: Get pending hospitals
+      description: Retrieve hospitals awaiting approval
+      responses:
+        '200':
+          description: Pending hospitals retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Hospital'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+  /api/hospitals/{id}/approve:
+    patch:
+      tags:
+        - Hospitals
+      summary: Approve hospital
+      description: Approve a pending hospital registration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: objectId
+      responses:
+        '200':
+          description: Hospital approved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Hospital'
+
+  # Medical Records Endpoints
+  /api/medical/conditions:
+    get:
+      tags:
+        - Medical Records
+      summary: Get medical conditions
+      description: Retrieve medical conditions with optional filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: patientId
+          in: query
+          schema:
+            type: string
+            format: objectId
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, resolved, chronic]
+      responses:
+        '200':
+          description: Medical conditions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MedicalCondition'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags:
+        - Medical Records
+      summary: Create medical condition
+      description: Create a new medical condition record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicalConditionRequest'
+      responses:
+        '201':
+          description: Medical condition created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MedicalCondition'
+
+  /api/medical/medications:
+    get:
+      tags:
+        - Medical Records
+      summary: Get medications
+      description: Retrieve medications with optional filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: patientId
+          in: query
+          schema:
+            type: string
+            format: objectId
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, completed, discontinued]
+      responses:
+        '200':
+          description: Medications retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Medication'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags:
+        - Medical Records
+      summary: Create medication
+      description: Create a new medication record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationRequest'
+      responses:
+        '201':
+          description: Medication created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Medication'
+
+  # Dashboard Endpoints
+  /api/dashboard/admin:
+    get:
+      tags:
+        - Dashboard
+      summary: Get admin dashboard
+      description: Retrieve admin dashboard statistics and data
+      responses:
+        '200':
+          description: Admin dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminDashboardData'
+
+  /api/dashboard/hospital:
+    get:
+      tags:
+        - Dashboard
+      summary: Get hospital dashboard
+      description: Retrieve hospital dashboard statistics and data
+      responses:
+        '200':
+          description: Hospital dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HospitalDashboardData'
+
+  /api/dashboard/doctor:
+    get:
+      tags:
+        - Dashboard
+      summary: Get doctor dashboard
+      description: Retrieve doctor dashboard statistics and data
+      responses:
+        '200':
+          description: Doctor dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorDashboardData'
+
+  /api/dashboard/patient:
+    get:
+      tags:
+        - Dashboard
+      summary: Get patient dashboard
+      description: Retrieve patient dashboard statistics and data
+      responses:
+        '200':
+          description: Patient dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PatientDashboardData'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    # Base Schemas
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439011"
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        role:
+          type: string
+          enum: [patient, doctor, admin, hospital]
+          example: "patient"
+        avatar:
+          type: string
+          nullable: true
+          example: "https://example.com/avatar.jpg"
+        isActive:
+          type: boolean
+          example: true
+        isEmailVerified:
+          type: boolean
+          example: false
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-01-15T10:30:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    Patient:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439011"
+        user:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439012"
+        nationalId:
+          type: string
+          example: "12345678901"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1990-01-15"
+        contactNumber:
+          type: string
+          example: "+1234567890"
+        address:
+          type: string
+          example: "123 Main St, City, State 12345"
+        emergencyContact:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Jane Doe"
+            relationship:
+              type: string
+              example: "Spouse"
+            phone:
+              type: string
+              example: "+1234567891"
+        bloodType:
+          type: string
+          enum: [A+, A-, B+, B-, AB+, AB-, O+, O-]
+          nullable: true
+          example: "O+"
+        allergies:
+          type: array
+          items:
+            type: string
+          example: ["Penicillin", "Shellfish"]
+        status:
+          type: string
+          enum: [active, inactive]
+          example: "active"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    Hospital:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439011"
+        user:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439012"
+        name:
+          type: string
+          example: "City General Hospital"
+        address:
+          type: string
+          example: "456 Hospital Ave, City, State 12345"
+        contact:
+          type: string
+          example: "+1234567890"
+        licenseNumber:
+          type: string
+          example: "HOS123456"
+        adminContact:
+          type: string
+          format: email
+          example: "admin@citygeneral.com"
+        status:
+          type: string
+          enum: [active, pending, inactive]
+          example: "active"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    MedicalCondition:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439011"
+        patient:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439012"
+        doctor:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439013"
+        name:
+          type: string
+          example: "Hypertension"
+        details:
+          type: string
+          example: "High blood pressure condition diagnosed during routine checkup"
+        diagnosed:
+          type: string
+          format: date
+          example: "2024-01-15"
+        procedure:
+          type: string
+          nullable: true
+          example: "Blood pressure monitoring"
+        status:
+          type: string
+          enum: [active, resolved, chronic]
+          example: "active"
+        notes:
+          type: string
+          nullable: true
+          example: "Patient responding well to medication"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    Medication:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439011"
+        patient:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439012"
+        doctor:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439013"
+        name:
+          type: string
+          example: "Lisinopril"
+        dosage:
+          type: string
+          example: "10mg"
+        frequency:
+          type: string
+          enum: [Once daily, Twice daily, Three times daily, Four times daily, Every 4 hours, Every 6 hours, Every 8 hours, Every 12 hours, As needed, Before meals, After meals, At bedtime, Weekly, Monthly]
+          example: "Once daily"
+        startDate:
+          type: string
+          format: date
+          example: "2024-01-15"
+        endDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-04-15"
+        status:
+          type: string
+          enum: [active, completed, discontinued]
+          example: "active"
+        notes:
+          type: string
+          nullable: true
+          example: "Take with food"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    # Request Schemas
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - confirmPassword
+        - role
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        password:
+          type: string
+          minLength: 8
+          pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$"
+          example: "SecurePass123"
+        confirmPassword:
+          type: string
+          example: "SecurePass123"
+        role:
+          type: string
+          enum: [patient, doctor, admin, hospital]
+          example: "patient"
+        nationalId:
+          type: string
+          pattern: "^\\d{11}$"
+          example: "12345678901"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1990-01-15"
+        contactNumber:
+          type: string
+          pattern: "^\\+?[\\d\\s-()]+$"
+          example: "+1234567890"
+        address:
+          type: string
+          minLength: 10
+          maxLength: 500
+          example: "123 Main St, City, State 12345"
+        emergencyContact:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Jane Doe"
+            relationship:
+              type: string
+              example: "Spouse"
+            phone:
+              type: string
+              example: "+1234567891"
+        hospitalName:
+          type: string
+          example: "City General Hospital"
+        adminContact:
+          type: string
+          format: email
+          example: "admin@citygeneral.com"
+        licenseNumber:
+          type: string
+          example: "HOS123456"
+
+    LoginRequest:
+      type: object
+      required:
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        nationalId:
+          type: string
+          example: "12345678901"
+        hospitalName:
+          type: string
+          example: "City General Hospital"
+        password:
+          type: string
+          example: "SecurePass123"
+
+    MedicalConditionRequest:
+      type: object
+      required:
+        - patient
+        - doctor
+        - name
+        - details
+        - diagnosed
+        - status
+      properties:
+        patient:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439012"
+        doctor:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439013"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Hypertension"
+        details:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          example: "High blood pressure condition diagnosed during routine checkup"
+        diagnosed:
+          type: string
+          format: date
+          example: "2024-01-15"
+        procedure:
+          type: string
+          maxLength: 500
+          example: "Blood pressure monitoring"
+        status:
+          type: string
+          enum: [active, resolved, chronic]
+          example: "active"
+        notes:
+          type: string
+          maxLength: 1000
+          example: "Patient responding well to medication"
+
+    MedicationRequest:
+      type: object
+      required:
+        - patient
+        - doctor
+        - name
+        - dosage
+        - frequency
+        - startDate
+        - status
+      properties:
+        patient:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439012"
+        doctor:
+          type: string
+          format: objectId
+          example: "507f1f77bcf86cd799439013"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Lisinopril"
+        dosage:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "10mg"
+        frequency:
+          type: string
+          enum: [Once daily, Twice daily, Three times daily, Four times daily, Every 4 hours, Every 6 hours, Every 8 hours, Every 12 hours, As needed, Before meals, After meals, At bedtime, Weekly, Monthly]
+          example: "Once daily"
+        startDate:
+          type: string
+          format: date
+          example: "2024-01-15"
+        endDate:
+          type: string
+          format: date
+          example: "2024-04-15"
+        status:
+          type: string
+          enum: [active, completed, discontinued]
+          example: "active"
+        notes:
+          type: string
+          maxLength: 500
+          example: "Take with food"
+
+    # Response Schemas
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"
+        data:
+          type: object
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+
+    AuthResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+                token:
+                  type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                refreshToken:
+                  type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            success:
+              type: boolean
+              example: false
+            message:
+              type: string
+              example: "An error occurred"
+            errors:
+              type: object
+              additionalProperties:
+                type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 100
+        pages:
+          type: integer
+          example: 10
+
+    # Dashboard Data Schemas
+    AdminDashboardData:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            totalPatients:
+              type: integer
+              example: 150
+            totalHospitals:
+              type: integer
+              example: 25
+            totalDoctors:
+              type: integer
+              example: 75
+            newRegistrations:
+              type: integer
+              example: 12
+            activePatients:
+              type: integer
+              example: 145
+            pendingHospitals:
+              type: integer
+              example: 3
+            recentActivity:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "patient"
+                  id:
+                    type: string
+                    example: "507f1f77bcf86cd799439011"
+                  name:
+                    type: string
+                    example: "John Doe"
+                  date:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+                  status:
+                    type: string
+                    example: "registered"
+        monthlyRegistrations:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                    example: 2024
+                  month:
+                    type: integer
+                    example: 1
+              count:
+                type: integer
+                example: 15
+
+    HospitalDashboardData:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            totalDoctors:
+              type: integer
+              example: 15
+            totalPatients:
+              type: integer
+              example: 200
+            recentPatients:
+              type: array
+              items:
+                $ref: '#/components/schemas/Patient'
+            recentMedicalConditions:
+              type: array
+              items:
+                $ref: '#/components/schemas/MedicalCondition'
+            recentTestResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    example: "507f1f77bcf86cd799439011"
+                  name:
+                    type: string
+                    example: "Blood Test"
+                  date:
+                    type: string
+                    format: date
+                    example: "2024-01-15"
+                  status:
+                    type: string
+                    example: "normal"
+        monthlyVisits:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                    example: 2024
+                  month:
+                    type: integer
+                    example: 1
+              count:
+                type: integer
+                example: 45
+
+    DoctorDashboardData:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            totalPatients:
+              type: integer
+              example: 50
+            totalMedicalConditions:
+              type: integer
+              example: 120
+            totalMedications:
+              type: integer
+              example: 80
+            totalTestResults:
+              type: integer
+              example: 200
+            recentPatients:
+              type: array
+              items:
+                $ref: '#/components/schemas/Patient'
+            recentMedicalConditions:
+              type: array
+              items:
+                $ref: '#/components/schemas/MedicalCondition'
+            recentMedications:
+              type: array
+              items:
+                $ref: '#/components/schemas/Medication'
+            criticalTestResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    example: "507f1f77bcf86cd799439011"
+                  name:
+                    type: string
+                    example: "Blood Test"
+                  date:
+                    type: string
+                    format: date
+                    example: "2024-01-15"
+                  status:
+                    type: string
+                    example: "critical"
+        monthlyRecords:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                    example: 2024
+                  month:
+                    type: integer
+                    example: 1
+              count:
+                type: integer
+                example: 25
+
+    PatientDashboardData:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            totalMedicalConditions:
+              type: integer
+              example: 5
+            totalMedications:
+              type: integer
+              example: 3
+            totalTestResults:
+              type: integer
+              example: 15
+            totalHospitalVisits:
+              type: integer
+              example: 8
+            activeMedications:
+              type: array
+              items:
+                $ref: '#/components/schemas/Medication'
+            recentMedicalConditions:
+              type: array
+              items:
+                $ref: '#/components/schemas/MedicalCondition'
+            recentTestResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    example: "507f1f77bcf86cd799439011"
+                  name:
+                    type: string
+                    example: "Blood Test"
+                  date:
+                    type: string
+                    format: date
+                    example: "2024-01-15"
+                  status:
+                    type: string
+                    example: "normal"
+            recentHospitalVisits:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    example: "507f1f77bcf86cd799439011"
+                  reason:
+                    type: string
+                    example: "Routine checkup"
+                  date:
+                    type: string
+                    format: date
+                    example: "2024-01-15"
+                  diagnosis:
+                    type: string
+                    example: "Healthy"
+            upcomingFollowUps:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    example: "507f1f77bcf86cd799439011"
+                  reason:
+                    type: string
+                    example: "Follow-up appointment"
+                  followUpDate:
+                    type: string
+                    format: date
+                    example: "2024-02-15"
+        monthlyHealthData:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: object
+                properties:
+                  year:
+                    type: integer
+                    example: 2024
+                  month:
+                    type: integer
+                    example: 1
+              count:
+                type: integer
+                example: 3
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Authentication
+    description: User authentication and profile management
+  - name: Patients
+    description: Patient management and medical records
+  - name: Hospitals
+    description: Hospital management and approval workflow
+  - name: Medical Records
+    description: Medical conditions, medications, test results, and hospital visits
+  - name: Dashboard
+    description: Dashboard analytics and statistics for different user roles
+
+
+
+
+
+
+
+

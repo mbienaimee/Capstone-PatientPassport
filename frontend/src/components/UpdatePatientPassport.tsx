@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Home, Search, Users, FileText, X, Upload, Facebook, Twitter, Instagram, Linkedin, Menu } from 'lucide-react';
+import { Home, Search, Users, FileText, X, Upload, Menu } from 'lucide-react';
+import Logo from './Logo';
 
 interface Condition {
   id: number;
@@ -91,30 +92,34 @@ const UpdatePatientPassport: React.FC = () => {
       {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="p-6">
-          <div className="flex items-center space-x-2 mb-8">
-            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">✚</span>
-            </div>
-            <span className="text-xl font-bold text-green-600">logo</span>
-          </div>
+          <Logo size="md" />
 
           <nav className="space-y-2">
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors">
+            <button 
+              onClick={() => window.location.href = '/doctor-dashboard'}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <Home className="w-5 h-5" />
               <span className="font-medium">Doctor Dashboard</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors">
+            </button>
+            <button 
+              onClick={() => window.location.href = '/search-patient'}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <Search className="w-5 h-5" />
               <span className="font-medium">Search Patient</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors">
+            </button>
+            <button 
+              onClick={() => window.location.href = '/my-patients'}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors group"
+            >
               <Users className="w-5 h-5" />
               <span className="font-medium">My Patients</span>
-            </a>
-            <a href="#" className="flex items-center space-x-3 px-4 py-3 bg-green-50 text-green-600 rounded-lg">
+            </button>
+            <button className="w-full flex items-center space-x-3 px-4 py-3 bg-green-50 text-green-600 rounded-lg">
               <FileText className="w-5 h-5" />
               <span className="font-medium">Update Passport</span>
-            </a>
+            </button>
           </nav>
         </div>
       </aside>
@@ -347,19 +352,8 @@ const UpdatePatientPassport: React.FC = () => {
                 <a href="#" className="text-gray-600 hover:text-gray-900 text-sm font-medium">Support</a>
                 <a href="#" className="text-gray-600 hover:text-gray-900 text-sm font-medium">Legal</a>
               </nav>
-              <div className="flex gap-4">
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Facebook className="w-4 h-4" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Twitter className="w-4 h-4" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Instagram className="w-4 h-4" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-green-600 flex items-center justify-center text-gray-600 hover:text-white transition-all">
-                  <Linkedin className="w-4 h-4" />
-                </a>
+              <div className="text-sm text-gray-500">
+                © 2025 PatientPassport. All rights reserved.
               </div>
             </div>
           </div>

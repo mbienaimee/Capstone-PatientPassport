@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Logo from "./Logo";
 
 interface MedicalCondition {
   name: string;
@@ -117,141 +118,129 @@ const PatientPassport: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-container">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <svg
-              className="w-5 h-5 text-green-600 mr-2"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-            </svg>
-            <span className="text-lg font-semibold text-green-600">logo</span>
-          </div>
-          <nav className="flex items-center space-x-6">
+          <Logo size="md" />
+          <nav className="hidden md:flex items-center space-x-6">
             <button 
               onClick={() => navigate('/')}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="nav-link"
             >
               Home
             </button>
-            <button className="text-sm text-green-600 font-medium">
+            <button className="nav-link-active">
               My Passport
             </button>
             <button 
               onClick={() => navigate('/update-passport')}
-              className="text-sm text-blue-600 hover:text-blue-900"
+              className="nav-link"
             >
               Update Passport
             </button>
             <button 
               onClick={() => navigate('/')}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="nav-link"
             >
               Logout
             </button>
           </nav>
           <div className="flex items-center space-x-3">
-            <button className="p-2 text-gray-400 hover:text-gray-600">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
+            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Notifications">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
             </button>
-            <div className="w-8 h-8 bg-purple-200 rounded-full"></div>
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              AS
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">
-          Patient Passport Overview
-        </h1>
+      <main className="dashboard-content">
+        <div className="dashboard-card-header">
+          <h1 className="heading-lg text-gray-900">
+            Patient Passport Overview
+          </h1>
+          <p className="body-sm text-gray-600 mt-2">
+            Complete medical history and health information
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Patient Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-green-600 mb-4">
-              Patient Information
-            </h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-500">Name</p>
-                <p className="text-sm font-medium text-gray-900">Anya Sharma</p>
+          <div className="dashboard-card">
+            <div className="dashboard-card-header">
+              <h2 className="dashboard-card-title text-green-600">
+                Patient Information
+              </h2>
+            </div>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-sm font-medium text-gray-500">Name</span>
+                <span className="text-sm font-semibold text-gray-900">Anya Sharma</span>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">National ID</p>
-                <p className="text-sm text-gray-900">PPM-7890-1234</p>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-sm font-medium text-gray-500">National ID</span>
+                <span className="text-sm font-semibold text-gray-900">PPM-7890-1234</span>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Date of Birth</p>
-                <p className="text-sm text-gray-900">1992-05-15</p>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-sm font-medium text-gray-500">Date of Birth</span>
+                <span className="text-sm font-semibold text-gray-900">1992-05-15</span>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Phone</p>
-                <p className="text-sm text-gray-900">+1 (555) 123-4567</p>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-sm font-medium text-gray-500">Phone</span>
+                <span className="text-sm font-semibold text-gray-900">+1 (555) 123-4567</span>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Email</p>
-                <p className="text-sm text-gray-900">anya.sharma@example.com</p>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-sm font-medium text-gray-500">Email</span>
+                <span className="text-sm font-semibold text-gray-900">anya.sharma@example.com</span>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Address</p>
-                <p className="text-sm text-gray-900">
+              <div className="flex justify-between items-start py-2">
+                <span className="text-sm font-medium text-gray-500">Address</span>
+                <span className="text-sm font-semibold text-gray-900 text-right max-w-xs">
                   456 Oak Avenue, Springfield, IL 62704
-                </p>
+                </span>
               </div>
             </div>
           </div>
 
           {/* Primary Doctor */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-green-600 mb-4">
-              Primary Doctor
-            </h2>
+          <div className="dashboard-card">
+            <div className="dashboard-card-header">
+              <h2 className="dashboard-card-title text-green-600">
+                Primary Doctor
+              </h2>
+            </div>
             <div className="flex items-start space-x-4">
               <img
                 src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200"
                 alt="Dr. Ben Carter"
-                className="w-16 h-16 rounded-full object-cover"
+                className="w-16 h-16 rounded-full object-cover shadow-md"
               />
               <div className="space-y-3 flex-1">
-                <div>
-                  <p className="text-xs text-gray-500">Name</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    Dr. Ben Carter
-                  </p>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-sm font-medium text-gray-500">Name</span>
+                  <span className="text-sm font-semibold text-gray-900">Dr. Ben Carter</span>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">Specialty</p>
-                  <p className="text-sm text-gray-900">Cardiologist</p>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-sm font-medium text-gray-500">Specialty</span>
+                  <span className="text-sm font-semibold text-gray-900">Cardiologist</span>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">Hospital</p>
-                  <p className="text-sm text-gray-900">City General Hospital</p>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-sm font-medium text-gray-500">Hospital</span>
+                  <span className="text-sm font-semibold text-gray-900">City General Hospital</span>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">Contact</p>
-                  <p className="text-sm text-gray-900">+1 (555) 987-6543</p>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-sm font-medium text-gray-500">Contact</span>
+                  <span className="text-sm font-semibold text-gray-900">+1 (555) 987-6543</span>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">Email</p>
-                  <p className="text-sm text-gray-900">
-                    ben.carter@hospital.com
-                  </p>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm font-medium text-gray-500">Email</span>
+                  <span className="text-sm font-semibold text-gray-900">ben.carter@hospital.com</span>
                 </div>
               </div>
             </div>
@@ -259,30 +248,49 @@ const PatientPassport: React.FC = () => {
         </div>
 
         {/* Medical History */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-lg font-semibold text-green-600 mb-4">
-            Medical History
-          </h2>
-          <div className="space-y-2">
+        <div className="dashboard-card mb-8">
+          <div className="dashboard-card-header">
+            <h2 className="dashboard-card-title text-green-600">
+              Medical History
+            </h2>
+          </div>
+          <div className="space-y-3">
             {medicalHistory.map((condition, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-lg">
+              <div key={idx} className="border border-gray-200 rounded-lg hover:border-green-300 transition-colors">
                 <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 rounded-lg"
                   onClick={() =>
                     setExpandedCondition(expandedCondition === idx ? null : idx)
                   }
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setExpandedCondition(expandedCondition === idx ? null : idx);
+                    }
+                  }}
+                  aria-expanded={expandedCondition === idx}
                 >
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-semibold text-gray-900">
                       {condition.name}
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <p className="text-xs text-gray-500">
+                    <span className="badge-gray">
                       {condition.diagnosed
                         ? `Diagnosed: ${condition.diagnosed}`
                         : `Procedure: ${condition.procedure}`}
-                    </p>
+                    </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => navigate('/update-passport')}
+                        className="text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
+                        aria-label={`Edit ${condition.name}`}
+                      >
+                        Edit
+                      </button>
+                    </div>
                     <svg
                       className={`w-5 h-5 text-gray-400 transition-transform ${
                         expandedCondition === idx ? "rotate-180" : ""
@@ -313,31 +321,38 @@ const PatientPassport: React.FC = () => {
         </div>
 
         {/* Medications */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-lg font-semibold text-green-600 mb-4">
-            Medications
-          </h2>
+        <div className="dashboard-card mb-8">
+          <div className="dashboard-card-header">
+            <h2 className="dashboard-card-title text-green-600">
+              Medications
+            </h2>
+          </div>
           <div className="space-y-3">
             {medications.map((med, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-semibold text-gray-900">
                     {med.name}
                   </p>
-                  <p className="text-xs text-gray-500">{med.dosage}</p>
+                  <p className="text-xs text-gray-600">{med.dosage}</p>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    med.status === "Active"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {med.status === "Past" ? "Past (Completed)" : med.status}
-                </span>
+                <div className="flex items-center space-x-3">
+                  <span
+                    className={med.status === "Active" ? "badge-success" : "badge-gray"}
+                  >
+                    {med.status === "Past" ? "Past (Completed)" : med.status}
+                  </span>
+                  <button
+                    onClick={() => navigate('/update-passport')}
+                    className="text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
+                    aria-label={`Edit ${med.name} medication`}
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -345,36 +360,49 @@ const PatientPassport: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Test Results */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-green-600 mb-4">
-              Test Results
-            </h2>
+          <div className="dashboard-card">
+            <div className="dashboard-card-header">
+              <h2 className="dashboard-card-title text-green-600">
+                Test Results
+              </h2>
+            </div>
             <div className="space-y-3">
               {testResults.map((test, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                  className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-semibold text-gray-900">
                       {test.name}
                     </p>
-                    <p className="text-xs text-gray-500">{test.date}</p>
+                    <p className="text-xs text-gray-600">{test.date}</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      className={
                         test.status === "Critical"
-                          ? "bg-red-100 text-red-700"
+                          ? "badge-danger"
                           : test.status === "Normal Sinus Rhythm"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-green-100 text-green-700"
-                      }`}
+                          ? "badge-info"
+                          : "badge-success"
+                      }
                     >
                       {test.status}
                     </span>
-                    <button className="text-xs text-green-600 hover:text-green-700 font-medium">
+                    <button 
+                      onClick={() => navigate('/patient-passport')}
+                      className="text-xs text-green-600 hover:text-green-700 font-semibold transition-colors"
+                      aria-label={`View ${test.name} report`}
+                    >
                       View Report
+                    </button>
+                    <button
+                      onClick={() => navigate('/update-passport')}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+                      aria-label={`Edit ${test.name} result`}
+                    >
+                      Edit
                     </button>
                   </div>
                 </div>
@@ -383,21 +411,34 @@ const PatientPassport: React.FC = () => {
           </div>
 
           {/* Hospital Visits */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-green-600 mb-4">
-              Hospital Visits
-            </h2>
+          <div className="dashboard-card">
+            <div className="dashboard-card-header">
+              <h2 className="dashboard-card-title text-green-600">
+                Hospital Visits
+              </h2>
+            </div>
             <div className="space-y-4">
               {hospitalVisits.map((visit, idx) => (
                 <div
                   key={idx}
-                  className="pb-3 border-b border-gray-100 last:border-0"
+                  className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <p className="text-sm font-medium text-gray-900">
-                    {visit.hospital}
-                  </p>
-                  <p className="text-xs text-gray-600 mt-1">{visit.reason}</p>
-                  <p className="text-xs text-gray-500 mt-1">{visit.date}</p>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {visit.hospital}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">{visit.reason}</p>
+                      <p className="text-xs text-gray-500 mt-1">{visit.date}</p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/update-passport')}
+                      className="text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
+                      aria-label={`Edit visit to ${visit.hospital}`}
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -405,24 +446,45 @@ const PatientPassport: React.FC = () => {
         </div>
 
         {/* Medical Images */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-green-600 mb-2">
-            Medical Images
-          </h2>
-          <p className="text-xs text-gray-500 mb-4">
-            Uploaded X-rays, scans, and other diagnostic images
-          </p>
+        <div className="dashboard-card">
+          <div className="dashboard-card-header">
+            <h2 className="dashboard-card-title text-green-600">
+              Medical Images
+            </h2>
+            <p className="text-sm text-gray-600 mt-2">
+              Uploaded X-rays, scans, and other diagnostic images
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {medicalImages.map((img, idx) => (
               <div
                 key={idx}
-                className="relative aspect-square rounded-lg overflow-hidden bg-gray-900 cursor-pointer hover:opacity-90 transition-opacity"
+                className="relative aspect-square rounded-lg overflow-hidden bg-gray-900 cursor-pointer hover:opacity-90 transition-opacity shadow-md hover:shadow-lg group"
               >
                 <img
                   src={img.url}
                   alt={img.alt}
                   className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white opacity-0 hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/update-passport');
+                    }}
+                    className="bg-blue-600 text-white p-1 rounded-full hover:bg-blue-700 transition-colors"
+                    aria-label={`Edit ${img.alt}`}
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Heart, Activity, Users, CheckCircle, ArrowRight, Menu } from 'lucide-react';
+import Logo from './Logo';
 
 const PatientPassportLanding = () => {
   const navigate = useNavigate();
@@ -41,13 +42,8 @@ const PatientPassportLanding = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200">
         <div className="page-container flex items-center justify-between py-4">
-          <a href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-              PatientPassport
-            </span>
+          <a href="/" className="group">
+            <Logo size="md" className="group-hover:shadow-lg transition-all" />
           </a>
           
           {/* Desktop Navigation */}
@@ -305,14 +301,7 @@ const PatientPassportLanding = () => {
       <footer className="bg-white border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg flex items-center justify-center shadow-md">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">
-                PatientPassport
-              </span>
-            </div>
+            <Logo size="md" />
             
             <div className="flex items-center gap-8">
               <a href="#" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">

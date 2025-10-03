@@ -1,143 +1,173 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const HospitalLogin: React.FC = () => {
+const HospitalLogin = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    hospitalName: "",
-    password: "",
+    hospitalName: '',
+    password: ''
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [errors, setErrors] = useState({
+    hospitalName: '',
+    password: ''
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
     }
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = () => {
+    const newErrors = {
+      hospitalName: '',
+      password: ''
+    };
 
     if (!formData.hospitalName.trim()) {
-      newErrors.hospitalName = "Hospital name is required";
+      newErrors.hospitalName = 'Hospital name is required';
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = 'Password is required';
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return !Object.values(newErrors).some(error => error !== '');
   };
 
-  const handleLogin = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (validateForm()) {
-      console.log("Hospital login attempt:", formData);
-      // Navigate to admin dashboard for hospital login
+      console.log('Login submitted:', formData);
+      // Navigate to admin dashboard on successful login
       navigate('/admin-dashboard');
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleLogin();
-    }
+  const handleForgotPassword = () => {
+    alert('Password reset functionality would be implemented here');
+  };
+
+  const handleRegister = () => {
+    navigate('/hospital-register');
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        <div className="flex items-center justify-center mb-8">
-          <svg
-            className="w-6 h-6 text-green-600 mr-2"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z" />
-          </svg>
-          <h1 className="text-2xl font-bold text-green-600">PatientPassport</h1>
+      <div className="w-full max-w-2xl">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <svg 
+              className="w-10 h-10 text-green-600" 
+              viewBox="0 0 24 24" 
+              fill="currentColor"
+            >
+              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 18c-3.86-1.05-6.5-4.73-6.5-8.5V8.29L12 4.65l6.5 3.64V11.5c0 3.77-2.64 7.45-6.5 8.5z"/>
+              <path d="M11 7h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+            <h1 className="text-4xl font-bold text-green-600" style={{ fontStyle: 'italic' }}>
+              PatientPassport
+            </h1>
+          </div>
         </div>
 
-        <h2 className="text-xl font-semibold text-gray-800 text-center mb-2">
-          Hospital Login
-        </h2>
-        <p className="text-xs text-gray-500 text-center mb-6">
-          Welcome back! Please enter your hospital credentials.
-        </p>
+        {/* Login Card */}
+        <div className="bg-white rounded-lg shadow-lg p-12 max-w-md mx-auto">
+          <h2 className="text-3xl font-bold text-gray-900 text-center mb-3">
+            Hospital Login
+          </h2>
+          
+          <p className="text-center text-gray-600 mb-8">
+            Welcome back! Please enter your hospital credentials.
+          </p>
 
-        <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="hospitalName"
-              className="block text-xs font-medium text-gray-700 mb-1.5"
-            >
-              Hospital Name
-            </label>
-            <input
-              type="text"
-              id="hospitalName"
-              name="hospitalName"
-              value={formData.hospitalName}
-              onChange={handleChange}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter your hospital name"
-              className={`w-full px-3 py-2.5 border ${
-                errors.hospitalName ? "border-red-500" : "border-gray-300"
-              } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent`}
-            />
-            {errors.hospitalName && (
-              <p className="mt-1 text-xs text-red-500">{errors.hospitalName}</p>
-            )}
-          </div>
+          <div className="space-y-6">
+            {/* Hospital Name */}
+            <div>
+              <label 
+                htmlFor="hospitalEmail" 
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                HospitalEmail
+              </label>
+              <input
+                type="text"
+                id="hospitalName"
+                name="hospitalName"
+                value={formData.hospitalName}
+                onChange={handleChange}
+                placeholder="Enter your hospital email"
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400"
+              />
+              {errors.hospitalName && (
+                <p className="mt-1 text-sm text-red-600">{errors.hospitalName}</p>
+              )}
+            </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-xs font-medium text-gray-700 mb-1.5"
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter your password"
-              className={`w-full px-3 py-2.5 border ${
-                errors.password ? "border-red-500" : "border-gray-300"
-              } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent`}
-            />
-            {errors.password && (
-              <p className="mt-1 text-xs text-red-500">{errors.password}</p>
-            )}
-          </div>
+            {/* Password */}
+            <div>
+              <label 
+                htmlFor="password" 
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400"
+              />
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
+            </div>
 
-          <button
-            onClick={handleLogin}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-          >
-            Login
-          </button>
-        </div>
+            {/* Login Button */}
+            <button
+              onClick={handleSubmit}
+              className="w-full bg-green-600 text-white py-3 rounded-md font-medium hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              Login
+            </button>
 
-        <div className="mt-6 space-y-2 text-center">
-          <div className="space-y-1">
-            <Link
-              to="/hospital-register"
-              className="block text-sm text-green-600 hover:text-green-700"
-            >
-              Need to Register?
-            </Link>
-            <Link
-              to="/"
-              className="block text-xs text-gray-600 hover:text-green-600"
-            >
-              Back to Home
-            </Link>
+            {/* Links */}
+            <div className="text-center space-y-2">
+              <button
+                onClick={handleForgotPassword}
+                className="block w-full text-gray-600 hover:text-green-600 transition-colors text-sm"
+              >
+                Forgot Password?
+              </button>
+              <button
+                onClick={handleRegister}
+                className="block w-full text-gray-600 hover:text-green-600 transition-colors text-sm"
+              >
+                Need to Register?
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="block w-full text-gray-500 hover:text-green-600 transition-colors text-sm mt-4"
+              >
+                ← Back to Home
+              </button>
+            </div>
           </div>
         </div>
       </div>
