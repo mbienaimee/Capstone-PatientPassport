@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import type { LoginFormData } from '../contexts/AuthContext';
@@ -65,7 +65,7 @@ const PatientPassportLogin: React.FC = () => {
         showNotification({
           type: 'success',
           title: 'Login Successful',
-          message: 'Welcome back! Redirecting to patient dashboard...'
+          message: 'Welcome back! Redirecting to your patient passport...'
         });
         
         setTimeout(() => {
@@ -78,7 +78,8 @@ const PatientPassportLogin: React.FC = () => {
           message: 'Invalid credentials. Please try again.'
         });
       }
-    } catch {
+    } catch (error) {
+      console.error('Login error:', error);
       showNotification({
         type: 'error',
         title: 'Login Error',
@@ -188,13 +189,22 @@ const PatientPassportLogin: React.FC = () => {
         </form>
 
         <div className="mt-8 space-y-3 text-center">
-          <button
-            onClick={handleForgotPassword}
-            className="block w-full text-sm text-gray-600 hover:text-green-600 transition-colors"
-            disabled={isLoading}
-          >
-            Forgot Password?
-          </button>
+          <div className="flex items-center justify-center space-x-4">
+            <button
+              onClick={handleForgotPassword}
+              className="text-sm text-gray-600 hover:text-green-600 transition-colors"
+              disabled={isLoading}
+            >
+              Forgot Password?
+            </button>
+            <span className="text-gray-300">|</span>
+            <Link
+              to="/otp-login"
+              className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+            >
+              Login with OTP
+            </Link>
+          </div>
           
           <div className="flex items-center justify-center space-x-4 text-sm">
             <button

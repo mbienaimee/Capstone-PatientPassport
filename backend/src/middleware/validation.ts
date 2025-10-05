@@ -7,7 +7,11 @@ export const handleValidationErrors = (req: Request, res: Response, next: NextFu
   const errors = validationResult(req);
   
   if (!errors.isEmpty()) {
-    throw new CustomError('Validation failed', 400);
+    const errorMessages = errors.array().map(error => 
+      `${error.type === 'field' ? error.path : 'unknown'}: ${error.msg}`
+    ).join(', ');
+    
+    throw new CustomError(`Validation failed: ${errorMessages}`, 400);
   }
   
   next();
@@ -71,8 +75,8 @@ export const validateUserLogin = [
 // Patient validation
 export const validatePatient = [
   body('nationalId')
-    .isLength({ min: 11, max: 11 })
-    .withMessage('National ID must be exactly 11 digits')
+    .isLength({ min: 11, max: 16 })
+    .withMessage('National ID must be between 11 and 16 digits')
     .isNumeric()
     .withMessage('National ID must contain only numbers'),
   

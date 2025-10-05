@@ -7,7 +7,9 @@ import {
   updateProfile,
   changePassword,
   logout,
-  deleteAccount
+  deleteAccount,
+  requestOTP,
+  verifyOTPLogin
 } from '@/controllers/authController';
 import { authenticate } from '@/middleware/auth';
 import { authLimiter } from '@/middleware/rateLimiter';
@@ -58,7 +60,15 @@ router.post('/logout', authenticate, logout);
 // @access  Private
 router.delete('/account', authenticate, deleteAccount);
 
+// OTP Routes
+router.post('/request-otp', authLimiter, requestOTP);
+router.post('/verify-otp', authLimiter, verifyOTPLogin);
+
 export default router;
+
+
+
+
 
 
 

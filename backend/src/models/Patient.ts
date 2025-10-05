@@ -31,7 +31,7 @@ const patientSchema = new Schema({
     required: [true, 'National ID is required'],
     unique: true,
     trim: true,
-    match: [/^\d{11}$/, 'National ID must be 11 digits']
+    match: [/^\d{11,16}$/, 'National ID must be between 11 and 16 digits']
   },
   dateOfBirth: {
     type: Date,

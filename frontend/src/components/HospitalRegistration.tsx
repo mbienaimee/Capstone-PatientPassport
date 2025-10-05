@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
+import { apiService, ApiError } from '../services/api';
 import { Building2, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import Logo from './Logo';
 import LoadingSpinner from './ui/LoadingSpinner';
@@ -95,24 +96,41 @@ const HospitalRegistration: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      showNotification({
-        type: 'success',
-        title: 'Registration Successful!',
-        message: 'Your hospital has been registered. Redirecting to login...'
+      const response = await apiService.register({
+        name: formData.hospitalName,
+        email: formData.adminContact,
+        password: formData.password,
+        role: 'hospital',
+        hospitalName: formData.hospitalName,
+        adminContact: formData.adminContact
       });
-      
-      setTimeout(() => {
-        navigate('/hospital-login');
-      }, 2000);
-    } catch {
-      showNotification({
-        type: 'error',
-        title: 'Registration Failed',
-        message: 'An error occurred. Please try again.'
-      });
+
+      if (response.success) {
+        showNotification({
+          type: 'success',
+          title: 'Registration Successful!',
+          message: 'Your hospital has been registered. Redirecting to login...'
+        });
+        
+        setTimeout(() => {
+          navigate('/hospital-login');
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Hospital registration error:', error);
+      if (error instanceof ApiError) {
+        showNotification({
+          type: 'error',
+          title: 'Registration Failed',
+          message: error.message || 'An error occurred during registration'
+        });
+      } else {
+        showNotification({
+          type: 'error',
+          title: 'Registration Failed',
+          message: 'An unexpected error occurred. Please try again.'
+        });
+      }
     } finally {
       setIsLoading(false);
     }

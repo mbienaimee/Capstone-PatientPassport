@@ -1,5 +1,15 @@
 import { Document, Model } from 'mongoose';
 
+// Extend Express Request interface
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+      apiKey?: string;
+    }
+  }
+}
+
 // Base User Interface
 export interface IUser extends Document {
   _id: string;
@@ -22,6 +32,8 @@ export interface IPatient extends Document {
   _id: string;
   user: any; // Reference to User (ObjectId)
   nationalId: string;
+  universalId?: string; // Universal patient ID for federated access
+  insuranceNumber?: string; // Insurance number for identification
   dateOfBirth: Date;
   contactNumber: string;
   address: string;
@@ -66,6 +78,9 @@ export interface IHospital extends Document {
   contact: string;
   licenseNumber: string;
   adminContact: string;
+  hospitalId: string; // Unique hospital identifier for federated system
+  fhirEndpoint?: string; // FHIR endpoint for data exchange
+  apiKey?: string; // API key for central registry communication
   doctors: string[]; // References to Doctor
   patients: string[]; // References to Patient
   status: 'active' | 'pending' | 'inactive';
@@ -229,6 +244,67 @@ export interface SearchQuery {
   dateFrom?: string;
   dateTo?: string;
   patientId?: string;
+}
+
+// Federated System Types
+export interface EmergencyOverride {
+  _id: string;
+  user: string; // Reference to User
+  patient: string; // Reference to Patient
+  justification: string;
+  accessTime: Date;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AuditLog {
+  _id: string;
+  user: string; // Reference to User
+  patient: string; // Reference to Patient
+  accessType: 'regular' | 'emergency' | 'consent';
+  action: 'view' | 'create' | 'update' | 'delete';
+  details: string;
+  accessTime: Date;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ConsentToken {
+  _id: string;
+  universalId: string;
+  token: string;
+  expiresAt: Date;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FederatedPatientData {
+  universalId: string;
+  patientName: string;
+  gender: string;
+  birthdate: Date;
+  hospitalData: HospitalData[];
+  lastUpdated: Date;
+}
+
+export interface HospitalData {
+  hospitalId: string;
+  hospitalName: string;
+  fhirData: string;
+  lastSync: Date;
+  availableResources: string[];
+}
+
+export interface CentralRegistryResponse {
+  success: boolean;
+  message: string;
+  data?: any;
 }
 
 // Error Types

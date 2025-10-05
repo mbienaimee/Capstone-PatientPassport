@@ -6,6 +6,7 @@ import Doctor from '@/models/Doctor';
 import Hospital from '@/models/Hospital';
 import { asyncHandler, CustomError } from '@/middleware/errorHandler';
 import { LoginRequest, RegisterRequest, AuthResponse, ApiResponse } from '@/types';
+import { generateAndSendOTP, verifyOTP } from '@/services/otpService';
 
 // Generate JWT token
 const generateToken = (userId: string): string => {
@@ -50,20 +51,33 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   });
 
   // Create role-specific profile
+  console.log('Registration data:', { role, nationalId, dateOfBirth, contactNumber, address });
+  
   if (role === 'patient' && nationalId && dateOfBirth && contactNumber && address) {
-    await Patient.create({
-      user: user._id,
-      nationalId,
-      dateOfBirth: new Date(dateOfBirth),
-      contactNumber,
-      address,
-      emergencyContact: {
-        name: req.body.emergencyContact?.name || '',
-        relationship: req.body.emergencyContact?.relationship || '',
-        phone: req.body.emergencyContact?.phone || ''
-      }
-    });
-  } else if (role === 'hospital' && hospitalName && adminContact && licenseNumber) {
+    console.log('Creating patient record...');
+    try {
+      const patient = await Patient.create({
+        user: user._id,
+        nationalId,
+        dateOfBirth: new Date(dateOfBirth),
+        contactNumber,
+        address,
+        emergencyContact: {
+          name: req.body.emergencyContact?.name || '',
+          relationship: req.body.emergencyContact?.relationship || '',
+          phone: req.body.emergencyContact?.phone || ''
+        }
+      });
+      console.log('Patient created successfully:', patient._id);
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      throw error;
+    }
+  } else {
+    console.log('Patient creation skipped - missing required fields');
+  }
+  
+  if (role === 'hospital' && hospitalName && adminContact && licenseNumber) {
     await Hospital.create({
       user: user._id,
       name: hospitalName,
@@ -109,20 +123,26 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, nationalId, hospitalName, password }: LoginRequest = req.body;
 
+  console.log('Login attempt:', { email, nationalId, hospitalName, password: '***' });
+
   let user: any = null;
 
   // Find user by different identifiers
   if (email) {
     user = await User.findOne({ email }).select('+password');
+    console.log('Found user by email:', !!user);
   } else if (nationalId) {
     const patient = await Patient.findOne({ nationalId }).populate('user', '+password');
     user = patient?.user;
+    console.log('Found patient by nationalId:', !!patient, 'User:', !!user);
   } else if (hospitalName) {
     const hospital = await Hospital.findOne({ name: hospitalName }).populate('user', '+password');
     user = hospital?.user;
+    console.log('Found hospital by name:', !!hospital, 'User:', !!user);
   }
 
   if (!user) {
+    console.log('No user found for login attempt');
     throw new CustomError('Invalid credentials', 401);
   }
 
@@ -330,7 +350,101 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
   res.json(response);
 });
 
+// Request OTP for login
+export const requestOTP = asyncHandler(async (req: Request, res: Response) => {
+  const { identifier, type } = req.body;
 
+  if (!identifier || !type) {
+    throw new CustomError('Identifier and type are required', 400);
+  }
+
+  if (!['email', 'phone'].includes(type)) {
+    throw new CustomError('Type must be either email or phone', 400);
+  }
+
+  // Check if user exists
+  let user;
+  if (type === 'email') {
+    user = await User.findOne({ email: identifier });
+  } else {
+    // For phone, we need to find user by phone number in patient record
+    const patient = await Patient.findOne({ contactNumber: identifier });
+    if (patient) {
+      user = await User.findById(patient.user);
+    }
+  }
+
+  if (!user) {
+    throw new CustomError('User not found with this identifier', 404);
+  }
+
+  // Generate and send OTP
+  const otpCode = await generateAndSendOTP(identifier, type);
+
+  const response: ApiResponse = {
+    success: true,
+    message: `OTP sent to your ${type}`,
+    data: {
+      identifier,
+      type,
+      // In development, return the OTP for testing
+      ...(process.env.NODE_ENV === 'development' && { otpCode })
+    }
+  };
+
+  res.json(response);
+});
+
+// Verify OTP and login
+export const verifyOTPLogin = asyncHandler(async (req: Request, res: Response) => {
+  const { identifier, otpCode, type } = req.body;
+
+  if (!identifier || !otpCode || !type) {
+    throw new CustomError('Identifier, OTP code, and type are required', 400);
+  }
+
+  // Verify OTP
+  const isOTPValid = await verifyOTP(identifier, otpCode, type);
+  
+  if (!isOTPValid) {
+    throw new CustomError('Invalid or expired OTP', 400);
+  }
+
+  // Find user
+  let user;
+  if (type === 'email') {
+    user = await User.findOne({ email: identifier });
+  } else {
+    const patient = await Patient.findOne({ contactNumber: identifier });
+    if (patient) {
+      user = await User.findById(patient.user);
+    }
+  }
+
+  if (!user) {
+    throw new CustomError('User not found', 404);
+  }
+
+  // Generate token
+  const token = generateToken(user._id);
+
+  const response: AuthResponse = {
+    success: true,
+    message: 'Login successful',
+    data: {
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      token,
+      refreshToken: token // Using same token for refresh for now
+    }
+  };
+
+  res.json(response);
+});
 
 
 

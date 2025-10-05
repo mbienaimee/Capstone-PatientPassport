@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import PatientPassportLanding from './components/PatientPassportLanding';
 import PatientPassportLogin from './components/PatientPassportLogin';
+import OTPLogin from './components/OTPLogin';
 import PatientRegistrationForm from './components/PatientRegistrationForm';
 import HospitalLogin from './components/HospitalLogin';
 import HospitalRegistration from './components/HospitalRegistration';
@@ -33,6 +34,7 @@ export default function App() {
               {/* Patient Routes */}
               <Route path="/patient-passport" element={<PatientPassport />} />
               <Route path="/update-passport" element={<UpdatePatientPassport />} />
+              <Route path="/otp-login" element={<OTPLogin />} />
               
               {/* Admin Routes */}
               <Route path="/admin-dashboard" element={<AdminDashboard />} />

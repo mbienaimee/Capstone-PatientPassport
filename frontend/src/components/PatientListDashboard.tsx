@@ -1,81 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Edit, ChevronLeft, ChevronRight, Search, User, Menu } from 'lucide-react';
 import Logo from './Logo';
+import { dataService } from '../services/dataService';
+import LoadingSpinner from './ui/LoadingSpinner';
 
+// Define types locally to avoid import issues
 interface Patient {
-  id: number;
-  name: string;
+  id: string;
   nationalId: string;
+  name: string;
   dateOfBirth: string;
   contactNumber: string;
+  email: string;
+  address: string;
   registrationDate: string;
+  status: 'active' | 'inactive';
 }
 
 const PatientListDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('Name (A-Z)');
- 
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const patients: Patient[] = [
-    {
-      id: 1,
-      name: 'John Doe',
-      nationalId: '1234567890',
-      dateOfBirth: '1985-04-12',
-      contactNumber: '+1-555-123-4567',
-      registrationDate: '2022-01-15'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      nationalId: '0987654321',
-      dateOfBirth: '1990-11-23',
-      contactNumber: '+1-555-987-6543',
-      registrationDate: '2022-02-20'
-    },
-    {
-      id: 3,
-      name: 'David Lee',
-      nationalId: '1122334455',
-      dateOfBirth: '1978-07-01',
-      contactNumber: '+1-555-234-5678',
-      registrationDate: '2022-03-10'
-    },
-    {
-      id: 4,
-      name: 'Maria Garcia',
-      nationalId: '5544332211',
-      dateOfBirth: '1995-02-29',
-      contactNumber: '+1-555-345-6789',
-      registrationDate: '2022-04-05'
-    },
-    {
-      id: 5,
-      name: 'Ahmed Khan',
-      nationalId: '6677889900',
-      dateOfBirth: '1965-09-10',
-      contactNumber: '+1-555-456-7890',
-      registrationDate: '2022-05-18'
-    },
-    {
-      id: 6,
-      name: 'Emily White',
-      nationalId: '9988776655',
-      dateOfBirth: '2000-01-05',
-      contactNumber: '+1-555-567-9001',
-      registrationDate: '2022-06-22'
-    },
-    {
-      id: 7,
-      name: 'Chris Brown',
-      nationalId: '4455667788',
-      dateOfBirth: '1982-03-17',
-      contactNumber: '+1-555-678-9012',
-      registrationDate: '2022-07-30'
-    }
-  ];
+  useEffect(() => {
+    const loadPatients = async () => {
+      setIsLoading(true);
+      try {
+        const patientsData = await dataService.getAllPatients();
+        setPatients(patientsData);
+      } catch (error) {
+        console.error('Error loading patients:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPatients();
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -192,43 +156,62 @@ const PatientListDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {patients.map((patient) => (
-                  <tr key={patient.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {patient.name}
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center">
+                      <LoadingSpinner size="lg" />
+                      <p className="mt-2 text-gray-500">Loading patients...</p>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {patient.nationalId}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {patient.dateOfBirth}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {patient.contactNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {patient.registrationDate}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={() => navigate('/patient-passport')}
-                          className="flex items-center gap-1 text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded-lg transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                          <span>View Passport</span>
-                        </button>
-                        <button 
-                          onClick={() => navigate('/update-passport')}
-                          className="flex items-center gap-1 text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded-lg transition-colors border border-green-600 hover:border-green-700"
-                        >
-                          <Edit className="w-4 h-4" />
-                          <span>Edit</span>
-                        </button>
+                  </tr>
+                ) : patients.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center">
+                      <div className="text-gray-500">
+                        <User className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p className="text-lg font-medium">No patients found</p>
+                        <p className="text-sm">No patients have been registered yet.</p>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  patients.map((patient) => (
+                    <tr key={patient.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {patient.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {patient.nationalId}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {patient.dateOfBirth}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {patient.contactNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {patient.registrationDate}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex items-center gap-4">
+                          <button 
+                            onClick={() => navigate('/patient-passport')}
+                            className="flex items-center gap-1 text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded-lg transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span>View Passport</span>
+                          </button>
+                          <button 
+                            onClick={() => navigate('/update-passport')}
+                            className="flex items-center gap-1 text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded-lg transition-colors border border-green-600 hover:border-green-700"
+                          >
+                            <Edit className="w-4 h-4" />
+                            <span>Edit</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

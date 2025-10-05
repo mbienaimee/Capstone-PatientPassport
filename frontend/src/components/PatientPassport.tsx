@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { apiService } from "../services/api";
 import Logo from "./Logo";
 
 interface MedicalCondition {
@@ -29,93 +31,117 @@ interface HospitalVisit {
 
 const PatientPassport: React.FC = () => {
   const navigate = useNavigate();
-  const [expandedCondition, setExpandedCondition] = useState<number | null>(
-    null
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [expandedCondition, setExpandedCondition] = useState<number | null>(null);
+  const [medicalData, setMedicalData] = useState({
+    conditions: [],
+    medications: [],
+    tests: [],
+    visits: [],
+    images: []
+  });
+  const [dataLoading, setDataLoading] = useState(true);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate('/patient-login');
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  // Fetch medical records when component mounts
+  useEffect(() => {
+    const fetchMedicalRecords = async () => {
+      if (isAuthenticated && user?.id) {
+        try {
+          setDataLoading(true);
+          const response = await apiService.getPatientMedicalRecords(user.id);
+          if (response.success) {
+            setMedicalData(response.data);
+          }
+        } catch (error) {
+          console.error('Error fetching medical records:', error);
+        } finally {
+          setDataLoading(false);
+        }
+      }
+    };
+
+    fetchMedicalRecords();
+  }, [isAuthenticated, user?.id]);
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your passport...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Transform database records to component format
+  const medicalHistory: MedicalCondition[] = medicalData.conditions.map((record: any) => ({
+    name: record.data.name || '',
+    details: record.data.details || '',
+    diagnosed: record.data.diagnosed || '',
+    procedure: record.data.procedure || ''
+  }));
+
+  const medications: Medication[] = medicalData.medications.map((record: any) => ({
+    name: record.data.medicationName || '',
+    dosage: record.data.dosage || '',
+    status: record.data.status || 'Active'
+  }));
+
+  const testResults: TestResult[] = medicalData.tests.map((record: any) => ({
+    name: record.data.testName || '',
+    date: record.data.testDate || '',
+    status: record.data.status || 'Normal'
+  }));
+
+  const hospitalVisits: HospitalVisit[] = medicalData.visits.map((record: any) => ({
+    hospital: record.data.hospital || '',
+    reason: record.data.reason || '',
+    date: record.data.visitDate || ''
+  }));
+
+  const medicalImages = medicalData.images.map((record: any) => ({
+    url: record.data.imageUrl || '',
+    alt: record.data.description || 'Medical Image'
+  }));
+
+  // Empty state component
+  const EmptyState = ({ title, description }: { title: string; description: string }) => (
+    <div className="text-center py-8">
+      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
+      <p className="text-gray-500">{description}</p>
+    </div>
   );
 
-  const medicalHistory: MedicalCondition[] = [
-    {
-      name: "Hypertension (High Blood Pressure)",
-      details:
-        "Managed with medication (Lisinopril) and lifestyle changes. Regular monitoring required.",
-      diagnosed: "2018-03-10",
-    },
-    {
-      name: "Type 2 Diabetes",
-      details: "",
-      diagnosed: "2020-07-22",
-    },
-    {
-      name: "Appendectomy",
-      details: "",
-      procedure: "2005-11-01",
-    },
-  ];
-
-  const medications: Medication[] = [
-    { name: "Lisinopril", dosage: "10mg • Once daily", status: "Active" },
-    { name: "Metformin", dosage: "500mg • Once daily", status: "Active" },
-    { name: "Simvastatin", dosage: "20mg • Once daily", status: "Active" },
-    {
-      name: "Amoxicillin",
-      dosage: "250mg • Three times daily",
-      status: "Past",
-    },
-    { name: "Ibuprofen", dosage: "200mg • As needed", status: "Active" },
-  ];
-
-  const testResults: TestResult[] = [
-    {
-      name: "Complete Blood Count (CBC)",
-      date: "2023-10-26",
-      status: "Normal",
-    },
-    { name: "Lipid Panel", date: "2023-09-15", status: "Normal" },
-    { name: "HbA1c Level", date: "2023-08-01", status: "Critical" },
-    {
-      name: "Electrocardiogram (ECG)",
-      date: "2023-07-19",
-      status: "Normal Sinus Rhythm",
-    },
-    { name: "Urinalysis", date: "2023-06-05", status: "Normal" },
-  ];
-
-  const hospitalVisits: HospitalVisit[] = [
-    {
-      hospital: "City General Hospital",
-      reason: "Routine Checkup",
-      date: "2023-05-20 - 2023-05-20",
-    },
-    {
-      hospital: "Saint Mary's Clinic",
-      reason: "Follow-up for Diabetes",
-      date: "2022-11-10 - 2022-11-10",
-    },
-    {
-      hospital: "County Emergency Room",
-      reason: "Hypertensive Crisis",
-      date: "2021-04-12 - 2021-04-13",
-    },
-  ];
-
-  const medicalImages = [
-    {
-      url: "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=400",
-      alt: "Chest X-ray",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400",
-      alt: "Brain MRI",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1581595220892-b0739db3ba8c?w=400",
-      alt: "Ultrasound",
-    },
-    {
-      url: "https://images.unsplash.com/photo-1628595351029-c2bf17511435?w=400",
-      alt: "Medical scan",
-    },
-  ];
+  // Show loading state while fetching data
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading medical records...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-container">
@@ -140,7 +166,10 @@ const PatientPassport: React.FC = () => {
               Update Passport
             </button>
             <button 
-              onClick={() => navigate('/')}
+              onClick={async () => {
+                await logout();
+                navigate('/');
+              }}
               className="nav-link"
             >
               Logout
@@ -181,28 +210,24 @@ const PatientPassport: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                 <span className="text-sm font-medium text-gray-500">Name</span>
-                <span className="text-sm font-semibold text-gray-900">Anya Sharma</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                <span className="text-sm font-medium text-gray-500">National ID</span>
-                <span className="text-sm font-semibold text-gray-900">PPM-7890-1234</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                <span className="text-sm font-medium text-gray-500">Date of Birth</span>
-                <span className="text-sm font-semibold text-gray-900">1992-05-15</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                <span className="text-sm font-medium text-gray-500">Phone</span>
-                <span className="text-sm font-semibold text-gray-900">+1 (555) 123-4567</span>
+                <span className="text-sm font-semibold text-gray-900">{user?.name || 'Loading...'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                 <span className="text-sm font-medium text-gray-500">Email</span>
-                <span className="text-sm font-semibold text-gray-900">anya.sharma@example.com</span>
+                <span className="text-sm font-semibold text-gray-900">{user?.email || 'Loading...'}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-sm font-medium text-gray-500">Role</span>
+                <span className="text-sm font-semibold text-gray-900 capitalize">{user?.role || 'Loading...'}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-sm font-medium text-gray-500">Account Status</span>
+                <span className="text-sm font-semibold text-green-600">Active</span>
               </div>
               <div className="flex justify-between items-start py-2">
-                <span className="text-sm font-medium text-gray-500">Address</span>
-                <span className="text-sm font-semibold text-gray-900 text-right max-w-xs">
-                  456 Oak Avenue, Springfield, IL 62704
+                <span className="text-sm font-medium text-gray-500">Member Since</span>
+                <span className="text-sm font-semibold text-gray-900 text-right">
+                  {new Date().toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -255,7 +280,13 @@ const PatientPassport: React.FC = () => {
             </h2>
           </div>
           <div className="space-y-3">
-            {medicalHistory.map((condition, idx) => (
+            {medicalHistory.length === 0 ? (
+              <EmptyState 
+                title="No Medical History" 
+                description="Your medical conditions and procedures will appear here once added by your healthcare providers."
+              />
+            ) : (
+              medicalHistory.map((condition, idx) => (
               <div key={idx} className="border border-gray-200 rounded-lg hover:border-green-300 transition-colors">
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 rounded-lg"
@@ -316,7 +347,8 @@ const PatientPassport: React.FC = () => {
                   </div>
                 )}
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
 
@@ -328,7 +360,13 @@ const PatientPassport: React.FC = () => {
             </h2>
           </div>
           <div className="space-y-3">
-            {medications.map((med, idx) => (
+            {medications.length === 0 ? (
+              <EmptyState 
+                title="No Medications" 
+                description="Your current and past medications will appear here once added by your healthcare providers."
+              />
+            ) : (
+              medications.map((med, idx) => (
               <div
                 key={idx}
                 className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -354,7 +392,8 @@ const PatientPassport: React.FC = () => {
                   </button>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
 
@@ -367,7 +406,13 @@ const PatientPassport: React.FC = () => {
               </h2>
             </div>
             <div className="space-y-3">
-              {testResults.map((test, idx) => (
+              {testResults.length === 0 ? (
+                <EmptyState 
+                  title="No Test Results" 
+                  description="Your lab tests and diagnostic results will appear here once added by your healthcare providers."
+                />
+              ) : (
+                testResults.map((test, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -406,7 +451,8 @@ const PatientPassport: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
 
@@ -418,7 +464,13 @@ const PatientPassport: React.FC = () => {
               </h2>
             </div>
             <div className="space-y-4">
-              {hospitalVisits.map((visit, idx) => (
+              {hospitalVisits.length === 0 ? (
+                <EmptyState 
+                  title="No Hospital Visits" 
+                  description="Your hospital visits and appointments will appear here once added by your healthcare providers."
+                />
+              ) : (
+                hospitalVisits.map((visit, idx) => (
                 <div
                   key={idx}
                   className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -440,7 +492,8 @@ const PatientPassport: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
         </div>
@@ -456,7 +509,15 @@ const PatientPassport: React.FC = () => {
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {medicalImages.map((img, idx) => (
+            {medicalImages.length === 0 ? (
+              <div className="col-span-full">
+                <EmptyState 
+                  title="No Medical Images" 
+                  description="Your X-rays, scans, and other diagnostic images will appear here once uploaded by your healthcare providers."
+                />
+              </div>
+            ) : (
+              medicalImages.map((img, idx) => (
               <div
                 key={idx}
                 className="relative aspect-square rounded-lg overflow-hidden bg-gray-900 cursor-pointer hover:opacity-90 transition-opacity shadow-md hover:shadow-lg group"
@@ -486,7 +547,8 @@ const PatientPassport: React.FC = () => {
                   </button>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </main>

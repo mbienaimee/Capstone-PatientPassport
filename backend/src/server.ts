@@ -14,6 +14,7 @@ import authRoutes from './routes/auth';
 import patientRoutes from './routes/patients';
 import hospitalRoutes from './routes/hospitals';
 import medicalRoutes from './routes/medical';
+import medicalRecordRoutes from './routes/medicalRecords';
 import dashboardRoutes from './routes/dashboard';
 
 // Import middleware
@@ -151,7 +152,7 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: process.env['CORS_ORIGIN'] || 'http://localhost:3000',
+  origin: true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -196,6 +197,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/medical', medicalRoutes);
+app.use('/api/medical-records', medicalRecordRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 // Root endpoint

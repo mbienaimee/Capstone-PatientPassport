@@ -1,17 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiService, ApiError } from '../services/api';
 
-// Types
-export interface User {
+// Define types locally to avoid import issues
+interface User {
   id: string;
   name: string;
   email: string;
   role: 'patient' | 'doctor' | 'admin' | 'hospital';
-  avatar?: string;
-  createdAt: string;
-  lastLogin?: string;
 }
 
-export interface LoginFormData {
+interface LoginFormData {
   email?: string;
   nationalId?: string;
   hospitalName?: string;
@@ -23,7 +21,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (formData: LoginFormData) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
 
@@ -41,12 +39,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await apiService.getCurrentUser();
+          if (response.success && response.data) {
+            setUser(response.data);
+          } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       } finally {
         setIsLoading(false);
       }
@@ -59,33 +65,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await apiService.login(formData);
       
-      // Mock user data based on login type
-      const mockUser: User = {
-        id: '1',
-        name: formData.hospitalName || 'John Doe',
-        email: formData.email || 'user@example.com',
-        role: formData.hospitalName ? 'hospital' : 'patient',
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
-
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return true;
+      if (response.success && response.data) {
+        const { user: userData, token } = response.data;
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', token);
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Login error:', error);
+      if (error instanceof ApiError) {
+        console.error('API Error:', error.message, error.status);
+      }
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await apiService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+    }
   };
 
   const updateUser = (userData: Partial<User>) => {

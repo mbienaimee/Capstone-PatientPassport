@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 
 const HospitalLogin = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState({
     hospitalName: '',
     password: ''
@@ -46,13 +50,48 @@ const HospitalLogin = () => {
     return !Object.values(newErrors).some(error => error !== '');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      console.log('Login submitted:', formData);
-      // Navigate to admin dashboard on successful login
-      navigate('/admin-dashboard');
+    if (!validateForm()) {
+      showNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fix the errors below'
+      });
+      return;
+    }
+
+    try {
+      const success = await login({
+        hospitalName: formData.hospitalName,
+        password: formData.password
+      });
+      
+      if (success) {
+        showNotification({
+          type: 'success',
+          title: 'Login Successful',
+          message: 'Welcome back! Redirecting to dashboard...'
+        });
+        
+        setTimeout(() => {
+          navigate('/admin-dashboard');
+        }, 1500);
+      } else {
+        showNotification({
+          type: 'error',
+          title: 'Login Failed',
+          message: 'Invalid credentials. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      showNotification({
+        type: 'error',
+        title: 'Login Error',
+        message: 'An unexpected error occurred. Please try again.'
+      });
     }
   };
 

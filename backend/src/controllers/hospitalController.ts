@@ -364,3 +364,12 @@ export const getPendingHospitals = asyncHandler(async (req: Request, res: Respon
 
 
 
+
+
+
+
+
+
+
+
+

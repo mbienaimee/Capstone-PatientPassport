@@ -1,3 +1,23 @@
+// API Response Types
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  errors?: Record<string, string>;
+}
+
+// API Error Types
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public data?: any
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 // User Types
 export interface User {
   id: string;
@@ -103,14 +123,6 @@ export interface Hospital {
   status: 'active' | 'pending' | 'inactive';
   adminContact: string;
   registrationDate: string;
-}
-
-// API Response Types
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  errors?: FormErrors;
 }
 
 // Navigation Types

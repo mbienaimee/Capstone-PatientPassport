@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LineChart,
@@ -13,6 +13,26 @@ import {
   Cell,
 } from "recharts";
 import Logo from "./Logo";
+import { dataService } from "../services/dataService";
+import LoadingSpinner from "./ui/LoadingSpinner";
+
+// Define types locally to avoid import issues
+interface DashboardStats {
+  totalPatients: number;
+  activeHospitals: number;
+  newRegistrations: number;
+  systemStatus: string;
+}
+
+interface Hospital {
+  id: string;
+  name: string;
+  address: string;
+  contact: string;
+  email: string;
+  status: 'active' | 'pending' | 'inactive';
+  adminContact: string;
+}
 
 interface Registration {
   id: string;
@@ -26,39 +46,42 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "Admin Dashboard" | "Hospitals" | "Patients" | "Activity Status"
   >("Admin Dashboard");
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalPatients: 0,
+    activeHospitals: 0,
+    newRegistrations: 0,
+    systemStatus: 'Loading...'
+  });
+  const [recentHospitals, setRecentHospitals] = useState<Hospital[]>([]);
 
-  const registrations: Registration[] = [
-    {
-      id: "HOS321-CA",
-      facilityType: "Hospital",
-      name: "Anya Johnson",
-      admin: "Dr. Emily White",
-    },
-    {
-      id: "SAN567-ID",
-      facilityType: "Hospital",
-      name: "Bob Williams",
-      admin: "Dr. Michael Brown",
-    },
-    {
-      id: "SAN789-AZ",
-      facilityType: "Hospital",
-      name: "Guy Hansen",
-      admin: "Dr. Sarah Kim",
-    },
-    {
-      id: "SHA456-PA",
-      facilityType: "Clinic",
-      name: "Charles Davis",
-      admin: "Dr. Michael Brown",
-    },
-    {
-      id: "SHA456-FL",
-      facilityType: "Clinic",
-      name: "Diana Miller",
-      admin: "Dr. Emily White",
-    },
-  ];
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        const [stats, hospitals] = await Promise.all([
+          dataService.getDashboardStats(),
+          dataService.getRecentHospitals()
+        ]);
+        
+        setDashboardStats(stats);
+        setRecentHospitals(hospitals);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
+
+  const registrations: Registration[] = recentHospitals.map((hospital) => ({
+    id: hospital.id,
+    facilityType: "Hospital" as const,
+    name: hospital.name,
+    admin: hospital.adminContact,
+  }));
 
   const trendData = [
     { month: "Jan", registrations: 45 },
@@ -190,7 +213,9 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm font-medium text-gray-500 mb-1">Total Patients</p>
-              <p className="text-2xl font-bold text-gray-900">1,250</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {isLoading ? <LoadingSpinner size="sm" /> : dashboardStats.totalPatients.toLocaleString()}
+              </p>
             </div>
 
             <div className="dashboard-card hover-lift">
@@ -202,7 +227,9 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm font-medium text-gray-500 mb-1">Active Hospitals</p>
-              <p className="text-2xl font-bold text-gray-900">75</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {isLoading ? <LoadingSpinner size="sm" /> : dashboardStats.activeHospitals.toLocaleString()}
+              </p>
             </div>
 
             <div className="dashboard-card hover-lift">
@@ -214,7 +241,9 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm font-medium text-gray-500 mb-1">New Registrations</p>
-              <p className="text-2xl font-bold text-gray-900">12</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {isLoading ? <LoadingSpinner size="sm" /> : dashboardStats.newRegistrations.toLocaleString()}
+              </p>
             </div>
 
             <div className="dashboard-card hover-lift">
@@ -226,7 +255,9 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm font-medium text-gray-500 mb-1">System Status</p>
-              <p className="text-2xl font-bold text-gray-900">Excellent</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {isLoading ? <LoadingSpinner size="sm" /> : dashboardStats.systemStatus}
+              </p>
             </div>
           </div>
 

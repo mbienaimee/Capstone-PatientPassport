@@ -5,7 +5,8 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "nodemon src/server.ts",
+    "dev": "nodemon src/app.ts",
+    "dev:mock": "nodemon src/app-dev.ts",
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -27,6 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.10.0",
+    "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.0",
     "compression": "^1.7.4",
@@ -42,7 +44,7 @@
     "mongoose": "^8.0.3",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.7",
+    "nodemailer": "^6.10.1",
     "route-auth": "^2.0.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",

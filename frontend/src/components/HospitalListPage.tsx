@@ -1,58 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
+import { dataService } from '../services/dataService';
+import LoadingSpinner from './ui/LoadingSpinner';
 
+// Define types locally to avoid import issues
 interface Hospital {
-  id: number;
+  id: string;
   name: string;
   address: string;
   contact: string;
-  status: 'Active' | 'Pending' | 'Inactive';
+  email: string;
+  status: 'active' | 'pending' | 'inactive';
+  adminContact: string;
 }
 
 const HospitalListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  // const [currentPage, setCurrentPage] = useState(1); // Will be used for pagination
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const hospitals: Hospital[] = [
-    {
-      id: 1,
-      name: 'Greenwood Medical Center',
-      address: '123 Oak Ave, Metropolis, IL',
-      contact: '(555) 123-4567',
-      status: 'Active'
-    },
-    {
-      id: 2,
-      name: 'City General Hospital',
-      address: '456 Elm St, Gotham, NY',
-      contact: '(555) 987-6543',
-      status: 'Active'
-    },
-    {
-      id: 3,
-      name: 'Northwood Clinic',
-      address: '789 Pine Ln, Star City, CA',
-      contact: '(555) 234-7890',
-      status: 'Pending'
-    },
-    {
-      id: 4,
-      name: 'Sunrise Health System',
-      address: '101 Maple Rd, Central City, MO',
-      contact: '(555) 345-1234',
-      status: 'Active'
-    },
-    {
-      id: 5,
-      name: 'Riverbend Hospital',
-      address: '202 Willow Way, Harmony, GA',
-      contact: '(555) 876-5432',
-      status: 'Inactive'
-    }
-  ];
+  useEffect(() => {
+    const loadHospitals = async () => {
+      setIsLoading(true);
+      try {
+        const hospitalsData = await dataService.getAllHospitals();
+        setHospitals(hospitalsData);
+      } catch (error) {
+        console.error('Error loading hospitals:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadHospitals();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -190,25 +174,46 @@ const HospitalListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {hospitals.map((hospital) => (
-                  <tr key={hospital.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{hospital.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{hospital.address}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{hospital.contact}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusColor(hospital.status)}`}>
-                        {hospital.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
-                      </button>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center">
+                      <LoadingSpinner size="lg" />
+                      <p className="mt-2 text-gray-500">Loading hospitals...</p>
                     </td>
                   </tr>
-                ))}
+                ) : hospitals.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center">
+                      <div className="text-gray-500">
+                        <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <p className="text-lg font-medium">No hospitals found</p>
+                        <p className="text-sm">No hospitals have been registered yet.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  hospitals.map((hospital) => (
+                    <tr key={hospital.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{hospital.name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{hospital.address}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{hospital.contact}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusColor(hospital.status)}`}>
+                          {hospital.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
 
