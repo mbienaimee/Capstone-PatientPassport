@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { apiService, ApiError } from '../services/api';
 
 // Define types locally to avoid import issues
@@ -9,7 +10,7 @@ interface User {
   role: 'patient' | 'doctor' | 'admin' | 'hospital';
 }
 
-interface LoginFormData {
+export interface LoginFormData {
   email?: string;
   nationalId?: string;
   hospitalName?: string;

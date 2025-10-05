@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: openmrs-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: openmrs
+      MYSQL_USER: openmrs
+      MYSQL_PASSWORD: openmrs
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - openmrs-network
+
+  openmrs:
+    image: openmrs/openmrs-distro-platform:2.5.0
+    container_name: openmrs-platform
+    depends_on:
+      - mysql
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=openmrs
+      - DB_USERNAME=openmrs
+      - DB_PASSWORD=openmrs
+      - DB_CONNECTIONSTRING=jdbc:mysql://mysql:3306/openmrs?autoReconnect=true&sessionVariables=storage_engine=InnoDB&useUnicode=true&characterEncoding=UTF-8
+    ports:
+      - "8080:8080"
+    volumes:
+      - openmrs_data:/usr/local/tomcat/.OpenMRS
+      - openmrs_modules:/usr/local/tomcat/.OpenMRS/modules
+    networks:
+      - openmrs-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  openmrs_data:
+  openmrs_modules:
+
+networks:
+  openmrs-network:
+    driver: bridge

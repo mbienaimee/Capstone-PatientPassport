@@ -8,13 +8,18 @@ export interface ApiResponse<T> {
 
 // API Error Types
 export class ApiError extends Error {
+  public status: number;
+  public data?: any;
+
   constructor(
     message: string,
-    public status: number,
-    public data?: any
+    status: number,
+    data?: any
   ) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
   }
 }
 
@@ -27,6 +32,12 @@ export interface User {
   avatar?: string;
   createdAt: string;
   lastLogin?: string;
+}
+
+// Auth Response Types
+export interface AuthResponse {
+  user: User;
+  token: string;
 }
 
 // Form Types

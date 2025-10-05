@@ -13,6 +13,11 @@ interface User {
   role: 'patient' | 'doctor' | 'admin' | 'hospital';
 }
 
+interface AuthResponse {
+  user: User;
+  token: string;
+}
+
 interface LoginFormData {
   email?: string;
   nationalId?: string;
@@ -80,19 +85,26 @@ interface HospitalVisit {
 }
 
 class ApiError extends Error {
+  public status: number;
+  public data?: any;
+
   constructor(
     message: string,
-    public status: number,
-    public data?: any
+    status: number,
+    data?: any
   ) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
   }
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 class ApiService {
+  private baseURL = API_BASE_URL;
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}

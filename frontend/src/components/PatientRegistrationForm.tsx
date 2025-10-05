@@ -58,6 +58,36 @@ const PatientRegistrationForm: React.FC = () => {
     }
   };
 
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
@@ -162,7 +192,7 @@ const PatientRegistrationForm: React.FC = () => {
         });
         
         // Store user data and token for immediate login
-        const { user: userData, token } = response.data;
+        const { user: userData, token } = response.data!;
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('token', token);
         
@@ -420,7 +450,7 @@ const PatientRegistrationForm: React.FC = () => {
                 <textarea
                   name="address"
                   value={formData.address}
-                  onChange={handleInputChange}
+                  onChange={handleTextareaChange}
                   placeholder="123 Main Street, City, State 12345"
                   rows={3}
                   className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 resize-none ${
@@ -470,7 +500,7 @@ const PatientRegistrationForm: React.FC = () => {
                   <select
                     name="emergencyContactRelationship"
                     value={formData.emergencyContactRelationship}
-                    onChange={handleInputChange}
+                    onChange={handleSelectChange}
                     className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 ${
                       errors.emergencyContactRelationship 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
@@ -521,7 +551,7 @@ const PatientRegistrationForm: React.FC = () => {
                 <select
                   name="bloodType"
                   value={formData.bloodType}
-                  onChange={handleInputChange}
+                  onChange={handleSelectChange}
                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-green-200 transition-all duration-300"
                 >
                   <option value="">Select Blood Type</option>

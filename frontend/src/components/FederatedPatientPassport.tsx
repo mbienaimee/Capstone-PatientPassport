@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { LoadingSpinner } from './ui/LoadingSpinner';
-import { Notification } from './ui/Notification';
+import LoadingSpinner from './ui/LoadingSpinner';
+import Notification from './ui/Notification';
 
 interface FederatedPatientData {
   universalId: string;
@@ -196,6 +196,7 @@ const FederatedPatientPassport: React.FC = () => {
       {error && (
         <Notification
           type="error"
+          title="Error Loading Patient Data"
           message={error}
           onClose={() => setError(null)}
         />

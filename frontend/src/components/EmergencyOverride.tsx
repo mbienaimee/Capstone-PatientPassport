@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { LoadingSpinner } from './ui/LoadingSpinner';
-import { Notification } from './ui/Notification';
+import LoadingSpinner from './ui/LoadingSpinner';
+import Notification from './ui/Notification';
 
 interface EmergencyOverrideProps {
   patientId: string;
@@ -51,7 +51,6 @@ const EmergencyOverride: React.FC<EmergencyOverrideProps> = ({
       });
 
       if (response.ok) {
-        const data = await response.json();
         onOverride(justification);
       } else {
         const errorData = await response.json();
@@ -109,6 +108,7 @@ const EmergencyOverride: React.FC<EmergencyOverrideProps> = ({
               {error && (
                 <Notification
                   type="error"
+                  title="Emergency Override Failed"
                   message={error}
                   onClose={() => setError(null)}
                 />

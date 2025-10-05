@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ArrowLeft, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Mail, Phone } from 'lucide-react';
 import Logo from './Logo';
 import { useNotification } from '../contexts/NotificationContext';
 import { apiService } from '../services/api';
@@ -26,7 +26,7 @@ const OTPLogin: React.FC = () => {
 
   // Countdown timer
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (countdown > 0) {
       timer = setTimeout(() => setCountdown(countdown - 1), 1000);
     }
@@ -128,7 +128,7 @@ const OTPLogin: React.FC = () => {
         });
         
         // Store user data and token
-        const { user: userData, token } = response.data;
+        const { user: userData, token } = response.data!;
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('token', token);
         
