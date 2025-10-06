@@ -171,3 +171,4 @@ async function seedHospitals() {
 // Run the seeding function
 seedHospitals();
 
+

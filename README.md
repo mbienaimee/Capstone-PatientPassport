@@ -1,4 +1,4 @@
-# 🏥 Patient Passport - Healthcare Management System
+#  Patient Passport - Healthcare Management System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
@@ -8,7 +8,7 @@
 
 A comprehensive healthcare management system that provides unified patient record management across different healthcare facilities with OpenMRS integration.
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 - **Node.js** 18.x or higher
@@ -35,32 +35,32 @@ docker-compose up -d
 
 **Default Login**: `admin@example.com` / `password123`
 
-## ✨ Features
+##  Features
 
-### 🏥 Patient Management
+###  Patient Management
 - Universal patient identification
 - Cross-facility data sharing
 - Comprehensive patient profiles
 - Advanced search capabilities
 
-### 📋 Medical Records
+###  Medical Records
 - Medical history tracking
 - Vital signs monitoring
 - Medication management
 - Allergy tracking
 
-### 🔗 OpenMRS Integration
+###  OpenMRS Integration
 - Seamless module integration
 - Real-time data synchronization
 - FHIR R4 compliance
 - REST API endpoints
 
-### 🚨 Emergency Features
+###  Emergency Features
 - Emergency access override
 - Audit trail logging
 - Critical situation handling
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 Frontend (React) ←→ Backend API (Node.js) ←→ OpenMRS Integration
@@ -69,13 +69,13 @@ Frontend (React) ←→ Backend API (Node.js) ←→ OpenMRS Integration
   (Production)        (Database)            (OpenMRS DB)
 ```
 
-## 📚 Documentation
+##  Documentation
 
 - **[Complete Documentation](PATIENT_PASSPORT_PROJECT_DOCUMENTATION.md)** - Comprehensive project guide
 - **[API Documentation](http://localhost:3000/api-docs)** - Backend API reference
 - **[OpenMRS Integration Guide](OPENMRS_PLUGIN_INTEGRATION_GUIDE.md)** - Module integration details
 
-## 🛠️ Development
+##  Development
 
 ### Start Development Servers
 ```bash
@@ -109,7 +109,7 @@ docker-compose logs
 docker restart openmrs-platform
 ```
 
-## 🔧 OpenMRS Module
+##  OpenMRS Module
 
 ### Install Patient Passport Module
 1. Go to OpenMRS Administration → Manage Modules
@@ -123,7 +123,7 @@ docker restart openmrs-platform
 - Audit logging
 - FHIR resource support
 
-## 📊 API Endpoints
+##  API Endpoints
 
 ### Patient Passport API
 ```http
@@ -141,7 +141,7 @@ GET  /openmrs/ws/rest/v1/patientpassport/find-by-universal-id
 POST /openmrs/ws/rest/v1/patientpassport/emergency-override
 ```
 
-## 🚀 Deployment
+##  Deployment
 
 ### Frontend (Netlify)
 ```bash
@@ -194,7 +194,7 @@ docker logs openmrs-platform
 docker exec openmrs-platform ls -la /usr/local/tomcat/.OpenMRS/modules/
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Capstone-PatientPassport/
@@ -207,7 +207,7 @@ Capstone-PatientPassport/
 └── README.md                 # This file
 ```
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -219,14 +219,14 @@ Capstone-PatientPassport/
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **OpenMRS Community** for the excellent medical record system
 - **React Team** for the powerful frontend framework
 - **Node.js Community** for the robust backend platform
 - **MongoDB** for the flexible database solution
 
-## 📞 Support
+##  Support
 
 - **Documentation**: [PATIENT_PASSPORT_PROJECT_DOCUMENTATION.md](PATIENT_PASSPORT_PROJECT_DOCUMENTATION.md)
 - **Issues**: Create an issue in the repository
@@ -234,4 +234,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ for better healthcare management**
+**Made with for better healthcare management**
+
+
+
+ ## Github Link: https://github.com/mbienaimee/Capstone-PatientPassport
+
+## Figma Design: https://www.figma.com/design/ahkyDa0vNjqqGVXt7QQRs0/Capstone--Patient-passport?node-id=1-34&m=dev&t=IcE3VVhUfSW3Otr8-1 
+
+## Youtube Video:https://www.youtube.com/watch?v=rFiWLIaFlUE

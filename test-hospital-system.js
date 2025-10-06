@@ -73,3 +73,4 @@ async function testHospitalSystem() {
 // Run the test
 testHospitalSystem();
 
+

@@ -223,3 +223,4 @@ Your Patient Passport is now fully integrated as a plugin within OpenMRS! ğŸ¥âœ
 
 
 
+

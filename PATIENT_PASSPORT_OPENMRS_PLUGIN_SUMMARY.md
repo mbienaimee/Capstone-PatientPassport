@@ -196,3 +196,4 @@ The Patient Passport feature is now a **native part of OpenMRS**, providing doct
 
 
 
+
