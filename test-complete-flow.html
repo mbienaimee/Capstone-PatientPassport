@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Complete Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test Complete Hospital Flow</h1>
+    
+    <div class="test-section">
+        <h2>1. Login Test</h2>
+        <button onclick="testLogin()">Test Login</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Change Password Test</h2>
+        <button onclick="testChangePassword()">Test Change Password</button>
+        <div id="changePasswordResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Add Doctor Test</h2>
+        <button onclick="testAddDoctor()">Test Add Doctor</button>
+        <div id="addDoctorResult"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const API_BASE = 'http://localhost:5000/api';
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.innerHTML = 'Testing login...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'bienaimee@gmail.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    authToken = data.data.token;
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Login Successful!</h3>
+                        <p>Token: ${authToken ? 'Received' : 'Missing'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test-section error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Login Failed</h3>
+                        <p>Status: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Login Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testChangePassword() {
+            const resultDiv = document.getElementById('changePasswordResult');
+            resultDiv.innerHTML = 'Testing change password...';
+            
+            if (!authToken) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = '<h3>❌ Please login first</h3>';
+                return;
+            }
+            
+            try {
+                const url = `${API_BASE}/auth/users/test-user-id/change-password`;
+                console.log('Testing change password URL:', url);
+                
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ newPassword: 'newpassword123' })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Change Password Route Working!</h3>
+                        <p>URL Called: ${url}</p>
+                        <p>Status: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test-section error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Change Password Failed</h3>
+                        <p>URL Called: ${url}</p>
+                        <p>Status: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Change Password Error</h3>
+                    <p>URL: ${API_BASE}/auth/users/test-user-id/change-password</p>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testAddDoctor() {
+            const resultDiv = document.getElementById('addDoctorResult');
+            resultDiv.innerHTML = 'Testing add doctor...';
+            
+            if (!authToken) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = '<h3>❌ Please login first</h3>';
+                return;
+            }
+            
+            try {
+                const url = `${API_BASE}/hospitals/68e41de879d2b412e642d44b/doctors`;
+                console.log('Testing add doctor URL:', url);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        name: 'Test Doctor',
+                        email: 'testdoctor@example.com',
+                        password: 'password123',
+                        licenseNumber: 'DOC-123456',
+                        specialization: 'General Medicine'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Add Doctor Working!</h3>
+                        <p>URL Called: ${url}</p>
+                        <p>Status: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test-section error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Add Doctor Failed</h3>
+                        <p>URL Called: ${url}</p>
+                        <p>Status: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Add Doctor Error</h3>
+                    <p>URL: ${url}</p>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

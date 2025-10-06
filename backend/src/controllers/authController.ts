@@ -4,9 +4,12 @@ import User from '@/models/User';
 import Patient from '@/models/Patient';
 import Doctor from '@/models/Doctor';
 import Hospital from '@/models/Hospital';
+import Receptionist from '@/models/Receptionist';
 import { asyncHandler, CustomError } from '@/middleware/errorHandler';
 import { LoginRequest, RegisterRequest, AuthResponse, ApiResponse } from '@/types';
 import { generateAndSendOTP, verifyOTP } from '@/services/otpService';
+import { sendEmailVerification } from '@/utils/email';
+import crypto from 'crypto';
 
 // Generate JWT token
 const generateToken = (userId: string): string => {
@@ -34,7 +37,13 @@ const generateRefreshToken = (userId: string): string => {
 // @route   POST /api/auth/register
 // @access  Public
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { name, email, password, role, nationalId, dateOfBirth, contactNumber, address, hospitalName, adminContact, licenseNumber, specialization }: RegisterRequest = req.body;
+  const { name, email, password, role, nationalId, dateOfBirth, contactNumber, address, hospitalName, adminContact, licenseNumber, specialization, employeeId, department, shift }: RegisterRequest = req.body;
+  
+
+  // Validate password confirmation
+  if (password !== req.body.confirmPassword) {
+    throw new CustomError('Password confirmation does not match password', 400);
+  }
 
   // Check if user already exists
   const existingUser = await User.findOne({ email });
@@ -42,7 +51,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new CustomError('User with this email already exists', 400);
   }
 
-  // Create user
+  // Create user (without email verification initially)
   const user = await User.create({
     name,
     email,
@@ -98,19 +107,52 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       specialization,
       hospital: req.body.hospital
     });
+  } else if (role === 'receptionist' && employeeId && department && shift) {
+    // Receptionist registration requires hospital assignment
+    if (!req.body.hospital) {
+      throw new CustomError('Hospital assignment is required for receptionist registration', 400);
+    }
+    
+    await Receptionist.create({
+      user: user._id,
+      employeeId,
+      hospital: req.body.hospital,
+      department,
+      shift,
+      permissions: {
+        canAssignDoctors: true,
+        canViewPatientRecords: true,
+        canScheduleAppointments: true,
+        canAccessEmergencyOverride: false
+      }
+    });
   }
 
-  // Generate tokens
-  const token = generateToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
+  // Send OTP for email verification
+  let otpCode: string | undefined;
+  try {
+    otpCode = await generateAndSendOTP(email, 'email');
+    console.log('OTP sent successfully for email verification');
+    
+    // In development mode, log OTP
+    if (process.env.NODE_ENV === 'development') {
+      console.log('='.repeat(50));
+      console.log('DEVELOPMENT MODE - OTP for registration:');
+      console.log(`Email: ${email}`);
+      console.log(`OTP: ${otpCode}`);
+      console.log('='.repeat(50));
+    }
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    // Don't fail registration if OTP sending fails
+  }
 
-  const response: AuthResponse = {
+  const response: ApiResponse = {
     success: true,
-    message: 'User registered successfully',
+    message: 'User registered successfully. Please check your email for OTP to complete verification.',
     data: {
       user: user.getPublicProfile(),
-      token,
-      refreshToken
+      requiresOTPVerification: true
     }
   };
 
@@ -131,14 +173,25 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   if (email) {
     user = await User.findOne({ email }).select('+password');
     console.log('Found user by email:', !!user);
+    if (user) {
+      console.log('User details:', { id: user._id, email: user.email, role: user.role, isActive: user.isActive, isEmailVerified: user.isEmailVerified });
+    }
   } else if (nationalId) {
     const patient = await Patient.findOne({ nationalId }).populate('user', '+password');
     user = patient?.user;
     console.log('Found patient by nationalId:', !!patient, 'User:', !!user);
   } else if (hospitalName) {
-    const hospital = await Hospital.findOne({ name: hospitalName }).populate('user', '+password');
-    user = hospital?.user;
-    console.log('Found hospital by name:', !!hospital, 'User:', !!user);
+    // For hospital login, treat hospitalName as email
+    const hospitalUser = await User.findOne({ email: hospitalName, role: 'hospital' }).select('+password');
+    if (hospitalUser) {
+      user = hospitalUser;
+      console.log('Found hospital user by email:', !!user);
+    } else {
+      // Fallback: try to find by hospital name
+      const hospital = await Hospital.findOne({ name: hospitalName }).populate('user', '+password');
+      user = hospital?.user;
+      console.log('Found hospital by name:', !!hospital, 'User:', !!user);
+    }
   }
 
   if (!user) {
@@ -151,8 +204,16 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new CustomError('Account has been deactivated', 401);
   }
 
+  // Check if email is verified
+  if (!user.isEmailVerified) {
+    throw new CustomError('Please verify your email address before logging in. Check your email for verification instructions.', 401);
+  }
+
   // Check password
+  console.log('Testing password for user:', user.email);
+  console.log('User has password field:', !!user.password);
   const isPasswordValid = await user.comparePassword(password);
+  console.log('Password comparison result:', isPasswordValid);
   if (!isPasswordValid) {
     throw new CustomError('Invalid credentials', 401);
   }
@@ -313,6 +374,46 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
   res.json(response);
 });
 
+// @desc    Change any user's password (Admin/Hospital only)
+// @route   PUT /api/users/:userId/change-password
+// @access  Private (Admin, Hospital)
+export const changeUserPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { newPassword } = req.body;
+  const currentUser = req.user;
+
+  // Check if current user is admin or hospital
+  if (!['admin', 'hospital'].includes(currentUser.role)) {
+    throw new CustomError('Access denied. Only admins and hospitals can change user passwords.', 403);
+  }
+
+  // Find the target user
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new CustomError('User not found', 404);
+  }
+
+  // If current user is hospital, check if the target user is a doctor in their hospital
+  if (currentUser.role === 'hospital') {
+    const Doctor = require('@/models/Doctor').default;
+    const doctor = await Doctor.findOne({ user: userId, hospital: currentUser.hospital });
+    if (!doctor) {
+      throw new CustomError('Access denied. You can only change passwords for doctors in your hospital.', 403);
+    }
+  }
+
+  // Update password
+  user.password = newPassword;
+  await user.save();
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Password changed successfully'
+  };
+
+  res.json(response);
+});
+
 // @desc    Logout user
 // @route   POST /api/auth/logout
 // @access  Private
@@ -425,6 +526,16 @@ export const verifyOTPLogin = asyncHandler(async (req: Request, res: Response) =
     throw new CustomError('User not found', 404);
   }
 
+  // Check if user is active
+  if (!user.isActive) {
+    throw new CustomError('Account has been deactivated', 401);
+  }
+
+  // Check if email is verified
+  if (!user.isEmailVerified) {
+    throw new CustomError('Please verify your email address before logging in. Check your email for verification instructions.', 401);
+  }
+
   // Generate token
   const token = generateToken(user._id);
 
@@ -446,7 +557,126 @@ export const verifyOTPLogin = asyncHandler(async (req: Request, res: Response) =
   res.json(response);
 });
 
+// @desc    Verify OTP for registration
+// @route   POST /api/auth/verify-registration-otp
+// @access  Public
+export const verifyRegistrationOTP = asyncHandler(async (req: Request, res: Response) => {
+  const { email, otpCode } = req.body;
 
+  if (!email || !otpCode) {
+    throw new CustomError('Email and OTP code are required', 400);
+  }
 
+  // Verify OTP
+  const isOTPValid = await verifyOTP(email, otpCode, 'email');
+  
+  if (!isOTPValid) {
+    throw new CustomError('Invalid or expired OTP', 400);
+  }
+
+  // Find user and mark email as verified
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new CustomError('User not found', 404);
+  }
+
+  // Mark email as verified
+  user.isEmailVerified = true;
+  await user.save();
+
+  // Generate tokens
+  const token = generateToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  const response: AuthResponse = {
+    success: true,
+    message: 'Email verified successfully. You can now log in.',
+    data: {
+      user: user.getPublicProfile(),
+      token,
+      refreshToken
+    }
+  };
+
+  res.json(response);
+});
+
+// @desc    Verify email address
+// @route   GET /api/auth/verify-email
+// @access  Public
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.query;
+
+  if (!token) {
+    throw new CustomError('Verification token is required', 400);
+  }
+
+  // Find user with valid verification token
+  const user = await User.findOne({
+    emailVerificationToken: token,
+    emailVerificationExpires: { $gt: new Date() }
+  });
+
+  if (!user) {
+    throw new CustomError('Invalid or expired verification token', 400);
+  }
+
+  // Update user verification status
+  user.isEmailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpires = undefined;
+  await user.save();
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Email verified successfully. You can now log in to your account.'
+  };
+
+  res.json(response);
+});
+
+// @desc    Resend email verification
+// @route   POST /api/auth/resend-verification
+// @access  Public
+export const resendEmailVerification = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new CustomError('Email is required', 400);
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new CustomError('User not found', 404);
+  }
+
+  if (user.isEmailVerified) {
+    throw new CustomError('Email is already verified', 400);
+  }
+
+  // Generate new verification token
+  const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+  const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  user.emailVerificationToken = emailVerificationToken;
+  user.emailVerificationExpires = emailVerificationExpires;
+  await user.save();
+
+  // Send verification email
+  try {
+    await sendEmailVerification(email, emailVerificationToken);
+    console.log('Email verification resent successfully');
+  } catch (error) {
+    console.error('Error resending email verification:', error);
+    throw new CustomError('Failed to send verification email', 500);
+  }
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Verification email sent successfully. Please check your email.'
+  };
+
+  res.json(response);
+});
 
 

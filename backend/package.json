@@ -28,6 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.10.0",
+    "@types/socket.io-client": "^1.4.36",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.0",
@@ -46,6 +47,8 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.10.1",
     "route-auth": "^2.0.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "yamljs": "^0.3.0"

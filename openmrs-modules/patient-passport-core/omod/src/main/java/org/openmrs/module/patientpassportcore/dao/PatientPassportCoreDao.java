@@ -44,5 +44,17 @@ public interface PatientPassportCoreDao {
 	 * @return list of emergency overrides
 	 */
 	List<EmergencyOverride> getEmergencyOverridesForPatient(Patient patient);
+	
+	/**
+	 * Get total patient count
+	 * @return total number of patients
+	 */
+	int getTotalPatientCount();
+	
+	/**
+	 * Get synced patient count
+	 * @return number of synced patients
+	 */
+	int getSyncedPatientCount();
 }
 

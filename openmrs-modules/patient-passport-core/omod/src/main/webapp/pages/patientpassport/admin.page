@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page id="patientpassport.admin" 
+      title="Patient Passport Administration" 
+      controller="org.openmrs.module.patientpassportcore.web.controller.PatientPassportAdminController"
+      xmlns="http://openmrs.org">
+
+    <require privilege="Manage Patient Passport"/>
+
+    <body>
+        <div class="patientpassport-admin">
+            <h2>Patient Passport Administration</h2>
+            
+            <div class="admin-section">
+                <h3>Configuration</h3>
+                <form id="configForm">
+                    <table>
+                        <tr>
+                            <td><label for="apiUrl">API URL:</label></td>
+                            <td><input type="text" id="apiUrl" name="apiUrl" value="${apiUrl}" size="50"/></td>
+                        </tr>
+                        <tr>
+                            <td><label for="apiKey">API Key:</label></td>
+                            <td><input type="password" id="apiKey" name="apiKey" value="${apiKey}" size="50"/></td>
+                        </tr>
+                        <tr>
+                            <td><label for="enableSync">Enable Sync:</label></td>
+                            <td><input type="checkbox" id="enableSync" name="enableSync" ${enableSync ? 'checked' : ''}/></td>
+                        </tr>
+                    </table>
+                    <button type="button" onclick="saveConfig()">Save Configuration</button>
+                </form>
+            </div>
+
+            <div class="admin-section">
+                <h3>Patient Sync Status</h3>
+                <div id="syncStatus">
+                    <p>Total Patients: ${totalPatients}</p>
+                    <p>Synced Patients: ${syncedPatients}</p>
+                    <p>Pending Sync: ${pendingSync}</p>
+                    <button type="button" onclick="syncAllPatients()">Sync All Patients</button>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h3>Emergency Override Logs</h3>
+                <div id="overrideLogs">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Patient</th>
+                                <th>Justification</th>
+                                <th>Access Time</th>
+                                <th>IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <c:forEach var="override" items="${emergencyOverrides}">
+                                <tr>
+                                    <td>${override.user.username}</td>
+                                    <td>${override.patient.personName.fullName}</td>
+                                    <td>${override.justification}</td>
+                                    <td>${override.accessTime}</td>
+                                    <td>${override.ipAddress}</td>
+                                </tr>
+                            </c:forEach>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function saveConfig() {
+                var formData = {
+                    apiUrl: document.getElementById('apiUrl').value,
+                    apiKey: document.getElementById('apiKey').value,
+                    enableSync: document.getElementById('enableSync').checked
+                };
+                
+                fetch('/openmrs/ws/rest/v1/patientpassport/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Configuration saved successfully');
+                    } else {
+                        alert('Error saving configuration: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                });
+            }
+
+            function syncAllPatients() {
+                if (confirm('Are you sure you want to sync all patients? This may take a while.')) {
+                    fetch('/openmrs/ws/rest/v1/patientpassport/sync-all', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Sync initiated successfully');
+                            location.reload();
+                        } else {
+                            alert('Error initiating sync: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('Error: ' + error.message);
+                    });
+                }
+            }
+        </script>
+
+        <style>
+            .patientpassport-admin {
+                padding: 20px;
+            }
+            
+            .admin-section {
+                margin-bottom: 30px;
+                padding: 20px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+            }
+            
+            .admin-section h3 {
+                margin-top: 0;
+                color: #333;
+            }
+            
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            
+            table td {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+            
+            table th {
+                padding: 8px;
+                background-color: #f5f5f5;
+                border-bottom: 2px solid #ddd;
+            }
+            
+            button {
+                background-color: #007cba;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            
+            button:hover {
+                background-color: #005a87;
+            }
+        </style>
+    </body>
+</page>
+
+
+
+
+
+
+
+
+
+
+

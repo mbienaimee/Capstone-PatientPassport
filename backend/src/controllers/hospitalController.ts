@@ -357,6 +357,121 @@ export const getPendingHospitals = asyncHandler(async (req: Request, res: Respon
   res.json(response);
 });
 
+// @desc    Add doctor to hospital
+// @route   POST /api/hospitals/:id/doctors
+// @access  Private (Admin, Hospital)
+export const addDoctorToHospital = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const hospitalId = req.params.id; // Fix: use 'id' instead of 'hospitalId'
+  const { name, email, password, licenseNumber, specialization } = req.body;
+
+  console.log('Adding doctor to hospital:', hospitalId);
+  console.log('Doctor data:', { name, email, licenseNumber, specialization });
+
+  // Check if hospital exists
+  const hospital = await Hospital.findById(hospitalId);
+  console.log('Hospital found:', !!hospital);
+  if (hospital) {
+    console.log('Hospital details:', { id: hospital._id, name: hospital.name, status: hospital.status });
+  }
+  
+  if (!hospital) {
+    throw new CustomError('Hospital not found', 404);
+  }
+
+  // Check if doctor with license number already exists
+  const existingDoctor = await Doctor.findByLicenseNumber(licenseNumber);
+  if (existingDoctor) {
+    throw new CustomError('Doctor with this license number already exists', 400);
+  }
+
+  // Create user for doctor
+  const bcrypt = require('bcryptjs');
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  const User = require('@/models/User').default;
+  const user = await User.create({
+    name,
+    email,
+    password: hashedPassword,
+    role: 'doctor',
+    isActive: true,
+    isEmailVerified: true
+  });
+
+  // Create doctor
+  const doctor = await Doctor.create({
+    user: user._id,
+    licenseNumber,
+    specialization,
+    hospital: hospitalId,
+    isActive: true
+  });
+
+  // Add doctor to hospital
+  hospital.doctors.push(doctor._id);
+  await hospital.save();
+
+  // Populate doctor data
+  await doctor.populate('user', 'name email');
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Doctor added to hospital successfully',
+    data: doctor
+  };
+
+  res.status(201).json(response);
+});
+
+// @desc    Remove doctor from hospital
+// @route   DELETE /api/hospitals/:id/doctors/:doctorId
+// @access  Private (Admin, Hospital)
+export const removeDoctorFromHospital = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const hospitalId = req.params.id; // Fix: use 'id' instead of 'hospitalId'
+  const doctorId = req.params.doctorId;
+
+  // Check if hospital exists
+  const hospital = await Hospital.findById(hospitalId);
+  if (!hospital) {
+    throw new CustomError('Hospital not found', 404);
+  }
+
+  // Check if doctor exists
+  const doctor = await Doctor.findById(doctorId);
+  if (!doctor) {
+    throw new CustomError('Doctor not found', 404);
+  }
+
+  // Check if doctor belongs to this hospital
+  if (doctor.hospital.toString() !== hospitalId) {
+    throw new CustomError('Doctor does not belong to this hospital', 400);
+  }
+
+  // Remove doctor from hospital
+  hospital.doctors = hospital.doctors.filter(id => id.toString() !== doctorId);
+  await hospital.save();
+
+  // Deactivate doctor
+  doctor.isActive = false;
+  await doctor.save();
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Doctor removed from hospital successfully'
+  };
+
+  res.json(response);
+});
+
+
+
+
+
+
+
+
+
+
 
 
 

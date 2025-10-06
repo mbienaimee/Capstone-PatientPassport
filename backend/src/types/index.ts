@@ -16,10 +16,12 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  role: 'patient' | 'doctor' | 'admin' | 'hospital';
+  role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
   avatar?: string;
   isActive: boolean;
   isEmailVerified: boolean;
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -84,6 +86,26 @@ export interface IHospital extends Document {
   doctors: string[]; // References to Doctor
   patients: string[]; // References to Patient
   status: 'active' | 'pending' | 'inactive';
+  createdAt: Date;
+  updatedAt: Date;
+  getSummary(): any;
+}
+
+// Receptionist Interface
+export interface IReceptionist extends Document {
+  _id: string;
+  user: any; // Reference to User (ObjectId)
+  employeeId: string;
+  hospital: any; // Reference to Hospital (ObjectId)
+  department: string;
+  shift: string;
+  isActive: boolean;
+  permissions: {
+    canAssignDoctors: boolean;
+    canViewPatientRecords: boolean;
+    canScheduleAppointments: boolean;
+    canAccessEmergencyOverride: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
   getSummary(): any;
@@ -165,7 +187,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   confirmPassword: string;
-  role: 'patient' | 'doctor' | 'admin' | 'hospital';
+  role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
   nationalId?: string;
   dateOfBirth?: string;
   contactNumber?: string;
@@ -174,6 +196,9 @@ export interface RegisterRequest {
   adminContact?: string;
   licenseNumber?: string;
   specialization?: string;
+  employeeId?: string;
+  department?: string;
+  shift?: string;
 }
 
 export interface AuthResponse {
@@ -334,6 +359,12 @@ export interface IHospitalModel extends Model<IHospital> {
 
 export interface IDoctorModel extends Model<IDoctor> {
   findByLicenseNumber(licenseNumber: string): any;
+  findByHospital(hospitalId: string): any;
+  findActive(): any;
+}
+
+export interface IReceptionistModel extends Model<IReceptionist> {
+  findByEmployeeId(employeeId: string): any;
   findByHospital(hospitalId: string): any;
   findActive(): any;
 }

@@ -1,58 +1,6 @@
 import OTP from '@/models/OTP';
-import nodemailer from 'nodemailer';
 import { CustomError } from '@/middleware/errorHandler';
-
-// Email transporter configuration
-const createEmailTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail', // You can change this to your email service
-    auth: {
-      user: process.env.EMAIL_USER || 'your-email@gmail.com',
-      pass: process.env.EMAIL_PASS || 'your-app-password'
-    }
-  });
-};
-
-// Send OTP via Email
-export const sendOTPEmail = async (email: string, otpCode: string): Promise<void> => {
-  try {
-    const transporter = createEmailTransporter();
-    
-    const mailOptions = {
-      from: process.env.EMAIL_USER || 'your-email@gmail.com',
-      to: email,
-      subject: 'Patient Passport - OTP Verification',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0;">Patient Passport</h1>
-          </div>
-          <div style="padding: 30px; background: #f9fafb;">
-            <h2 style="color: #374151; margin-bottom: 20px;">OTP Verification</h2>
-            <p style="color: #6b7280; margin-bottom: 20px;">
-              Your OTP code for login verification is:
-            </p>
-            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; color: #10b981; letter-spacing: 5px;">${otpCode}</span>
-            </div>
-            <p style="color: #6b7280; font-size: 14px;">
-              This code will expire in 10 minutes. Do not share this code with anyone.
-            </p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-            <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              If you didn't request this OTP, please ignore this email.
-            </p>
-          </div>
-        </div>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
-  } catch (error) {
-    console.error('Error sending OTP email:', error);
-    throw new CustomError('Failed to send OTP email', 500);
-  }
-};
+import { sendOTPEmail } from './simpleEmailService';
 
 // Send OTP via SMS (using Twilio or similar service)
 export const sendOTPSMS = async (phoneNumber: string, otpCode: string): Promise<void> => {
@@ -79,6 +27,8 @@ export const sendOTPSMS = async (phoneNumber: string, otpCode: string): Promise<
 // Generate and send OTP
 export const generateAndSendOTP = async (identifier: string, type: 'email' | 'phone'): Promise<string> => {
   try {
+    console.log(`Generating OTP for ${type}: ${identifier}`);
+    
     // Clean up old OTPs for this identifier
     await OTP.deleteMany({
       identifier,
@@ -91,6 +41,7 @@ export const generateAndSendOTP = async (identifier: string, type: 'email' | 'ph
 
     // Generate new OTP
     const otp = await OTP.generateOTP(identifier, type);
+    console.log(`OTP generated: ${otp.code}`);
 
     // Send OTP based on type
     if (type === 'email') {
@@ -99,10 +50,17 @@ export const generateAndSendOTP = async (identifier: string, type: 'email' | 'ph
       await sendOTPSMS(identifier, otp.code);
     }
 
+    console.log(`OTP sent successfully to ${identifier}`);
     return otp.code; // Return for testing purposes
   } catch (error) {
     console.error('Error generating OTP:', error);
-    throw new CustomError('Failed to generate OTP', 500);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      identifier,
+      type
+    });
+    throw new CustomError(`Failed to generate OTP: ${error.message}`, 500);
   }
 };
 

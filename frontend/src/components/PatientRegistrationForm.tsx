@@ -188,17 +188,18 @@ const PatientRegistrationForm: React.FC = () => {
         showNotification({
           type: 'success',
           title: 'Registration Successful!',
-          message: 'Your account has been created. Redirecting to your passport...'
+          message: 'Please check your email for OTP to complete verification.'
         });
         
-        // Store user data and token for immediate login
-        const { user: userData, token } = response.data!;
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', token);
+        // OTP will be sent via email
         
-        setTimeout(() => {
-          navigate('/patient-passport');
-        }, 2000);
+        // Redirect to OTP verification
+        navigate('/otp-verification', { 
+          state: { 
+            email: formData.email, 
+            userType: 'patient' 
+          } 
+        });
       }
     } catch (error) {
       console.error('Registration error:', error);

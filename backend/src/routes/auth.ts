@@ -6,10 +6,14 @@ import {
   getMe,
   updateProfile,
   changePassword,
+  changeUserPassword,
   logout,
   deleteAccount,
   requestOTP,
-  verifyOTPLogin
+  verifyOTPLogin,
+  verifyEmail,
+  resendEmailVerification,
+  verifyRegistrationOTP
 } from '@/controllers/authController';
 import { authenticate } from '@/middleware/auth';
 import { authLimiter } from '@/middleware/rateLimiter';
@@ -50,6 +54,11 @@ router.put('/profile', authenticate, updateProfile);
 // @access  Private
 router.put('/change-password', authenticate, changePassword);
 
+// @route   PUT /api/users/:userId/change-password
+// @desc    Change any user's password (Admin/Hospital only)
+// @access  Private (Admin, Hospital)
+router.put('/users/:userId/change-password', authenticate, changeUserPassword);
+
 // @route   POST /api/auth/logout
 // @desc    Logout user
 // @access  Private
@@ -63,6 +72,13 @@ router.delete('/account', authenticate, deleteAccount);
 // OTP Routes
 router.post('/request-otp', authLimiter, requestOTP);
 router.post('/verify-otp', authLimiter, verifyOTPLogin);
+
+// Email Verification Routes
+router.get('/verify-email', verifyEmail);
+router.post('/resend-verification', authLimiter, resendEmailVerification);
+
+// OTP Verification Routes
+router.post('/verify-registration-otp', authLimiter, verifyRegistrationOTP);
 
 export default router;
 

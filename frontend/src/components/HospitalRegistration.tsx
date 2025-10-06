@@ -13,6 +13,8 @@ const HospitalRegistration: React.FC = () => {
   const [formData, setFormData] = useState({
     hospitalName: '',
     adminContact: '',
+    address: '',
+    contact: '',
     password: '',
     confirmPassword: ''
   });
@@ -20,6 +22,8 @@ const HospitalRegistration: React.FC = () => {
   const [errors, setErrors] = useState({
     hospitalName: '',
     adminContact: '',
+    address: '',
+    contact: '',
     password: '',
     confirmPassword: ''
   });
@@ -47,6 +51,8 @@ const HospitalRegistration: React.FC = () => {
     const newErrors = {
       hospitalName: '',
       adminContact: '',
+      address: '',
+      contact: '',
       password: '',
       confirmPassword: ''
     };
@@ -61,6 +67,18 @@ const HospitalRegistration: React.FC = () => {
       newErrors.adminContact = 'Admin contact is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.adminContact)) {
       newErrors.adminContact = 'Please enter a valid email address';
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Hospital address is required';
+    } else if (formData.address.trim().length < 10) {
+      newErrors.address = 'Address must be at least 10 characters';
+    }
+
+    if (!formData.contact.trim()) {
+      newErrors.contact = 'Contact number is required';
+    } else if (!/^\+?[\d\s-()]+$/.test(formData.contact)) {
+      newErrors.contact = 'Please enter a valid phone number';
     }
 
     if (!formData.password) {
@@ -84,6 +102,7 @@ const HospitalRegistration: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    
     if (!validateForm()) {
       showNotification({
         type: 'error',
@@ -96,25 +115,38 @@ const HospitalRegistration: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const response = await apiService.register({
+      const registrationData = {
         name: formData.hospitalName,
         email: formData.adminContact,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         role: 'hospital',
         hospitalName: formData.hospitalName,
-        adminContact: formData.adminContact
-      });
+        adminContact: formData.adminContact,
+        address: formData.address,
+        contact: formData.contact,
+        licenseNumber: `HOSP-${Date.now()}` // Generate a temporary license number
+      };
+      
+      
+      const response = await apiService.register(registrationData);
 
       if (response.success) {
         showNotification({
           type: 'success',
           title: 'Registration Successful!',
-          message: 'Your hospital has been registered. Redirecting to login...'
+          message: 'Please check your email for OTP to complete verification.'
         });
         
-        setTimeout(() => {
-          navigate('/hospital-login');
-        }, 2000);
+        // OTP will be sent via email
+        
+        // Redirect to OTP verification
+        navigate('/otp-verification', { 
+          state: { 
+            email: formData.adminContact, 
+            userType: 'hospital' 
+          } 
+        });
       }
     } catch (error) {
       console.error('Hospital registration error:', error);
@@ -227,6 +259,76 @@ const HospitalRegistration: React.FC = () => {
                 <p className="text-sm text-red-600 flex items-center gap-1">
                   <span className="w-1 h-1 bg-red-500 rounded-full"></span>
                   {errors.adminContact}
+                </p>
+              )}
+            </div>
+
+            {/* Hospital Address */}
+            <div className="space-y-2">
+              <label 
+                htmlFor="address" 
+                className="block text-sm font-semibold text-gray-700"
+              >
+                Hospital Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Building2 className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="123 Main Street, City, State 12345"
+                  disabled={isLoading}
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all ${
+                    errors.address 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                />
+              </div>
+              {errors.address && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                  {errors.address}
+                </p>
+              )}
+            </div>
+
+            {/* Contact Number */}
+            <div className="space-y-2">
+              <label 
+                htmlFor="contact" 
+                className="block text-sm font-semibold text-gray-700"
+              >
+                Contact Number
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="tel"
+                  id="contact"
+                  name="contact"
+                  value={formData.contact}
+                  onChange={handleChange}
+                  placeholder="+1234567890"
+                  disabled={isLoading}
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all ${
+                    errors.contact 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                />
+              </div>
+              {errors.contact && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                  {errors.contact}
                 </p>
               )}
             </div>

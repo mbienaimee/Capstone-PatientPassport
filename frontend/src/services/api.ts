@@ -10,7 +10,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'patient' | 'doctor' | 'admin' | 'hospital';
+  role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
 }
 
 interface AuthResponse {
@@ -105,27 +105,66 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 class ApiService {
   private baseURL = API_BASE_URL;
 
-  private async request<T>(
+  public async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = localStorage.getItem('token');
+    
+    // Check for hospital authentication
+    const hospitalAuth = localStorage.getItem('hospitalAuth');
+    let authToken = token;
+    
+    if (hospitalAuth) {
+      try {
+        const hospitalData = JSON.parse(hospitalAuth);
+        authToken = hospitalData.token;
+      } catch (error) {
+        console.error('Error parsing hospital auth data:', error);
+      }
+    }
+
+    // Debug logging
+    console.log('API Request Debug:', {
+      endpoint,
+      url,
+      hasToken: !!token,
+      hasHospitalAuth: !!hospitalAuth,
+      authToken: authToken ? 'Present' : 'Missing'
+    });
 
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(authToken && { Authorization: `Bearer ${authToken}` }),
         ...options.headers,
       },
       ...options,
     };
 
     try {
+      console.log('Making request to:', url, 'with config:', config);
       const response = await fetch(url, config);
+      console.log('Response status:', response.status, 'OK:', response.ok);
+      
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
+        console.log('Request failed with status:', response.status, 'Message:', data.message);
+        // Handle authentication errors by clearing stored auth data
+        if (response.status === 401 && data.message?.includes('user no longer exists')) {
+          console.warn('User no longer exists, clearing authentication data');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('hospitalAuth');
+          // Optionally redirect to login page
+          if (typeof window !== 'undefined') {
+            window.location.href = '/hospital-login';
+          }
+        }
+        
         throw new ApiError(
           data.message || 'An error occurred',
           response.status,
@@ -133,6 +172,7 @@ class ApiService {
         );
       }
 
+      console.log('Request successful, returning data');
       return data;
     } catch (error) {
       if (error instanceof ApiError) {
@@ -312,6 +352,28 @@ class ApiService {
     }
 
     return data;
+  }
+
+  // Email verification methods
+  async verifyEmail(token: string): Promise<ApiResponse<any>> {
+    return this.request(`/auth/verify-email?token=${token}`, {
+      method: 'GET'
+    });
+  }
+
+  async resendEmailVerification(email: string): Promise<ApiResponse<any>> {
+    return this.request('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  }
+
+  // OTP verification for registration
+  async verifyRegistrationOTP(email: string, otpCode: string): Promise<ApiResponse<AuthResponse>> {
+    return this.request('/auth/verify-registration-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otpCode })
+    });
   }
 
   // Medical Records Methods

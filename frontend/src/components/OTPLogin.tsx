@@ -132,8 +132,21 @@ const OTPLogin: React.FC = () => {
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('token', token);
         
+        // Redirect based on user role
         setTimeout(() => {
-          navigate('/patient-passport');
+          if (userData.role === 'patient') {
+            navigate('/patient-passport');
+          } else if (userData.role === 'hospital') {
+            navigate('/hospital-dashboard');
+          } else if (userData.role === 'doctor') {
+            navigate('/doctor-dashboard');
+          } else if (userData.role === 'receptionist') {
+            navigate('/receptionist-dashboard');
+          } else if (userData.role === 'admin') {
+            navigate('/admin-dashboard');
+          } else {
+            navigate('/patient-passport'); // Default fallback
+          }
         }, 1500);
       }
     } catch (error: any) {

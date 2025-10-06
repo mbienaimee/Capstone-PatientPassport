@@ -215,6 +215,13 @@ const PatientPassportLogin: React.FC = () => {
               Need to Register?
             </button>
             <span className="text-gray-300">|</span>
+            <Link
+              to="/verify-email"
+              className="text-gray-600 hover:text-green-600 transition-colors"
+            >
+              Resend Verification
+            </Link>
+            <span className="text-gray-300">|</span>
             <button
               onClick={handleBackToHome}
               className="text-gray-600 hover:text-green-600 transition-colors"

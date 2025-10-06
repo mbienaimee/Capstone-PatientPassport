@@ -26,7 +26,7 @@ const userSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['patient', 'doctor', 'admin', 'hospital'],
+    enum: ['patient', 'doctor', 'admin', 'hospital', 'receptionist'],
     required: [true, 'Role is required'],
     default: 'patient'
   },
@@ -41,6 +41,14 @@ const userSchema = new Schema<IUser>({
   isEmailVerified: {
     type: Boolean,
     default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    default: null
+  },
+  emailVerificationExpires: {
+    type: Date,
+    default: null
   },
   lastLogin: {
     type: Date,
@@ -99,6 +107,8 @@ userSchema.statics.findActive = function() {
 };
 
 export default mongoose.model<IUser>('User', userSchema);
+
+
 
 
 

@@ -12,7 +12,9 @@ import {
   getHospitalPatients,
   getHospitalSummary,
   searchHospitals,
-  getPendingHospitals
+  getPendingHospitals,
+  addDoctorToHospital,
+  removeDoctorFromHospital
 } from '@/controllers/hospitalController';
 import { authenticate, authorize } from '@/middleware/auth';
 import { generalLimiter, searchLimiter } from '@/middleware/rateLimiter';
@@ -89,7 +91,29 @@ router.get('/:id/patients', authenticate, authorize('admin', 'hospital'), valida
 // @access  Private (Admin, Hospital)
 router.get('/:id/summary', authenticate, authorize('admin', 'hospital'), validateObjectId('id'), getHospitalSummary);
 
+// @route   POST /api/hospitals/:id/doctors
+// @desc    Add doctor to hospital
+// @access  Private (Admin, Hospital)
+router.post('/:id/doctors', authenticate, authorize('admin', 'hospital'), validateObjectId('id'), addDoctorToHospital);
+
+// @route   DELETE /api/hospitals/:id/doctors/:doctorId
+// @desc    Remove doctor from hospital
+// @access  Private (Admin, Hospital)
+router.delete('/:id/doctors/:doctorId', authenticate, authorize('admin', 'hospital'), validateObjectId('id'), validateObjectId('doctorId'), removeDoctorFromHospital);
+
 export default router;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

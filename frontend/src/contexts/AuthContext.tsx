@@ -7,7 +7,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'patient' | 'doctor' | 'admin' | 'hospital';
+  role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
 }
 
 export interface LoginFormData {
@@ -66,15 +66,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     
     try {
+      console.log('Attempting login with:', { email: formData.email, role: 'checking...' });
       const response = await apiService.login(formData);
+      console.log('Login response:', response);
       
       if (response.success && response.data) {
         const { user: userData, token } = response.data;
+        console.log('Login successful, user data:', userData);
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('token', token);
         return true;
       }
+      console.log('Login failed - no success or data:', response);
       return false;
     } catch (error) {
       console.error('Login error:', error);

@@ -56,5 +56,23 @@ public class PatientPassportCoreDaoImpl implements PatientPassportCoreDao {
 			.setParameter("patient", patient)
 			.list();
 	}
+	
+	@Override
+	public int getTotalPatientCount() {
+		Long count = (Long) sessionFactory.getCurrentSession()
+			.createQuery("select count(*) from Patient p where p.voided = false")
+			.uniqueResult();
+		return count != null ? count.intValue() : 0;
+	}
+	
+	@Override
+	public int getSyncedPatientCount() {
+		// This is a placeholder implementation
+		// In a real implementation, you would track which patients have been synced
+		Long count = (Long) sessionFactory.getCurrentSession()
+			.createQuery("select count(distinct p) from Patient p join p.identifiers pi where pi.identifierType.name = 'UNIVERSAL_PATIENT_ID' and p.voided = false")
+			.uniqueResult();
+		return count != null ? count.intValue() : 0;
+	}
 }
 

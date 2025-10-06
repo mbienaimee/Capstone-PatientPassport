@@ -76,7 +76,7 @@ const HospitalLogin = () => {
         });
         
         setTimeout(() => {
-          navigate('/admin-dashboard');
+          navigate('/hospital-dashboard');
         }, 1500);
       } else {
         showNotification({
@@ -140,10 +140,10 @@ const HospitalLogin = () => {
                 htmlFor="hospitalEmail" 
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                HospitalEmail
+                Hospital Email
               </label>
               <input
-                type="text"
+                type="email"
                 id="hospitalName"
                 name="hospitalName"
                 value={formData.hospitalName}
@@ -199,6 +199,12 @@ const HospitalLogin = () => {
                 className="block w-full text-gray-600 hover:text-green-600 transition-colors text-sm"
               >
                 Need to Register?
+              </button>
+              <button
+                onClick={() => navigate('/verify-email')}
+                className="block w-full text-blue-600 hover:text-blue-700 transition-colors text-sm mt-2"
+              >
+                Resend Verification
               </button>
               <button
                 onClick={() => navigate('/')}

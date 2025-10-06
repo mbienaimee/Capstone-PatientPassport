@@ -339,3 +339,16 @@ export const searchPatients = asyncHandler(async (req: Request, res: Response, n
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+

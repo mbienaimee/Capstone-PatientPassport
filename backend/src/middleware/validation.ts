@@ -35,13 +35,7 @@ export const validateUserRegistration = [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
   
-  body('confirmPassword')
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Password confirmation does not match password');
-      }
-      return true;
-    }),
+  // Password confirmation validation moved to controller
   
   body('role')
     .isIn(['patient', 'doctor', 'admin', 'hospital'])

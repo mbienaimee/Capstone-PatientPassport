@@ -16,6 +16,9 @@ import hospitalRoutes from './routes/hospitals';
 import medicalRoutes from './routes/medical';
 import medicalRecordRoutes from './routes/medicalRecords';
 import dashboardRoutes from './routes/dashboard';
+import assignmentRoutes from './routes/assignments';
+import accessControlRoutes from './routes/accessControl';
+import notificationRoutes from './routes/notifications';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -66,7 +69,7 @@ const swaggerOptions = {
             _id: { type: 'string' },
             name: { type: 'string' },
             email: { type: 'string', format: 'email' },
-            role: { type: 'string', enum: ['patient', 'doctor', 'admin', 'hospital'] },
+            role: { type: 'string', enum: ['patient', 'doctor', 'admin', 'hospital', 'receptionist'] },
             avatar: { type: 'string' },
             isActive: { type: 'boolean' },
             isEmailVerified: { type: 'boolean' },
@@ -199,6 +202,9 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/medical', medicalRoutes);
 app.use('/api/medical-records', medicalRecordRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/access-control', accessControlRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Root endpoint
 app.get('/', (_req, res) => {

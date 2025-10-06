@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 
 // Create email transporter
 const createTransporter = () => {
-  return nodemailer.createTransport({
+  const config: any = {
     host: process.env.EMAIL_HOST,
     port: parseInt(process.env.EMAIL_PORT || '587'),
     secure: false, // true for 465, false for other ports
@@ -10,7 +10,19 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
     }
-  });
+  };
+
+  // For Gmail, we need to ensure proper configuration
+  if (config.host === 'smtp.gmail.com') {
+    config.secure = false; // Use STARTTLS
+    config.requireTLS = true;
+    config.tls = {
+      ciphers: 'SSLv3',
+      rejectUnauthorized: false
+    };
+  }
+
+  return nodemailer.createTransport(config);
 };
 
 // Send welcome email

@@ -15,27 +15,48 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - openmrs-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "openmrs", "-popenmrs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   openmrs:
     image: openmrs/openmrs-distro-platform:2.5.0
     container_name: openmrs-platform
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_NAME=openmrs
+      - DB_DATABASE=openmrs
       - DB_USERNAME=openmrs
       - DB_PASSWORD=openmrs
-      - DB_CONNECTIONSTRING=jdbc:mysql://mysql:3306/openmrs?autoReconnect=true&sessionVariables=storage_engine=InnoDB&useUnicode=true&characterEncoding=UTF-8
+      - DB_CONNECTIONSTRING=jdbc:mysql://mysql:3306/openmrs?autoReconnect=true&sessionVariables=storage_engine=InnoDB&useUnicode=true&characterEncoding=UTF-8&createDatabaseIfNotExist=true
+      - OPENMRS_DB_HOST=mysql
+      - OPENMRS_DB_PORT=3306
+      - OPENMRS_DB_NAME=openmrs
+      - OPENMRS_DB_USERNAME=openmrs
+      - OPENMRS_DB_PASSWORD=openmrs
+      - OPENMRS_DB_DRIVER=com.mysql.cj.jdbc.Driver
+      - OPENMRS_DB_URL=jdbc:mysql://mysql:3306/openmrs?autoReconnect=true&sessionVariables=storage_engine=InnoDB&useUnicode=true&characterEncoding=UTF-8&createDatabaseIfNotExist=true
     ports:
-      - "8080:8080"
+      - "8084:8080"
     volumes:
       - openmrs_data:/usr/local/tomcat/.OpenMRS
       - openmrs_modules:/usr/local/tomcat/.OpenMRS/modules
     networks:
       - openmrs-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/openmrs/ws/rest/v1/systeminformation"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
   mysql_data:

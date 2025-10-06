@@ -28,7 +28,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'patient' | 'doctor' | 'admin' | 'hospital';
+  role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
   avatar?: string;
   createdAt: string;
   lastLogin?: string;

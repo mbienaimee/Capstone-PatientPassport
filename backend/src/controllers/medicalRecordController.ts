@@ -10,8 +10,16 @@ export const getPatientMedicalRecords = asyncHandler(async (req: Request, res: R
   const { patientId } = req.params;
   const user = req.user;
 
-  // Check if patient exists
-  const patient = await Patient.findById(patientId);
+  let patient;
+  
+  // If the patientId is actually a user ID (for patient role), find the patient by user reference
+  if (user.role === 'patient' && patientId === user.id) {
+    patient = await Patient.findOne({ user: patientId });
+  } else {
+    // For doctors and admins, use the patientId directly
+    patient = await Patient.findById(patientId);
+  }
+
   if (!patient) {
     throw new CustomError('Patient not found', 404);
   }
@@ -22,7 +30,7 @@ export const getPatientMedicalRecords = asyncHandler(async (req: Request, res: R
   }
 
   // Get all medical records for the patient
-  const records = await MedicalRecord.find({ patientId })
+  const records = await MedicalRecord.find({ patientId: patient._id })
     .populate('createdBy', 'name email role')
     .sort({ createdAt: -1 });
 
@@ -61,7 +69,7 @@ export const addMedicalRecord = asyncHandler(async (req: Request, res: Response)
 
   // Create new medical record
   const medicalRecord = await MedicalRecord.create({
-    patientId,
+    patientId: patient._id,
     type,
     data,
     createdBy: user.id
@@ -140,8 +148,16 @@ export const getMedicalRecordsByType = asyncHandler(async (req: Request, res: Re
   const { patientId, type } = req.params;
   const user = req.user;
 
-  // Check if patient exists
-  const patient = await Patient.findById(patientId);
+  let patient;
+  
+  // If the patientId is actually a user ID (for patient role), find the patient by user reference
+  if (user.role === 'patient' && patientId === user.id) {
+    patient = await Patient.findOne({ user: patientId });
+  } else {
+    // For doctors and admins, use the patientId directly
+    patient = await Patient.findById(patientId);
+  }
+
   if (!patient) {
     throw new CustomError('Patient not found', 404);
   }
@@ -158,7 +174,7 @@ export const getMedicalRecordsByType = asyncHandler(async (req: Request, res: Re
   }
 
   // Get records by type
-  const records = await MedicalRecord.find({ patientId, type })
+  const records = await MedicalRecord.find({ patientId: patient._id, type })
     .populate('createdBy', 'name email role')
     .sort({ createdAt: -1 });
 

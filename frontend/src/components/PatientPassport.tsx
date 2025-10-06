@@ -55,12 +55,26 @@ const PatientPassport: React.FC = () => {
       if (isAuthenticated && user?.id) {
         try {
           setDataLoading(true);
-          const response = await apiService.getPatientMedicalRecords(user.id);
-          if (response.success) {
-            setMedicalData(response.data);
+          // First, get the patient profile to get the correct patient ID
+          const patientResponse = await apiService.getCurrentUser();
+          if (patientResponse.success && patientResponse.data) {
+            // For now, we'll use the user ID as patient ID since they're the same in this system
+            // In a real system, you'd have a separate Patient model with its own ID
+            const response = await apiService.getPatientMedicalRecords(user.id);
+            if (response.success) {
+              setMedicalData(response.data);
+            }
           }
         } catch (error) {
           console.error('Error fetching medical records:', error);
+          // Set empty data on error to show empty state
+          setMedicalData({
+            conditions: [],
+            medications: [],
+            tests: [],
+            visits: [],
+            images: []
+          });
         } finally {
           setDataLoading(false);
         }
