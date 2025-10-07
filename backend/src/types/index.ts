@@ -37,6 +37,7 @@ export interface IPatient extends Document {
   universalId?: string; // Universal patient ID for federated access
   insuranceNumber?: string; // Insurance number for identification
   dateOfBirth: Date;
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   contactNumber: string;
   address: string;
   emergencyContact: {
@@ -190,6 +191,7 @@ export interface RegisterRequest {
   role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
   nationalId?: string;
   dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   contactNumber?: string;
   address?: string;
   hospitalName?: string;

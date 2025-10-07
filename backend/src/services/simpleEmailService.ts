@@ -5,10 +5,13 @@ class SimpleEmailService {
   private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
-    this.initializeTransporter();
+    // Initialize transporter asynchronously
+    this.initializeTransporter().catch(error => {
+      console.error('Failed to initialize email transporter:', error);
+    });
   }
 
-  private initializeTransporter() {
+  private async initializeTransporter() {
     // Try multiple email providers
     const providers = [
       // Gmail
@@ -52,23 +55,32 @@ class SimpleEmailService {
       if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
         try {
           const transporter = nodemailer.createTransport(provider.config);
-          // Test connection
-          transporter.verify((error, success) => {
-            if (success) {
-              console.log(`✅ ${provider.name} email provider connected successfully`);
-              this.transporter = transporter;
-            } else {
-              console.log(`❌ ${provider.name} email provider failed:`, error?.message);
-            }
-          });
+          // Test connection synchronously
+          const success = await transporter.verify();
+          if (success) {
+            console.log(`✅ ${provider.name} email provider connected successfully`);
+            this.transporter = transporter;
+            return; // Exit early if successful
+          }
         } catch (error) {
-          console.log(`❌ ${provider.name} email provider error:`, error);
+          console.log(`❌ ${provider.name} email provider failed:`, error?.message || error);
         }
       }
+    }
+    
+    if (!this.transporter) {
+      console.log('⚠️  No email providers configured - using development mode');
+      console.log('   To enable real email sending, create a .env file with Gmail credentials');
     }
   }
 
   async sendEmail(mailOptions: nodemailer.SendMailOptions): Promise<void> {
+    // Wait for transporter to be initialized if it's not ready yet
+    if (!this.transporter) {
+      console.log('⏳ Waiting for email transporter to initialize...');
+      await this.waitForTransporter();
+    }
+
     if (this.transporter) {
       try {
         const result = await this.transporter.sendMail(mailOptions);
@@ -79,6 +91,13 @@ class SimpleEmailService {
       }
     } else {
       await this.sendEmailDev(mailOptions);
+    }
+  }
+
+  private async waitForTransporter(maxWaitTime = 5000): Promise<void> {
+    const startTime = Date.now();
+    while (!this.transporter && (Date.now() - startTime) < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
@@ -153,6 +172,67 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
         </div>
         <p>If you have any questions, please don't hesitate to contact our support team.</p>
         <p>Best regards,<br>The PatientPassport Team</p>
+      </div>
+    `
+  };
+
+  await simpleEmailService.sendEmail(mailOptions);
+};
+
+export const sendPassportAccessOTPEmail = async (email: string, otpCode: string, doctorName: string, patientName: string): Promise<void> => {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@patientpassport.com',
+    to: email,
+    subject: 'Patient Passport Access Request - OTP Code',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Patient Passport</h1>
+        </div>
+        <div style="padding: 30px; background: #f9fafb;">
+          <h2 style="color: #374151; margin-bottom: 20px;">Doctor Access Request</h2>
+          <p style="color: #6b7280; margin-bottom: 20px;">
+            Dear <strong>${patientName}</strong>,
+          </p>
+          <p style="color: #6b7280; margin-bottom: 20px;">
+            <strong>Dr. ${doctorName}</strong> is requesting access to your Patient Passport medical records.
+          </p>
+          
+          <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #92400e; margin-top: 0;">🔐 Your Access Code</h3>
+            <p style="color: #92400e; margin-bottom: 10px;">
+              Please share this OTP code with the doctor to grant access:
+            </p>
+            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">
+              <span style="font-size: 36px; font-weight: bold; color: #10b981; letter-spacing: 8px; font-family: monospace;">${otpCode}</span>
+            </div>
+            <p style="color: #92400e; font-size: 14px; margin: 0;">
+              ⏰ This code expires in 10 minutes
+            </p>
+          </div>
+          
+          <div style="background: #e0f2fe; border: 1px solid #0ea5e9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h4 style="color: #0c4a6e; margin-top: 0;">📋 What this means:</h4>
+            <ul style="color: #0c4a6e; margin: 0; padding-left: 20px;">
+              <li>The doctor will be able to view your medical records</li>
+              <li>Access is temporary and will expire after 1 hour</li>
+              <li>You can revoke access at any time</li>
+              <li>Only share this code with trusted healthcare providers</li>
+            </ul>
+          </div>
+          
+          <div style="background: #fef2f2; border: 1px solid #ef4444; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h4 style="color: #dc2626; margin-top: 0;">⚠️ Security Notice:</h4>
+            <p style="color: #dc2626; margin: 0; font-size: 14px;">
+              If you did not request this access or do not recognize the doctor, please ignore this email and contact our support team immediately.
+            </p>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+            This is an automated message from PatientPassport. Please do not reply to this email.
+          </p>
+        </div>
       </div>
     `
   };

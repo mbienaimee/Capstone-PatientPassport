@@ -169,10 +169,12 @@ export const sendOTPEmail = async (email: string, otpCode: string): Promise<void
     `
   };
 
-  if (process.env.NODE_ENV === 'development' && !process.env.EMAIL_USER) {
-    await getEmailService().sendEmailDev(mailOptions);
-  } else {
+  // Always try to send real email if EMAIL_USER is configured
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     await getEmailService().sendEmail(mailOptions);
+  } else {
+    console.log('⚠️  Email credentials not configured - using development mode');
+    await getEmailService().sendEmailDev(mailOptions);
   }
 };
 
@@ -202,10 +204,12 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
     `
   };
 
-  if (process.env.NODE_ENV === 'development' && !process.env.EMAIL_USER) {
-    await getEmailService().sendEmailDev(mailOptions);
-  } else {
+  // Always try to send real email if EMAIL_USER is configured
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     await getEmailService().sendEmail(mailOptions);
+  } else {
+    console.log('⚠️  Email credentials not configured - using development mode');
+    await getEmailService().sendEmailDev(mailOptions);
   }
 };
 
@@ -233,10 +237,12 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string):
     `
   };
 
-  if (process.env.NODE_ENV === 'development' && !process.env.EMAIL_USER) {
-    await getEmailService().sendEmailDev(mailOptions);
-  } else {
+  // Always try to send real email if EMAIL_USER is configured
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     await getEmailService().sendEmail(mailOptions);
+  } else {
+    console.log('⚠️  Email credentials not configured - using development mode');
+    await getEmailService().sendEmailDev(mailOptions);
   }
 };
 
@@ -264,10 +270,12 @@ export const sendEmailVerification = async (email: string, verificationToken: st
     `
   };
 
-  if (process.env.NODE_ENV === 'development' && !process.env.EMAIL_USER) {
-    await getEmailService().sendEmailDev(mailOptions);
-  } else {
+  // Always try to send real email if EMAIL_USER is configured
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     await getEmailService().sendEmail(mailOptions);
+  } else {
+    console.log('⚠️  Email credentials not configured - using development mode');
+    await getEmailService().sendEmailDev(mailOptions);
   }
 };
 
@@ -287,9 +295,11 @@ export const sendNotificationEmail = async (email: string, subject: string, mess
     `
   };
 
-  if (process.env.NODE_ENV === 'development' && !process.env.EMAIL_USER) {
-    await getEmailService().sendEmailDev(mailOptions);
-  } else {
+  // Always try to send real email if EMAIL_USER is configured
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     await getEmailService().sendEmail(mailOptions);
+  } else {
+    console.log('⚠️  Email credentials not configured - using development mode');
+    await getEmailService().sendEmailDev(mailOptions);
   }
 };

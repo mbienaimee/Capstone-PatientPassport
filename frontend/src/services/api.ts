@@ -400,6 +400,30 @@ class ApiService {
       method: 'DELETE'
     });
   }
+
+  // Passport Access Methods
+  async requestPassportAccessOTP(patientId: string): Promise<ApiResponse<any>> {
+    return this.request('/passport-access/request-otp', {
+      method: 'POST',
+      body: JSON.stringify({ patientId })
+    });
+  }
+
+  async verifyPassportAccessOTP(patientId: string, otpCode: string): Promise<ApiResponse<any>> {
+    return this.request('/passport-access/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ patientId, otpCode })
+    });
+  }
+
+  async getPatientPassportWithAccess(patientId: string, accessToken: string): Promise<ApiResponse<any>> {
+    return this.request(`/passport-access/patient/${patientId}/passport`, {
+      method: 'GET',
+      headers: {
+        'X-Access-Token': accessToken
+      }
+    });
+  }
 }
 
 export const apiService = new ApiService();

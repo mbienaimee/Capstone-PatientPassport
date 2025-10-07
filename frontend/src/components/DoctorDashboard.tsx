@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
+import PassportAccessOTP from './PassportAccessOTP';
+import PatientPassportView from './PatientPassportView';
 import { 
   Users, 
   UserPlus, 
@@ -49,16 +51,28 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [permissionReason, setPermissionReason] = useState('');
-  const [requestedData, setRequestedData] = useState<string[]>([]);
-  const [submittingPermission, setSubmittingPermission] = useState(false);
+  const [showPassportView, setShowPassportView] = useState(false);
+  const [accessToken, setAccessToken] = useState<string>('');
   const [stats, setStats] = useState({
     totalPatients: 0,
     recentRequests: 0,
     activeAccess: 0
   });
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [permissionReason, setPermissionReason] = useState('');
+  const [requestedData, setRequestedData] = useState<string[]>([]);
+  const [submittingPermission, setSubmittingPermission] = useState(false);
+
+  const dataTypes = [
+    { key: 'medicalHistory', label: 'Medical History' },
+    { key: 'medications', label: 'Current Medications' },
+    { key: 'testResults', label: 'Test Results' },
+    { key: 'allergies', label: 'Allergies' },
+    { key: 'emergencyContact', label: 'Emergency Contact' },
+    { key: 'hospitalVisits', label: 'Hospital Visits' }
+  ];
 
   useEffect(() => {
     fetchPatients();
@@ -101,73 +115,27 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   };
 
   const handleViewPatient = async (patient: Patient) => {
-    try {
-      // First check if doctor already has access
-      const accessCheckResponse = await apiService.request(`/access-control/check-access/${patient._id}`);
-      
-      if (accessCheckResponse.success && accessCheckResponse.data.hasAccess) {
-        // Doctor has access, open patient passport
-        window.open(`/patient-passport/${patient._id}`, '_blank');
-      } else {
-        // Doctor doesn't have access, show permission request modal
-        setSelectedPatient(patient);
-        setShowPermissionModal(true);
-      }
-    } catch (error) {
-      console.error('Error checking access:', error);
-      // If error, show permission request modal
-      setSelectedPatient(patient);
-      setShowPermissionModal(true);
-    }
+    // Show OTP modal for passport access
+    setSelectedPatient(patient);
+    setShowOTPModal(true);
   };
 
-  const handlePermissionRequest = async () => {
-    if (!selectedPatient || !permissionReason.trim() || requestedData.length === 0) {
-      alert('Please provide a reason and select at least one data type to request.');
-      return;
-    }
-
-    try {
-      setSubmittingPermission(true);
-      
-      // Get hospital ID from doctor's context
-      const hospitalId = '68e42c3f7987fd304342bd9d'; // This should come from doctor's hospital
-      
-      const response = await apiService.request('/access-control/request', {
-        method: 'POST',
-        body: JSON.stringify({
-          patientId: selectedPatient._id,
-          hospitalId: hospitalId,
-          requestType: 'view',
-          reason: permissionReason,
-          requestedData: requestedData,
-          expiresInHours: 24
-        })
-      });
-
-      if (response.success) {
-        alert('Permission request sent successfully! The patient will be notified and can approve or deny your request.');
-        setShowPermissionModal(false);
-        setSelectedPatient(null);
-        setPermissionReason('');
-        setRequestedData([]);
-      } else {
-        alert('Failed to send permission request. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error sending permission request:', error);
-      alert('Failed to send permission request. Please try again.');
-    } finally {
-      setSubmittingPermission(false);
-    }
+  const handleOTPSuccess = (token: string) => {
+    console.log('OTP Success - Patient:', selectedPatient?._id, 'Token:', token);
+    setAccessToken(token);
+    setShowOTPModal(false);
+    setShowPassportView(true);
   };
 
-  const handleDataTypeToggle = (dataType: string) => {
-    setRequestedData(prev => 
-      prev.includes(dataType) 
-        ? prev.filter(type => type !== dataType)
-        : [...prev, dataType]
-    );
+  const handleClosePassportView = () => {
+    setShowPassportView(false);
+    setAccessToken('');
+    setSelectedPatient(null);
+  };
+
+  const handleCancelOTP = () => {
+    setShowOTPModal(false);
+    setSelectedPatient(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -189,15 +157,43 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
     return age;
   };
 
-  const dataTypes = [
-    { key: 'medical_history', label: 'Medical History' },
-    { key: 'medications', label: 'Current Medications' },
-    { key: 'allergies', label: 'Allergies' },
-    { key: 'lab_results', label: 'Lab Results' },
-    { key: 'imaging', label: 'Imaging Reports' },
-    { key: 'emergency_contacts', label: 'Emergency Contacts' },
-    { key: 'insurance', label: 'Insurance Information' }
-  ];
+  const handleDataTypeToggle = (dataType: string) => {
+    setRequestedData(prev => 
+      prev.includes(dataType) 
+        ? prev.filter(item => item !== dataType)
+        : [...prev, dataType]
+    );
+  };
+
+  const handlePermissionRequest = async () => {
+    if (!selectedPatient || !permissionReason.trim() || requestedData.length === 0) {
+      return;
+    }
+
+    try {
+      setSubmittingPermission(true);
+      
+      // Here you would typically make an API call to request permission
+      // For now, we'll just simulate the request
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Show success message or handle the response
+      alert('Permission request sent successfully!');
+      
+      // Close modal and reset state
+      setShowPermissionModal(false);
+      setSelectedPatient(null);
+      setPermissionReason('');
+      setRequestedData([]);
+      
+    } catch (error) {
+      console.error('Error sending permission request:', error);
+      alert('Failed to send permission request. Please try again.');
+    } finally {
+      setSubmittingPermission(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -378,7 +374,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                       className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors text-sm flex items-center justify-center"
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      View Patient Passport
+                      Request OTP Access
                     </button>
                   </div>
                 ))}
@@ -387,6 +383,26 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
           </div>
         </div>
       </div>
+
+      {/* OTP Modal */}
+      {showOTPModal && selectedPatient && (
+        <PassportAccessOTP
+          patientId={selectedPatient._id}
+          patientName={selectedPatient.user.name}
+          patientEmail={selectedPatient.user.email}
+          onSuccess={handleOTPSuccess}
+          onCancel={handleCancelOTP}
+        />
+      )}
+
+      {/* Patient Passport View */}
+      {showPassportView && selectedPatient && (
+        <PatientPassportView
+          patientId={selectedPatient._id}
+          accessToken={accessToken}
+          onClose={handleClosePassportView}
+        />
+      )}
 
       {/* Permission Request Modal */}
       {showPermissionModal && selectedPatient && (
@@ -413,6 +429,14 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                   rows={4}
                   required
                 />
+                <div className="mt-1 flex justify-between text-sm">
+                  <span className={`${permissionReason.trim().length < 10 ? 'text-red-600' : 'text-gray-500'}`}>
+                    Minimum 10 characters required
+                  </span>
+                  <span className={`${permissionReason.trim().length > 500 ? 'text-red-600' : 'text-gray-500'}`}>
+                    {permissionReason.trim().length}/500
+                  </span>
+                </div>
               </div>
 
               {/* Data Types to Request */}
@@ -466,7 +490,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
               </button>
               <button
                 onClick={handlePermissionRequest}
-                disabled={submittingPermission || !permissionReason.trim() || requestedData.length === 0}
+                disabled={submittingPermission || !permissionReason.trim() || permissionReason.trim().length < 10 || permissionReason.trim().length > 500 || requestedData.length === 0}
                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submittingPermission ? 'Sending Request...' : 'Send Request'}

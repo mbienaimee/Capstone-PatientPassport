@@ -37,7 +37,7 @@ const generateRefreshToken = (userId: string): string => {
 // @route   POST /api/auth/register
 // @access  Public
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { name, email, password, role, nationalId, dateOfBirth, contactNumber, address, hospitalName, adminContact, licenseNumber, specialization, employeeId, department, shift }: RegisterRequest = req.body;
+  const { name, email, password, role, nationalId, dateOfBirth, gender, contactNumber, address, hospitalName, adminContact, licenseNumber, specialization, employeeId, department, shift }: RegisterRequest = req.body;
   
 
   // Validate password confirmation
@@ -62,13 +62,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   // Create role-specific profile
   console.log('Registration data:', { role, nationalId, dateOfBirth, contactNumber, address });
   
-  if (role === 'patient' && nationalId && dateOfBirth && contactNumber && address) {
+  if (role === 'patient' && nationalId && dateOfBirth && gender && contactNumber && address) {
     console.log('Creating patient record...');
     try {
       const patient = await Patient.create({
         user: user._id,
         nationalId,
         dateOfBirth: new Date(dateOfBirth),
+        gender,
         contactNumber,
         address,
         emergencyContact: {

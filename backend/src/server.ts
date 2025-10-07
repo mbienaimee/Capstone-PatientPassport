@@ -19,6 +19,7 @@ import dashboardRoutes from './routes/dashboard';
 import assignmentRoutes from './routes/assignments';
 import accessControlRoutes from './routes/accessControl';
 import notificationRoutes from './routes/notifications';
+import passportAccessRoutes from './routes/passportAccess';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -158,7 +159,7 @@ app.use(cors({
   origin: true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-access-token']
 }));
 
 // Compression middleware
@@ -205,8 +206,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/access-control', accessControlRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/passport-access', passportAccessRoutes);
 
-// Root endpoint
 app.get('/', (_req, res) => {
   res.json({
     success: true,

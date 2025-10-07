@@ -43,6 +43,11 @@ const patientSchema = new Schema({
       message: 'Date of birth must be in the past'
     }
   },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+    required: [true, 'Gender is required']
+  },
   contactNumber: {
     type: String,
     required: [true, 'Contact number is required'],

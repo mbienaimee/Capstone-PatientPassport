@@ -43,7 +43,7 @@ class PatientPassportAccessService {
         throw new CustomError('Hospital not found', 404);
       }
 
-      // Check if there's already a pending request
+      // Check if there's already a pending request for this doctor-patient combination
       const existingRequest = await AccessRequest.findOne({
         patientId: data.patientId,
         doctorId: data.doctorId,
@@ -51,34 +51,57 @@ class PatientPassportAccessService {
         expiresAt: { $gt: new Date() }
       });
 
+      let accessRequest: IAccessRequest;
+
       if (existingRequest) {
-        throw new CustomError('A pending access request already exists for this patient', 400);
+        // Update existing pending request instead of creating a new one
+        console.log('Updating existing pending request:', existingRequest._id);
+        
+        existingRequest.requestType = data.requestType;
+        existingRequest.reason = data.reason;
+        existingRequest.requestedData = data.requestedData;
+        existingRequest.expiresAt = new Date(Date.now() + (data.expiresInHours || 24) * 60 * 60 * 1000);
+        existingRequest.updatedAt = new Date();
+        
+        accessRequest = await existingRequest.save();
+        
+        // Update the notification
+        await Notification.findOneAndUpdate(
+          { 'data.requestId': existingRequest._id },
+          {
+            title: '🔐 Updated Access Request - Patient Passport',
+            message: `Dr. ${doctor.name} from ${hospital.name} has updated their access request to your Patient Passport medical records.`,
+            'data.requestType': data.requestType,
+            'data.reason': data.reason,
+            updatedAt: new Date()
+          }
+        );
+      } else {
+        // Create new access request
+        accessRequest = new AccessRequest({
+          ...data,
+          expiresAt: new Date(Date.now() + (data.expiresInHours || 24) * 60 * 60 * 1000)
+        });
+
+        await accessRequest.save();
+
+        // Create notification for patient
+        await this.createNotification({
+          userId: patient.user._id.toString(),
+          type: 'access_request',
+          title: '🔐 New Access Request - Patient Passport',
+          message: `Dr. ${doctor.name} from ${hospital.name} is requesting access to your Patient Passport medical records.`,
+          data: {
+            requestId: accessRequest._id,
+            doctorName: doctor.name,
+            hospitalName: hospital.name,
+            requestType: data.requestType,
+            reason: data.reason,
+            patientPassportId: patient._id
+          },
+          priority: data.requestType === 'emergency' ? 'urgent' : 'high'
+        });
       }
-
-      // Create the access request
-      const accessRequest = new AccessRequest({
-        ...data,
-        expiresAt: new Date(Date.now() + (data.expiresInHours || 24) * 60 * 60 * 1000)
-      });
-
-      await accessRequest.save();
-
-      // Create notification for patient
-      await this.createNotification({
-        userId: patient.user._id.toString(),
-        type: 'access_request',
-        title: '🔐 New Access Request - Patient Passport',
-        message: `Dr. ${doctor.name} from ${hospital.name} is requesting access to your Patient Passport medical records.`,
-        data: {
-          requestId: accessRequest._id,
-          doctorName: doctor.name,
-          hospitalName: hospital.name,
-          requestType: data.requestType,
-          reason: data.reason,
-          patientPassportId: patient._id
-        },
-        priority: data.requestType === 'emergency' ? 'urgent' : 'high'
-      });
 
       // Send email notification to patient
       await this.sendPatientPassportAccessRequestEmail(patient, doctor, hospital, accessRequest);

@@ -136,3 +136,8 @@ Your OpenMRS instance is running and ready for integration with your Patient Pas
 
 
 
+
+
+
+
+

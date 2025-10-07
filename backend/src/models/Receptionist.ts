@@ -124,3 +124,9 @@ export default mongoose.model<IReceptionist, IReceptionistModel>('Receptionist',
 
 
 
+
+
+
+
+
+

@@ -267,3 +267,8 @@ const DoctorAccessRequest: React.FC = () => {
 export default DoctorAccessRequest;
 
 
+
+
+
+
+

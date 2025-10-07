@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "nodemon src/app.ts",
+    "dev": "nodemon --exec \"ts-node -r dotenv/config src/app.ts\"",
     "dev:mock": "nodemon src/app-dev.ts",
     "build": "tsc",
     "test": "jest",
