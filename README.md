@@ -2,7 +2,7 @@
 
 A comprehensive medical records management system built with React, Node.js, TypeScript, and MongoDB. This application enables patients to maintain control of their medical records while facilitating secure data sharing between healthcare providers.
 
-## 🏗️ Architecture Overview
+##  Architecture Overview
 
 The application follows a **microservices architecture** with multiple interconnected services:
 
@@ -20,7 +20,7 @@ The application follows a **microservices architecture** with multiple interconn
 - **Docker** - Containerized deployment
 - **Nginx** - Reverse proxy and load balancer
 
-## 🚀 Key Features
+##  Key Features
 
 ### **Patient Management**
 - Complete patient registration, login, and passport management
@@ -59,7 +59,7 @@ The application follows a **microservices architecture** with multiple interconn
 - Real-time data synchronization
 - Intuitive navigation and user flows
 
-## 🔐 Authentication & User Management
+##  Authentication & User Management
 
 ### **User Roles:**
 - **Patient** - Can view and update their own medical records
@@ -88,7 +88,7 @@ The application follows a **microservices architecture** with multiple interconn
 - **Data Validation** - Comprehensive input validation and sanitization
 - **Relationship Mapping** - Patients linked to doctors, hospitals, and medical records
 
-## 🎨 Frontend User Experience
+##  Frontend User Experience
 
 ### **Landing Page:**
 - Modern, responsive design with Tailwind CSS
@@ -110,7 +110,7 @@ The application follows a **microservices architecture** with multiple interconn
 - Statistics and analytics
 - Administrative functions
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 ### Frontend
 - React 19 with TypeScript
@@ -188,7 +188,7 @@ The application follows a **microservices architecture** with multiple interconn
 - **Password Hashing** - bcrypt with salt rounds
 - **JWT Authentication** - Secure token-based authentication
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 patient-passport/
@@ -226,7 +226,7 @@ patient-passport/
 └── README.md
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Prerequisites
 - Node.js (v18 or higher)
@@ -296,7 +296,7 @@ docker-compose up -d
 - **Central Registry**: http://localhost:3001
 - **Patient Passport Service**: http://localhost:3002
 
-## 🔄 Data Flow
+##  Data Flow
 
 1. **Patient Registration** → User account + Patient profile creation
 2. **Medical Record Entry** → Encrypted storage in MongoDB
@@ -304,7 +304,7 @@ docker-compose up -d
 4. **Data Sharing** → Consent-based sharing between healthcare providers
 5. **Audit Logging** → All actions tracked for compliance
 
-## 🛡️ Security & Compliance
+##  Security & Compliance
 
 - **Data Encryption** - Sensitive data encrypted at rest and in transit
 - **Access Controls** - Role-based permissions
@@ -315,7 +315,7 @@ docker-compose up -d
 - **Password Security** - bcrypt hashing with salt rounds
 - **JWT Security** - Secure token management
 
-## 📱 Additional Services
+##  Additional Services
 
 ### **Central Registry:**
 - Patient identification across multiple hospitals
@@ -332,7 +332,7 @@ docker-compose up -d
 - Patient data synchronization
 - Medical record interoperability
 
-## 🔧 Available Scripts
+##  Available Scripts
 
 ### Root Level
 - `npm run dev` - Start both frontend and backend in development mode
@@ -356,7 +356,7 @@ docker-compose up -d
 - `npm run test:frontend` - Run frontend tests
 - `npm run lint:frontend` - Lint frontend code
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 # Run all tests
@@ -369,11 +369,11 @@ npm run test:backend
 npm run test:frontend
 ```
 
-## 📝 API Documentation
+##  API Documentation
 
 Once the backend is running, visit http://localhost:5000/api-docs to view the interactive API documentation with Swagger UI.
 
-## 🚀 Deployment
+##  Deployment
 
 ### Docker Deployment
 1. Build and start all services: `docker-compose up -d`
@@ -390,7 +390,7 @@ Once the backend is running, visit http://localhost:5000/api-docs to view the in
 1. Build the frontend: `npm run build:frontend`
 2. Serve the built files from the `dist` directory
 
-## 🎯 Key Benefits
+##  Key Benefits
 
 1. **Patient Empowerment** - Patients control their own medical data
 2. **Healthcare Coordination** - Seamless data sharing between providers
@@ -401,7 +401,7 @@ Once the backend is running, visit http://localhost:5000/api-docs to view the in
 7. **Compliance** - Audit trails and data protection measures
 8. **User Experience** - Modern, intuitive interface design
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -409,7 +409,7 @@ Once the backend is running, visit http://localhost:5000/api-docs to view the in
 4. Run tests and linting
 5. Submit a pull request
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
