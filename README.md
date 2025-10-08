@@ -139,7 +139,7 @@ The application follows a **microservices architecture** with multiple interconn
 - **Redis** - Caching and session management
 - **PostgreSQL** - Central registry database
 
-## 🔧 Backend API Structure
+##  Backend API Structure
 
 ### **API Endpoints:**
 
@@ -413,7 +413,7 @@ Once the backend is running, visit http://localhost:5000/api-docs to view the in
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🆘 Support
+##  Support
 
 For support and questions, please contact the PatientPassport team or create an issue in the repository.
 
