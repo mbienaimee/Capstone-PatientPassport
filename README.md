@@ -73,7 +73,7 @@ The application follows a **microservices architecture** with multiple interconn
 3. **JWT Tokens**: Secure authentication with access and refresh tokens
 4. **Role-based Access**: Different dashboards and permissions based on user role
 
-## 📊 Data Models & Structure
+##  Data Models & Structure
 
 ### **Core Entities:**
 - **User** - Base user information (name, email, role, authentication)
