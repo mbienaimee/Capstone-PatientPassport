@@ -106,10 +106,25 @@ export const getAdminDashboard = asyncHandler(async (req: Request, res: Response
 // @route   GET /api/dashboard/hospital
 // @access  Private (Hospital)
 export const getHospitalDashboard = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const hospitalId = req.user.hospital || req.params.hospitalId;
+  let hospitalId = req.user.hospital || req.params.hospitalId;
+
+  // If hospitalId is not directly available, find it by user ID
+  if (!hospitalId && req.user.role === 'hospital') {
+    const hospital = await Hospital.findOne({ user: req.user._id });
+    if (hospital) {
+      hospitalId = hospital._id;
+    }
+  }
 
   if (!hospitalId) {
     throw new CustomError('Hospital ID is required', 400);
+  }
+
+  // Get hospital information
+  const hospital = await Hospital.findById(hospitalId).select('name address contact licenseNumber status');
+  
+  if (!hospital) {
+    throw new CustomError('Hospital not found', 404);
   }
 
   // Get hospital-specific counts
@@ -168,6 +183,14 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
     success: true,
     message: 'Hospital dashboard data retrieved successfully',
     data: {
+      hospital: {
+        _id: hospital._id,
+        name: hospital.name,
+        address: hospital.address,
+        contact: hospital.contact,
+        licenseNumber: hospital.licenseNumber,
+        status: hospital.status
+      },
       stats: {
         totalDoctors,
         totalPatients,
@@ -186,7 +209,15 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
 // @route   GET /api/dashboard/doctor
 // @access  Private (Doctor)
 export const getDoctorDashboard = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const doctorId = req.user.doctor || req.params.doctorId;
+  let doctorId = req.user.doctor || req.params.doctorId;
+
+  // If doctorId is not directly available, find it by user ID
+  if (!doctorId && req.user.role === 'doctor') {
+    const doctor = await Doctor.findOne({ user: req.user._id });
+    if (doctor) {
+      doctorId = doctor._id;
+    }
+  }
 
   if (!doctorId) {
     throw new CustomError('Doctor ID is required', 400);
@@ -198,11 +229,10 @@ export const getDoctorDashboard = asyncHandler(async (req: Request, res: Respons
   const totalMedications = await Medication.countDocuments({ doctor: doctorId });
   const totalTestResults = await TestResult.countDocuments({ doctor: doctorId });
 
-  // Get recent patients
-  const recentPatients = await Patient.find({ assignedDoctors: { $in: [doctorId] } })
+  // Get all patients (for now, showing all patients instead of only assigned ones)
+  const recentPatients = await Patient.find({ status: 'active' })
     .populate('user', 'name email')
-    .sort({ createdAt: -1 })
-    .limit(5);
+    .sort({ createdAt: -1 });
 
   // Get recent medical records
   const recentMedicalConditions = await MedicalCondition.find({ doctor: doctorId })
@@ -434,6 +464,9 @@ export const getGeneralStats = asyncHandler(async (req: Request, res: Response, 
 
   res.json(response);
 });
+
+
+
 
 
 

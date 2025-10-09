@@ -8,12 +8,12 @@ const HospitalLogin = () => {
   const { login } = useAuth();
   const { showNotification } = useNotification();
   const [formData, setFormData] = useState({
-    hospitalName: '',
+    email: '',
     password: ''
   });
 
   const [errors, setErrors] = useState({
-    hospitalName: '',
+    email: '',
     password: ''
   });
 
@@ -34,12 +34,12 @@ const HospitalLogin = () => {
 
   const validateForm = () => {
     const newErrors = {
-      hospitalName: '',
+      email: '',
       password: ''
     };
 
-    if (!formData.hospitalName.trim()) {
-      newErrors.hospitalName = 'Hospital name is required';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
     }
 
     if (!formData.password) {
@@ -64,15 +64,19 @@ const HospitalLogin = () => {
 
     try {
       const success = await login({
-        hospitalName: formData.hospitalName,
+        email: formData.email,
         password: formData.password
       });
       
       if (success) {
+        // Get user data to show personalized message
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        const userName = userData.name || 'Hospital Admin';
+        
         showNotification({
           type: 'success',
           title: 'Login Successful',
-          message: 'Welcome back! Redirecting to dashboard...'
+          message: `Welcome back, ${userName}! Redirecting to dashboard...`
         });
         
         setTimeout(() => {
@@ -134,25 +138,25 @@ const HospitalLogin = () => {
           </p>
 
           <div className="space-y-6">
-            {/* Hospital Name */}
+            {/* Hospital Email */}
             <div>
               <label 
-                htmlFor="hospitalEmail" 
+                htmlFor="email" 
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Hospital Email
               </label>
               <input
                 type="email"
-                id="hospitalName"
-                name="hospitalName"
-                value={formData.hospitalName}
+                id="email"
+                name="email"
+                value={formData.email}
                 onChange={handleChange}
                 placeholder="Enter your hospital email"
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400"
               />
-              {errors.hospitalName && (
-                <p className="mt-1 text-sm text-red-600">{errors.hospitalName}</p>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
               )}
             </div>
 

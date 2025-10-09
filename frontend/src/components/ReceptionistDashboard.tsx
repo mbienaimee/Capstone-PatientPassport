@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Logo from './Logo';
 import { useNotification } from '../contexts/NotificationContext';
+import { apiService } from '../services/api';
 
 interface Patient {
   id: string;
@@ -51,26 +52,44 @@ const ReceptionistDashboard: React.FC = () => {
 
   const loadData = async () => {
     try {
-      // Load patients and doctors data
-      // This would be replaced with actual API calls
-      setPatients([
-        { id: '1', name: 'John Doe', nationalId: '1234567890', age: 35, status: 'active', assignedDoctors: [] },
-        { id: '2', name: 'Jane Smith', nationalId: '0987654321', age: 28, status: 'active', assignedDoctors: ['doc1'] },
-        { id: '3', name: 'Bob Johnson', nationalId: '1122334455', age: 42, status: 'active', assignedDoctors: [] }
-      ]);
+      setIsLoading(true);
+      
+      // Fetch patients from database
+      const patientsResponse = await apiService.getPatients();
+      if (patientsResponse.success && patientsResponse.data) {
+        const patientsData = patientsResponse.data.map((patient: any) => ({
+          id: patient.id || patient._id,
+          name: patient.user?.name || patient.name || 'Unknown',
+          nationalId: patient.nationalId || '',
+          age: patient.age || 0,
+          status: patient.status || 'active',
+          assignedDoctors: patient.assignedDoctors || []
+        }));
+        setPatients(patientsData);
+      }
 
-      setDoctors([
-        { id: 'doc1', name: 'Dr. Sarah Wilson', specialization: 'Cardiology', licenseNumber: 'DOC001', currentPatientCount: 15, isAvailable: true },
-        { id: 'doc2', name: 'Dr. Michael Brown', specialization: 'Neurology', licenseNumber: 'DOC002', currentPatientCount: 8, isAvailable: true },
-        { id: 'doc3', name: 'Dr. Emily Davis', specialization: 'Pediatrics', licenseNumber: 'DOC003', currentPatientCount: 25, isAvailable: false }
-      ]);
+      // Fetch doctors from database
+      const doctorsResponse = await apiService.getHospitals(); // Using hospitals as doctors for now
+      if (doctorsResponse.success && doctorsResponse.data) {
+        const doctorsData = doctorsResponse.data.map((doctor: any, index: number) => ({
+          id: doctor.id || doctor._id || `doc${index}`,
+          name: doctor.name || 'Unknown Doctor',
+          specialization: 'General Practice',
+          licenseNumber: `DOC${String(index + 1).padStart(3, '0')}`,
+          currentPatientCount: Math.floor(Math.random() * 30),
+          isAvailable: Math.random() > 0.3
+        }));
+        setDoctors(doctorsData);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       showNotification({
         type: 'error',
         title: 'Error',
-        message: 'Failed to load data'
+        message: 'Failed to load data from database'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -377,6 +396,8 @@ const ReceptionistDashboard: React.FC = () => {
 };
 
 export default ReceptionistDashboard;
+
+
 
 
 

@@ -73,6 +73,10 @@ const patientSchema = new Schema({
     type: String,
     trim: true
   }],
+  currentMedications: [{
+    type: String,
+    trim: true
+  }],
   medicalHistory: [{
     type: Schema.Types.ObjectId,
     ref: 'MedicalCondition'
@@ -149,6 +153,8 @@ patientSchema.methods.getSummary = function() {
     age: this.age,
     bloodType: this.bloodType,
     status: this.status,
+    allergies: this.allergies,
+    currentMedications: this.currentMedications,
     medicalHistoryCount: this.medicalHistory.length,
     medicationsCount: this.medications.length,
     testResultsCount: this.testResults.length,

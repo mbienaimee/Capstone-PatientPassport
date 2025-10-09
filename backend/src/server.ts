@@ -20,6 +20,7 @@ import assignmentRoutes from './routes/assignments';
 import accessControlRoutes from './routes/accessControl';
 import notificationRoutes from './routes/notifications';
 import passportAccessRoutes from './routes/passportAccess';
+import patientPassportRoutes from './routes/patientPassport';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -207,6 +208,7 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/access-control', accessControlRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/passport-access', passportAccessRoutes);
+app.use('/api/patient-passport', patientPassportRoutes);
 
 app.get('/', (_req, res) => {
   res.json({

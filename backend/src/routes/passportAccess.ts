@@ -5,7 +5,8 @@ import { body, param } from 'express-validator';
 import {
   requestPassportAccessOTP,
   verifyPassportAccessOTP,
-  getPatientPassportWithAccess
+  getPatientPassportWithAccess,
+  updatePatientPassportWithAccess
 } from '@/controllers/passportAccessController';
 
 const router = express.Router();
@@ -44,6 +45,17 @@ router.get('/patient/:patientId/passport',
   ],
   handleValidationErrors,
   getPatientPassportWithAccess
+);
+
+// @route   PUT /api/passport-access/patient/:patientId/passport
+// @desc    Update patient passport with OTP access token
+// @access  Private (Doctor with valid access token)
+router.put('/patient/:patientId/passport',
+  [
+    param('patientId').isMongoId().withMessage('Valid patient ID is required')
+  ],
+  handleValidationErrors,
+  updatePatientPassportWithAccess
 );
 
 export default router;

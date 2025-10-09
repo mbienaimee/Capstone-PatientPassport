@@ -21,6 +21,8 @@ import ReceptionistDashboard from './components/ReceptionistDashboard';
 import HospitalListPage from './components/HospitalListPage';
 import DoctorPatientPassport from './components/DoctorPatientPassport';
 import DoctorAccessRequest from './components/DoctorAccessRequest';
+import DoctorLoginPage from './components/DoctorLoginPage';
+import DoctorDashboardTest from './components/DoctorDashboardTest';
 
 // Wrapper component for OTP verification to handle state
 const OTPVerificationWrapper: React.FC = () => {
@@ -80,7 +82,9 @@ export default function App() {
 
               
               {/* Doctor Routes */}
+              <Route path="/doctor-login" element={<DoctorLoginPage />} />
               <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+              <Route path="/doctor-dashboard-test" element={<DoctorDashboardTest />} />
               <Route path="/my-patients" element={<MyPatients />} />
               <Route path="/search-patient" element={<SearchPatient />} />
               

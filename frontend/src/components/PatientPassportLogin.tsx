@@ -62,10 +62,14 @@ const PatientPassportLogin: React.FC = () => {
       const success = await login(formData);
       
       if (success) {
+        // Get user data from auth context to show personalized message
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        const userName = userData.name || 'Patient';
+        
         showNotification({
           type: 'success',
           title: 'Login Successful',
-          message: 'Welcome back! Redirecting to your patient passport...'
+          message: `Welcome back, ${userName}! Redirecting to your patient passport...`
         });
         
         setTimeout(() => {

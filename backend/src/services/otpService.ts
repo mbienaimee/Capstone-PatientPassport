@@ -6,8 +6,6 @@ import { sendOTPEmail } from './simpleEmailService';
 export const sendOTPSMS = async (phoneNumber: string, otpCode: string): Promise<void> => {
   try {
     // For now, we'll just log the OTP. In production, integrate with Twilio or similar service
-    console.log(`SMS OTP for ${phoneNumber}: ${otpCode}`);
-    
     // TODO: Integrate with actual SMS service
     // const twilio = require('twilio');
     // const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -27,8 +25,6 @@ export const sendOTPSMS = async (phoneNumber: string, otpCode: string): Promise<
 // Generate and send OTP
 export const generateAndSendOTP = async (identifier: string, type: 'email' | 'phone'): Promise<string> => {
   try {
-    console.log(`Generating OTP for ${type}: ${identifier}`);
-    
     // Clean up old OTPs for this identifier
     await OTP.deleteMany({
       identifier,
@@ -41,7 +37,6 @@ export const generateAndSendOTP = async (identifier: string, type: 'email' | 'ph
 
     // Generate new OTP
     const otp = await OTP.generateOTP(identifier, type);
-    console.log(`OTP generated: ${otp.code}`);
 
     // Send OTP based on type
     if (type === 'email') {
@@ -49,8 +44,6 @@ export const generateAndSendOTP = async (identifier: string, type: 'email' | 'ph
     } else {
       await sendOTPSMS(identifier, otp.code);
     }
-
-    console.log(`OTP sent successfully to ${identifier}`);
     return otp.code; // Return for testing purposes
   } catch (error) {
     console.error('Error generating OTP:', error);

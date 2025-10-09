@@ -3,6 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { apiService } from "../services/api";
 import Logo from "./Logo";
+import { 
+  FiUser, 
+  FiMail, 
+  FiShield, 
+  FiCalendar, 
+  FiPhone, 
+  FiHeart, 
+  FiActivity, 
+  FiHome, 
+  FiImage, 
+  FiChevronDown, 
+  FiEye, 
+  FiBell,
+  FiLogOut
+} from 'react-icons/fi';
 
 interface MedicalCondition {
   name: string;
@@ -29,17 +44,43 @@ interface HospitalVisit {
   date: string;
 }
 
+interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+}
+
+interface PatientProfile {
+  _id: string;
+  nationalId: string;
+  dateOfBirth: string;
+  gender: string;
+  contactNumber: string;
+  address: string;
+  emergencyContact: EmergencyContact;
+  bloodType?: string;
+  allergies?: string[];
+  status: string;
+}
+
 const PatientPassport: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [expandedCondition, setExpandedCondition] = useState<number | null>(null);
-  const [medicalData, setMedicalData] = useState({
+  const [medicalData, setMedicalData] = useState<{
+    conditions: MedicalCondition[];
+    medications: Medication[];
+    tests: TestResult[];
+    visits: HospitalVisit[];
+    images: unknown[];
+  }>({
     conditions: [],
     medications: [],
     tests: [],
     visits: [],
     images: []
   });
+  const [patientProfile, setPatientProfile] = useState<PatientProfile | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
   // Redirect to login if not authenticated
@@ -49,21 +90,34 @@ const PatientPassport: React.FC = () => {
     }
   }, [isAuthenticated, isLoading, navigate]);
 
-  // Fetch medical records when component mounts
+  // Fetch medical records and patient profile when component mounts
   useEffect(() => {
     const fetchMedicalRecords = async () => {
       if (isAuthenticated && user?.id) {
         try {
           setDataLoading(true);
-          // First, get the patient profile to get the correct patient ID
+          console.log('Fetching patient profile and medical records...');
+          
+          // Get the patient profile including emergency contact information
           const patientResponse = await apiService.getCurrentUser();
+          console.log('Patient profile response:', patientResponse);
+          
           if (patientResponse.success && patientResponse.data) {
-            // For now, we'll use the user ID as patient ID since they're the same in this system
-            // In a real system, you'd have a separate Patient model with its own ID
+            // Set patient profile data (includes emergency contact)
+            const profile = (patientResponse.data as unknown as { profile: PatientProfile }).profile;
+            console.log('Patient profile data:', profile);
+            console.log('Emergency contact:', profile?.emergencyContact);
+            setPatientProfile(profile);
+            
+            // Fetch medical records
             const response = await apiService.getPatientMedicalRecords(user.id);
+            console.log('Medical records response:', response);
+            
             if (response.success) {
-              setMedicalData(response.data);
+              setMedicalData(response.data as typeof medicalData);
             }
+          } else {
+            console.warn('Failed to fetch patient profile:', patientResponse.message);
           }
         } catch (error) {
           console.error('Error fetching medical records:', error);
@@ -75,6 +129,7 @@ const PatientPassport: React.FC = () => {
             visits: [],
             images: []
           });
+          setPatientProfile(null);
         } finally {
           setDataLoading(false);
         }
@@ -89,7 +144,7 @@ const PatientPassport: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your passport...</p>
         </div>
       </div>
@@ -102,46 +157,59 @@ const PatientPassport: React.FC = () => {
   }
 
   // Transform database records to component format
-  const medicalHistory: MedicalCondition[] = medicalData.conditions.map((record: any) => ({
-    name: record.data.name || '',
-    details: record.data.details || '',
-    diagnosed: record.data.diagnosed || '',
-    procedure: record.data.procedure || ''
-  }));
+  const medicalHistory: MedicalCondition[] = medicalData.conditions.map((record: unknown) => {
+    const r = record as { data: { name?: string; details?: string; diagnosed?: string; procedure?: string } };
+    return {
+      name: r.data.name || '',
+      details: r.data.details || '',
+      diagnosed: r.data.diagnosed || '',
+      procedure: r.data.procedure || ''
+    };
+  });
 
-  const medications: Medication[] = medicalData.medications.map((record: any) => ({
-    name: record.data.medicationName || '',
-    dosage: record.data.dosage || '',
-    status: record.data.status || 'Active'
-  }));
+  const medications: Medication[] = medicalData.medications.map((record: unknown) => {
+    const r = record as { data: { medicationName?: string; dosage?: string; status?: string } };
+    return {
+      name: r.data.medicationName || '',
+      dosage: r.data.dosage || '',
+      status: (r.data.status || 'Active') as "Active" | "Past"
+    };
+  });
 
-  const testResults: TestResult[] = medicalData.tests.map((record: any) => ({
-    name: record.data.testName || '',
-    date: record.data.testDate || '',
-    status: record.data.status || 'Normal'
-  }));
+  const testResults: TestResult[] = medicalData.tests.map((record: unknown) => {
+    const r = record as { data: { testName?: string; testDate?: string; status?: string } };
+    return {
+      name: r.data.testName || '',
+      date: r.data.testDate || '',
+      status: (r.data.status || 'Normal') as "Normal" | "Critical" | "Normal Sinus Rhythm"
+    };
+  });
 
-  const hospitalVisits: HospitalVisit[] = medicalData.visits.map((record: any) => ({
-    hospital: record.data.hospital || '',
-    reason: record.data.reason || '',
-    date: record.data.visitDate || ''
-  }));
+  const hospitalVisits: HospitalVisit[] = medicalData.visits.map((record: unknown) => {
+    const r = record as { data: { hospital?: string; reason?: string; visitDate?: string } };
+    return {
+      hospital: r.data.hospital || '',
+      reason: r.data.reason || '',
+      date: r.data.visitDate || ''
+    };
+  });
 
-  const medicalImages = medicalData.images.map((record: any) => ({
-    url: record.data.imageUrl || '',
-    alt: record.data.description || 'Medical Image'
-  }));
+  const medicalImages = medicalData.images.map((record: unknown) => {
+    const r = record as { data: { imageUrl?: string; description?: string } };
+    return {
+      url: r.data.imageUrl || '',
+      alt: r.data.description || 'Medical Image'
+    };
+  });
 
   // Empty state component
-  const EmptyState = ({ title, description }: { title: string; description: string }) => (
-    <div className="text-center py-8">
-      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
+  const EmptyState = ({ title, description, icon: Icon }: { title: string; description: string; icon: React.ComponentType<{ className?: string }> }) => (
+    <div className="text-center py-6">
+      <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+        <Icon className="w-6 h-6 text-gray-400" />
       </div>
-      <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500">{description}</p>
+      <h3 className="text-base font-medium text-gray-900 mb-1">{title}</h3>
+      <p className="text-sm text-gray-500">{description}</p>
     </div>
   );
 
@@ -150,7 +218,7 @@ const PatientPassport: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading medical records...</p>
         </div>
       </div>
@@ -161,7 +229,7 @@ const PatientPassport: React.FC = () => {
     <div className="dashboard-container">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <Logo size="md" />
           <nav className="hidden md:flex items-center space-x-6">
             <button 
@@ -174,29 +242,28 @@ const PatientPassport: React.FC = () => {
               My Passport
             </button>
             <button 
-              onClick={() => navigate('/update-passport')}
-              className="nav-link"
-            >
-              Update Passport
-            </button>
-            <button 
               onClick={async () => {
                 await logout();
                 navigate('/');
               }}
-              className="nav-link"
+              className="nav-link flex items-center gap-2"
             >
+              <FiLogOut className="w-4 h-4" />
               Logout
             </button>
           </nav>
           <div className="flex items-center space-x-3">
             <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Notifications">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
+              <FiBell className="w-5 h-5" />
             </button>
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-              AS
+            <div className="flex items-center space-x-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-gray-900">{user?.name || 'Loading...'}</p>
+                <p className="text-xs text-gray-500 capitalize">{user?.role || 'Patient'}</p>
+              </div>
+              <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'P'}
+              </div>
             </div>
           </div>
         </div>
@@ -208,12 +275,12 @@ const PatientPassport: React.FC = () => {
           <h1 className="heading-lg text-gray-900">
             Patient Passport Overview
           </h1>
-          <p className="body-sm text-gray-600 mt-2">
+          <p className="body-sm text-gray-600 mt-1">
             Complete medical history and health information
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Patient Information */}
           <div className="dashboard-card">
             <div className="dashboard-card-header">
@@ -221,73 +288,100 @@ const PatientPassport: React.FC = () => {
                 Patient Information
               </h2>
             </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                <span className="text-sm font-medium text-gray-500">Name</span>
-                <span className="text-sm font-semibold text-gray-900">{user?.name || 'Loading...'}</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 py-2">
+                <FiUser className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Name</span>
+                  <p className="text-sm font-semibold text-gray-900">{user?.name || 'Loading...'}</p>
+                </div>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                <span className="text-sm font-medium text-gray-500">Email</span>
-                <span className="text-sm font-semibold text-gray-900">{user?.email || 'Loading...'}</span>
+              <div className="flex items-center gap-3 py-2">
+                <FiMail className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Email</span>
+                  <p className="text-sm font-semibold text-gray-900">{user?.email || 'Loading...'}</p>
+                </div>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                <span className="text-sm font-medium text-gray-500">Role</span>
-                <span className="text-sm font-semibold text-gray-900 capitalize">{user?.role || 'Loading...'}</span>
+              <div className="flex items-center gap-3 py-2">
+                <FiShield className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Role</span>
+                  <p className="text-sm font-semibold text-gray-900 capitalize">{user?.role || 'Loading...'}</p>
+                </div>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                <span className="text-sm font-medium text-gray-500">Account Status</span>
-                <span className="text-sm font-semibold text-green-600">Active</span>
-              </div>
-              <div className="flex justify-between items-start py-2">
-                <span className="text-sm font-medium text-gray-500">Member Since</span>
-                <span className="text-sm font-semibold text-gray-900 text-right">
-                  {new Date().toLocaleDateString()}
-                </span>
+              <div className="flex items-center gap-3 py-2">
+                <FiCalendar className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Member Since</span>
+                  <p className="text-sm font-semibold text-gray-900">{new Date().toLocaleDateString()}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Primary Doctor */}
+          {/* Emergency Contact */}
           <div className="dashboard-card">
             <div className="dashboard-card-header">
               <h2 className="dashboard-card-title text-green-600">
-                Primary Doctor
+                Emergency Contact
               </h2>
             </div>
-            <div className="flex items-start space-x-4">
-              <img
-                src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200"
-                alt="Dr. Ben Carter"
-                className="w-16 h-16 rounded-full object-cover shadow-md"
-              />
-              <div className="space-y-3 flex-1">
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Name</span>
-                  <span className="text-sm font-semibold text-gray-900">Dr. Ben Carter</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Specialty</span>
-                  <span className="text-sm font-semibold text-gray-900">Cardiologist</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Hospital</span>
-                  <span className="text-sm font-semibold text-gray-900">City General Hospital</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Contact</span>
-                  <span className="text-sm font-semibold text-gray-900">+1 (555) 987-6543</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-sm font-medium text-gray-500">Email</span>
-                  <span className="text-sm font-semibold text-gray-900">ben.carter@hospital.com</span>
-                </div>
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <FiPhone className="w-6 h-6 sm:w-7 sm:h-7 text-green-600" />
+              </div>
+              <div className="space-y-2 sm:space-y-3 flex-1 min-w-0">
+                {patientProfile?.emergencyContact ? (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <FiUser className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs sm:text-sm font-medium text-gray-500 block sm:inline">Name</span>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                            {patientProfile.emergencyContact.name || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <FiHeart className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs sm:text-sm font-medium text-gray-500 block sm:inline">Relationship</span>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                            {patientProfile.emergencyContact.relationship || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <FiPhone className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs sm:text-sm font-medium text-gray-500 block sm:inline">Phone</span>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                            {patientProfile.emergencyContact.phone || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6">
+                    <FiPhone className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">No emergency contact information available</p>
+                    <p className="text-gray-400 text-xs mt-1">Please update your profile to add emergency contact details</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* Medical History */}
-        <div className="dashboard-card mb-8">
+        <div className="dashboard-card mb-6">
           <div className="dashboard-card-header">
             <h2 className="dashboard-card-title text-green-600">
               Medical History
@@ -298,10 +392,11 @@ const PatientPassport: React.FC = () => {
               <EmptyState 
                 title="No Medical History" 
                 description="Your medical conditions and procedures will appear here once added by your healthcare providers."
+                icon={FiActivity}
               />
             ) : (
               medicalHistory.map((condition, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-lg hover:border-green-300 transition-colors">
+              <div key={idx} className="border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 rounded-lg"
                   onClick={() =>
@@ -327,30 +422,11 @@ const PatientPassport: React.FC = () => {
                         ? `Diagnosed: ${condition.diagnosed}`
                         : `Procedure: ${condition.procedure}`}
                     </span>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => navigate('/update-passport')}
-                        className="text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                        aria-label={`Edit ${condition.name}`}
-                      >
-                        Edit
-                      </button>
-                    </div>
-                    <svg
+                    <FiChevronDown
                       className={`w-5 h-5 text-gray-400 transition-transform ${
                         expandedCondition === idx ? "rotate-180" : ""
                       }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    />
                   </div>
                 </div>
                 {expandedCondition === idx && condition.details && (
@@ -367,7 +443,7 @@ const PatientPassport: React.FC = () => {
         </div>
 
         {/* Medications */}
-        <div className="dashboard-card mb-8">
+        <div className="dashboard-card mb-6">
           <div className="dashboard-card-header">
             <h2 className="dashboard-card-title text-green-600">
               Medications
@@ -378,6 +454,7 @@ const PatientPassport: React.FC = () => {
               <EmptyState 
                 title="No Medications" 
                 description="Your current and past medications will appear here once added by your healthcare providers."
+                icon={FiActivity}
               />
             ) : (
               medications.map((med, idx) => (
@@ -397,13 +474,6 @@ const PatientPassport: React.FC = () => {
                   >
                     {med.status === "Past" ? "Past (Completed)" : med.status}
                   </span>
-                  <button
-                    onClick={() => navigate('/update-passport')}
-                    className="text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                    aria-label={`Edit ${med.name} medication`}
-                  >
-                    Edit
-                  </button>
                 </div>
               </div>
             ))
@@ -411,7 +481,7 @@ const PatientPassport: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Test Results */}
           <div className="dashboard-card">
             <div className="dashboard-card-header">
@@ -419,11 +489,12 @@ const PatientPassport: React.FC = () => {
                 Test Results
               </h2>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {testResults.length === 0 ? (
                 <EmptyState 
                   title="No Test Results" 
                   description="Your lab tests and diagnostic results will appear here once added by your healthcare providers."
+                  icon={FiActivity}
                 />
               ) : (
                 testResults.map((test, idx) => (
@@ -451,17 +522,11 @@ const PatientPassport: React.FC = () => {
                     </span>
                     <button 
                       onClick={() => navigate('/patient-passport')}
-                      className="text-xs text-green-600 hover:text-green-700 font-semibold transition-colors"
+                      className="text-xs text-green-600 hover:text-blue-700 font-semibold transition-colors flex items-center gap-1"
                       aria-label={`View ${test.name} report`}
                     >
+                      <FiEye className="w-3 h-3" />
                       View Report
-                    </button>
-                    <button
-                      onClick={() => navigate('/update-passport')}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-semibold transition-colors"
-                      aria-label={`Edit ${test.name} result`}
-                    >
-                      Edit
                     </button>
                   </div>
                 </div>
@@ -477,11 +542,12 @@ const PatientPassport: React.FC = () => {
                 Hospital Visits
               </h2>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-2">
               {hospitalVisits.length === 0 ? (
                 <EmptyState 
                   title="No Hospital Visits" 
                   description="Your hospital visits and appointments will appear here once added by your healthcare providers."
+                  icon={FiHome}
                 />
               ) : (
                 hospitalVisits.map((visit, idx) => (
@@ -497,13 +563,6 @@ const PatientPassport: React.FC = () => {
                       <p className="text-xs text-gray-600 mt-1">{visit.reason}</p>
                       <p className="text-xs text-gray-500 mt-1">{visit.date}</p>
                     </div>
-                    <button
-                      onClick={() => navigate('/update-passport')}
-                      className="text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                      aria-label={`Edit visit to ${visit.hospital}`}
-                    >
-                      Edit
-                    </button>
                   </div>
                 </div>
               ))
@@ -518,16 +577,17 @@ const PatientPassport: React.FC = () => {
             <h2 className="dashboard-card-title text-green-600">
               Medical Images
             </h2>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-600 mt-1">
               Uploaded X-rays, scans, and other diagnostic images
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {medicalImages.length === 0 ? (
               <div className="col-span-full">
                 <EmptyState 
                   title="No Medical Images" 
                   description="Your X-rays, scans, and other diagnostic images will appear here once uploaded by your healthcare providers."
+                  icon={FiImage}
                 />
               </div>
             ) : (
@@ -542,23 +602,7 @@ const PatientPassport: React.FC = () => {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white opacity-0 hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/update-passport');
-                    }}
-                    className="bg-blue-600 text-white p-1 rounded-full hover:bg-blue-700 transition-colors"
-                    aria-label={`Edit ${img.alt}`}
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
+                  <FiEye className="w-6 h-6 text-white opacity-0 hover:opacity-100 transition-opacity" />
                 </div>
               </div>
             ))

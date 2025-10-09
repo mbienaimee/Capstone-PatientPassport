@@ -47,10 +47,12 @@ export interface IPatient extends Document {
   };
   bloodType?: string;
   allergies?: string[];
-  medicalHistory: string[]; // References to MedicalCondition
+  medicalHistory?: string[]; // References to MedicalCondition
+  currentMedications?: string[]; // Current medications
   medications: string[]; // References to Medication
   testResults: string[]; // References to TestResult
   hospitalVisits: string[]; // References to HospitalVisit
+  medicalImages?: string[]; // References to medical images/files
   assignedDoctors: string[]; // References to Doctor
   status: 'active' | 'inactive';
   createdAt: Date;

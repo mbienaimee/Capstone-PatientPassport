@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Settings, LogOut } from 'lucide-react';
+import { 
+  Building2, 
+  Users, 
+  Phone, 
+  MapPin, 
+  Shield, 
+  LogOut, 
+  UserPlus, 
+  Edit, 
+  Trash2, 
+  Key, 
+  LogIn,
+  Stethoscope,
+  Mail,
+  Calendar,
+  Activity
+} from 'lucide-react';
 import Logo from './Logo';
 import DoctorManagement from './DoctorManagement';
 import { apiService } from '../services/api';
@@ -33,38 +49,21 @@ const HospitalDashboard: React.FC = () => {
   const fetchHospitalInfo = async () => {
     try {
       setLoading(true);
-      // Get current user's hospital info
-      const response = await apiService.getCurrentUser();
-      console.log('Current user response:', response);
+      // Get hospital dashboard data which includes hospital info
+      const response = await apiService.request('/dashboard/hospital');
+      console.log('Hospital dashboard response:', response);
       
       if (response.success && response.data) {
-        // Check if profile exists in the response
-        const profile = (response.data as { profile?: { _id: string; name: string; address: string; contact: string; licenseNumber: string; status: string } }).profile;
-        if (profile) {
-          // The profile should contain hospital info
-          const hospital = profile;
+        const { hospital } = response.data;
+        if (hospital) {
           setHospitalId(hospital._id);
           setHospitalInfo(hospital);
           console.log('Hospital info loaded:', hospital);
         } else {
-          console.error('No hospital profile found in response:', response);
-          // If no profile found, try to get hospital info from localStorage
-          const hospitalAuth = localStorage.getItem('hospitalAuth');
-          if (hospitalAuth) {
-            try {
-              const hospitalData = JSON.parse(hospitalAuth);
-              if (hospitalData.hospital) {
-                setHospitalId(hospitalData.hospital._id);
-                setHospitalInfo(hospitalData.hospital);
-                console.log('Hospital info loaded from localStorage:', hospitalData.hospital);
-              }
-            } catch (error) {
-              console.error('Error parsing hospital auth data:', error);
-            }
-          }
+          console.error('No hospital data found in response:', response);
         }
       } else {
-        console.error('Failed to get current user:', response);
+        console.error('Failed to get hospital dashboard:', response);
       }
     } catch (error) {
       console.error('Error fetching hospital info:', error);
@@ -121,20 +120,28 @@ const HospitalDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-lg border-b-2 border-green-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-20">
             <div className="flex items-center">
-              <Logo size="sm" className="mr-4" />
-              <h1 className="text-xl font-semibold text-gray-900">Hospital Dashboard</h1>
+              <div className="p-2 bg-green-100 rounded-xl mr-4">
+                <Logo size="sm" className="text-green-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Hospital Dashboard</h1>
+                <p className="text-sm text-green-600 font-medium">Medical Management System</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
+            <div className="flex items-center space-x-6">
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-900">Welcome, {user?.name}</p>
+                <p className="text-xs text-green-600">Hospital Administrator</p>
+              </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors border border-red-200"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -146,42 +153,46 @@ const HospitalDashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Hospital Management</h2>
-          <p className="text-gray-600">Manage your hospital operations and patient records</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Hospital Management Center</h2>
+          <p className="text-lg text-gray-600">Manage your hospital operations and medical staff efficiently</p>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 mb-6">
-          <nav className="flex space-x-8 px-6">
+        <div className="bg-white rounded-2xl shadow-xl border border-green-100 mb-8">
+          <nav className="flex space-x-8 px-8">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-6 px-4 border-b-4 font-semibold text-lg transition-all duration-200 ${
                 activeTab === 'overview'
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-green-500 text-green-600 bg-green-50'
+                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300'
               }`}
             >
-              Overview
+              <Building2 className="inline-block w-5 h-5 mr-2" />
+              Hospital Details
             </button>
             <button
               onClick={() => setActiveTab('doctors')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-6 px-4 border-b-4 font-semibold text-lg transition-all duration-200 ${
                 activeTab === 'doctors'
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-green-500 text-green-600 bg-green-50'
+                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300'
               }`}
             >
-              Doctors
+              <Stethoscope className="inline-block w-5 h-5 mr-2" />
+              Medical Staff
             </button>
             <button
               onClick={() => setActiveTab('patients')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-6 px-4 border-b-4 font-semibold text-lg transition-all duration-200 ${
                 activeTab === 'patients'
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-green-500 text-green-600 bg-green-50'
+                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300'
               }`}
             >
+              <Users className="inline-block w-5 h-5 mr-2" />
               Patients
             </button>
           </nav>
@@ -189,152 +200,111 @@ const HospitalDashboard: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
-          <div>
-            {/* Hospital Information */}
-            <div className="mb-8 bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">🏥 Hospital Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Hospital Name</p>
-                  <p className="font-medium text-gray-900">{hospitalInfo.name}</p>
+          <div className="space-y-8">
+            {/* Hospital Information Card */}
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
+              <div className="flex items-center mb-6">
+                <div className="p-4 bg-green-100 rounded-2xl mr-6">
+                  <Building2 className="h-8 w-8 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">License Number</p>
-                  <p className="font-medium text-gray-900">{hospitalInfo.licenseNumber}</p>
+                  <h3 className="text-2xl font-bold text-gray-900">Hospital Information</h3>
+                  <p className="text-gray-600">Complete hospital details and status</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Address</p>
-                  <p className="font-medium text-gray-900">{hospitalInfo.address}</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                  <div className="flex items-center mb-3">
+                    <Building2 className="h-6 w-6 text-green-600 mr-3" />
+                    <h4 className="font-semibold text-gray-900">Hospital Name</h4>
+                  </div>
+                  <p className="text-lg font-medium text-gray-800">{hospitalInfo.name}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Contact</p>
-                  <p className="font-medium text-gray-900">{hospitalInfo.contact}</p>
+                
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                  <div className="flex items-center mb-3">
+                    <Shield className="h-6 w-6 text-green-600 mr-3" />
+                    <h4 className="font-semibold text-gray-900">License Number</h4>
+                  </div>
+                  <p className="text-lg font-medium text-gray-800">{hospitalInfo.licenseNumber}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    hospitalInfo.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                  <div className="flex items-center mb-3">
+                    <Activity className="h-6 w-6 text-green-600 mr-3" />
+                    <h4 className="font-semibold text-gray-900">Status</h4>
+                  </div>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    hospitalInfo.status === 'active' 
+                      ? 'bg-green-100 text-green-800 border border-green-200' 
+                      : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                   }`}>
-                    {hospitalInfo.status}
+                    {hospitalInfo.status === 'active' ? '✓ Active' : '⚠ Pending'}
                   </span>
                 </div>
+                
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200 md:col-span-2">
+                  <div className="flex items-center mb-3">
+                    <MapPin className="h-6 w-6 text-green-600 mr-3" />
+                    <h4 className="font-semibold text-gray-900">Address</h4>
+                  </div>
+                  <p className="text-lg font-medium text-gray-800">{hospitalInfo.address}</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                  <div className="flex items-center mb-3">
+                    <Phone className="h-6 w-6 text-green-600 mr-3" />
+                    <h4 className="font-semibold text-gray-900">Contact</h4>
+                  </div>
+                  <p className="text-lg font-medium text-gray-800">{hospitalInfo.contact}</p>
+                </div>
               </div>
             </div>
 
-        {/* Patient Passport Section */}
-        <div className="mb-8 bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center mb-6">
-            <div className="p-3 bg-green-100 rounded-lg mr-4">
-              <FileText className="h-8 w-8 text-green-600" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">🏥 Patient Passport Access</h2>
-              <p className="text-gray-600">Access patient medical records through Patient Passport system</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Doctor Access */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">👨‍⚕️ Doctor Access</h3>
-              <p className="text-sm text-gray-600 mb-4">Doctors can access Patient Passport records with proper authorization</p>
-              <button
-                onClick={() => navigate('/doctor-patient-passport')}
-                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                Access Patient Passport
-              </button>
-            </div>
-
-            {/* Patient Management */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">👥 Patient Management</h3>
-              <p className="text-sm text-gray-600 mb-4">Manage patients registered in Patient Passport system</p>
-              <button
-                onClick={() => navigate('/patient-list')}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                View Patients
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Medical Records Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <FileText className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">Medical Records</h3>
-                <p className="text-sm text-gray-600">Access patient medical data</p>
+            {/* Quick Actions */}
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <button
+                  onClick={() => setActiveTab('doctors')}
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-6 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <div className="flex items-center mb-3">
+                    <Stethoscope className="h-8 w-8 mr-3" />
+                    <h4 className="text-xl font-bold">Manage Doctors</h4>
+                  </div>
+                  <p className="text-green-100">Add, edit, and manage medical staff</p>
+                </button>
+                
+                <button
+                  onClick={() => navigate('/doctor-patient-passport')}
+                  className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white p-6 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <div className="flex items-center mb-3">
+                    <Users className="h-8 w-8 mr-3" />
+                    <h4 className="text-xl font-bold">Patient Records</h4>
+                  </div>
+                  <p className="text-blue-100">Access patient medical records</p>
+                </button>
+                
+                <button
+                  onClick={() => navigate('/search-patient')}
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-6 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <div className="flex items-center mb-3">
+                    <Calendar className="h-8 w-8 mr-3" />
+                    <h4 className="text-xl font-bold">Search Patients</h4>
+                  </div>
+                  <p className="text-purple-100">Find and view patient information</p>
+                </button>
               </div>
             </div>
-            <div className="mt-4">
-              <button
-                onClick={() => navigate('/search-patient')}
-                className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Search Records
-              </button>
-            </div>
-          </div>
-
-          {/* Settings Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
-            <div className="flex items-center">
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <Settings className="h-6 w-6 text-gray-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">Settings</h3>
-                <p className="text-sm text-gray-600">Hospital configuration</p>
-              </div>
-            </div>
-            <div className="mt-4">
-              <button
-                onClick={() => navigate('/hospital-settings')}
-                className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Configure
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">0</div>
-              <div className="text-sm text-gray-600">Total Patients</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">0</div>
-              <div className="text-sm text-gray-600">Active Records</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">0</div>
-              <div className="text-sm text-gray-600">Pending Reviews</div>
-            </div>
-          </div>
-        </div>
           </div>
         )}
 
         {activeTab === 'doctors' && hospitalId && (
           <DoctorManagement hospitalId={hospitalId} />
-        )}
-
-        {activeTab === 'patients' && (
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Patient Management</h3>
-            <p className="text-gray-600">Patient management features will be available here.</p>
-          </div>
         )}
       </main>
     </div>

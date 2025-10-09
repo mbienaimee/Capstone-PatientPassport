@@ -52,7 +52,7 @@ const DoctorLogin: React.FC<DoctorLoginProps> = ({ doctor, onClose, onLoginSucce
         showNotification({
           type: 'success',
           title: 'Login Successful',
-          message: `Welcome Dr. ${doctor.user.name}! Redirecting to dashboard...`
+          message: `Welcome Dr. ${doctor.user.name}! Redirecting to patient list...`
         });
         
         // Close the modal and redirect to doctor dashboard

@@ -59,7 +59,7 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
           title: 'OTP Sent!',
           message: `OTP has been sent to ${patientName}'s email. Please ask them to share the code with you.`
         });
-        setCountdown(60); // 60 seconds countdown
+        setCountdown(10); // 10 seconds countdown
       }
     } catch (error) {
       console.error('Request OTP error:', error);

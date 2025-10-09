@@ -130,19 +130,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Send OTP for email verification
-  let otpCode: string | undefined;
   try {
-    otpCode = await generateAndSendOTP(email, 'email');
+    await generateAndSendOTP(email, 'email');
     console.log('OTP sent successfully for email verification');
-    
-    // In development mode, log OTP
-    if (process.env.NODE_ENV === 'development') {
-      console.log('='.repeat(50));
-      console.log('DEVELOPMENT MODE - OTP for registration:');
-      console.log(`Email: ${email}`);
-      console.log(`OTP: ${otpCode}`);
-      console.log('='.repeat(50));
-    }
   } catch (error) {
     console.error('Error sending OTP:', error);
     // Don't fail registration if OTP sending fails

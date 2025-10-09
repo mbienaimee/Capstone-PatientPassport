@@ -209,7 +209,8 @@ class ApiService {
 
   // Patient endpoints
   async getPatients(): Promise<ApiResponse<Patient[]>> {
-    return this.request('/patients');
+    const response = await this.request('/patients?limit=1000'); // Get all patients
+    return response;
   }
 
   async getPatient(id: string): Promise<ApiResponse<Patient>> {
@@ -417,11 +418,21 @@ class ApiService {
   }
 
   async getPatientPassportWithAccess(patientId: string, accessToken: string): Promise<ApiResponse<any>> {
-    return this.request(`/passport-access/patient/${patientId}/passport`, {
+    return this.request(`/patient-passport/${patientId}`, {
       method: 'GET',
       headers: {
         'X-Access-Token': accessToken
       }
+    });
+  }
+
+  async updatePatientPassportWithAccess(patientId: string, accessToken: string, updateData: any): Promise<ApiResponse<any>> {
+    return this.request(`/patient-passport/${patientId}`, {
+      method: 'PUT',
+      headers: {
+        'X-Access-Token': accessToken
+      },
+      body: JSON.stringify(updateData)
     });
   }
 }

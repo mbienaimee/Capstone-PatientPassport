@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
-import { UserPlus, UserMinus, Edit, Eye, Trash2, Key, LogIn, X } from 'lucide-react';
+import { UserPlus, UserMinus, Edit, Eye, Trash2, Key, LogIn, X, Stethoscope, Users, Mail, Shield } from 'lucide-react';
 import DoctorLogin from './DoctorLogin';
 import DoctorPatientList from './DoctorPatientList';
 
@@ -235,28 +235,40 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">👨‍⚕️ Doctor Management</h2>
-          <p className="text-gray-600">Manage doctors in your hospital</p>
+      <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="p-4 bg-green-100 rounded-2xl mr-6">
+              <Stethoscope className="h-8 w-8 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">Medical Staff Management</h2>
+              <p className="text-lg text-gray-600">Manage doctors and medical professionals in your hospital</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center font-semibold"
+          >
+            <UserPlus className="h-5 w-5 mr-2" />
+            Add New Doctor
+          </button>
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
-        >
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Doctor
-        </button>
       </div>
 
       {/* Add/Edit Doctor Form */}
       {showAddForm && (
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            {editingDoctor ? 'Edit Doctor' : 'Add New Doctor'}
-          </h3>
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
+          <div className="flex items-center mb-6">
+            <div className="p-3 bg-green-100 rounded-xl mr-4">
+              <UserPlus className="h-6 w-6 text-green-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900">
+              {editingDoctor ? 'Edit Doctor Information' : 'Add New Doctor'}
+            </h3>
+          </div>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -329,17 +341,17 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex justify-end space-x-4 pt-6">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-semibold"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold"
               >
                 {editingDoctor ? 'Update Doctor' : 'Add Doctor'}
               </button>
@@ -349,84 +361,99 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
       )}
 
       {/* Doctors List */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Doctors</h3>
+      <div className="bg-white rounded-2xl shadow-xl border border-green-100">
+        <div className="p-8">
+          <div className="flex items-center mb-6">
+            <div className="p-3 bg-green-100 rounded-xl mr-4">
+              <Users className="h-6 w-6 text-green-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900">Current Medical Staff</h3>
+          </div>
           
           {doctors.length === 0 ? (
-            <div className="text-center py-8">
-              <UserPlus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No doctors yet</h3>
-              <p className="text-gray-600 mb-4">Add your first doctor to get started</p>
+            <div className="text-center py-12">
+              <div className="p-6 bg-green-50 rounded-2xl inline-block mb-6">
+                <Stethoscope className="h-16 w-16 text-green-400 mx-auto" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">No Medical Staff Yet</h3>
+              <p className="text-lg text-gray-600 mb-8">Add your first doctor to start building your medical team</p>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold text-lg"
               >
+                <UserPlus className="h-5 w-5 mr-2 inline-block" />
                 Add First Doctor
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-4">
               {doctors.map((doctor) => (
-                <div key={doctor._id} className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                        <UserPlus className="h-5 w-5 text-green-600" />
+                <div key={doctor._id} className="bg-white rounded-xl p-6 border border-green-200 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-6">
+                      <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center">
+                        <Stethoscope className="h-6 w-6 text-green-600" />
                       </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{doctor.user.name}</h4>
-                        <p className="text-sm text-gray-600">{doctor.specialization}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4">
+                          <h4 className="text-lg font-bold text-gray-900">Dr. {doctor.user.name}</h4>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            doctor.isActive 
+                              ? 'bg-green-100 text-green-800 border border-green-200' 
+                              : 'bg-red-100 text-red-800 border border-red-200'
+                          }`}>
+                            {doctor.isActive ? '✓ Active' : '⚠ Inactive'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-6 mt-2">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Mail className="h-4 w-4 mr-2 text-green-500" />
+                            <span>{doctor.user.email}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Shield className="h-4 w-4 mr-2 text-green-500" />
+                            <span>License: {doctor.licenseNumber}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Users className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Patients: {doctor.patients.length}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span className="font-medium text-green-600">{doctor.specialization}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      doctor.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {doctor.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2 mb-4">
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Email:</span> {doctor.user.email}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">License:</span> {doctor.licenseNumber}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Patients:</span> {doctor.patients.length}
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleDoctorLogin(doctor)}
-                      className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm flex items-center justify-center"
-                    >
-                      <LogIn className="h-3 w-3 mr-1" />
-                      Login
-                    </button>
-                    <button
-                      onClick={() => handleChangePassword(doctor)}
-                      className="bg-blue-600 text-white py-2 px-3 rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center justify-center"
-                    >
-                      <Key className="h-3 w-3 mr-1" />
-                      Password
-                    </button>
-                    <button
-                      onClick={() => handleEditDoctor(doctor)}
-                      className="bg-yellow-600 text-white py-2 px-3 rounded-md hover:bg-yellow-700 transition-colors text-sm flex items-center justify-center"
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleRemoveDoctor(doctor._id)}
-                      className="bg-red-600 text-white py-2 px-3 rounded-md hover:bg-red-700 transition-colors text-sm flex items-center justify-center"
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Remove
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => handleDoctorLogin(doctor)}
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 px-4 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                      >
+                        <LogIn className="h-4 w-4 mr-2" />
+                        Login
+                      </button>
+                      <button
+                        onClick={() => handleChangePassword(doctor)}
+                        className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white py-2 px-4 rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                      >
+                        <Key className="h-4 w-4 mr-2" />
+                        Password
+                      </button>
+                      <button
+                        onClick={() => handleEditDoctor(doctor)}
+                        className="bg-gradient-to-r from-yellow-500 to-orange-600 text-white py-2 px-4 rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleRemoveDoctor(doctor._id)}
+                        className="bg-gradient-to-r from-red-500 to-pink-600 text-white py-2 px-4 rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
