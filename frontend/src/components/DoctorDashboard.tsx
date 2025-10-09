@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import PassportAccessOTP from './PassportAccessOTP';
-import PatientPassportView from './PatientPassportView';
+import type { Patient } from '../types';
 import { 
   Users, 
   Eye, 
@@ -12,7 +12,7 @@ import {
   Activity
 } from 'lucide-react';
 
-interface Patient {
+interface DoctorPatient {
   _id: string;
   user: {
     _id: string;
@@ -35,18 +35,27 @@ interface Patient {
   status: 'active' | 'inactive';
 }
 
+
 interface DoctorDashboardProps {
   onLogout?: () => void;
 }
 
+interface DashboardResponse {
+  stats?: {
+    recentPatients?: DoctorPatient[];
+    totalMedicalConditions?: number;
+    totalMedications?: number;
+  };
+}
+
 const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   const { user, logout } = useAuth();
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<DoctorPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOTPModal, setShowOTPModal] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<DoctorPatient | null>(null);
   const [showPassportView, setShowPassportView] = useState(false);
-  const [accessToken, setAccessToken] = useState<string>('');
+  // const [accessToken, setAccessToken] = useState<string>('');
   const [stats, setStats] = useState({
     totalPatients: 0,
     recentRequests: 0,
@@ -94,7 +103,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
       }
       
       console.log('Fetching patients...');
-      let patientsData = [];
+      let patientsData: DoctorPatient[] = [];
       
       try {
         // Try to fetch all patients from the patients endpoint
@@ -103,7 +112,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
         
         if (response.success && response.data) {
           console.log('Successfully fetched patients from /patients endpoint:', response.data.length);
-          patientsData = Array.isArray(response.data) ? response.data : [];
+          patientsData = Array.isArray(response.data) ? response.data as DoctorPatient[] : [];
         } else {
           console.warn('Failed to fetch patients from /patients endpoint:', response.message);
           throw new Error('Patients API failed');
@@ -114,9 +123,9 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
         // Fallback: try to get patients from doctor dashboard
         try {
           const dashboardResponse = await apiService.request('/dashboard/doctor');
-          if (dashboardResponse.success && dashboardResponse.data?.stats?.recentPatients) {
-            console.log('Successfully fetched patients from doctor dashboard:', dashboardResponse.data.stats.recentPatients.length);
-            patientsData = Array.isArray(dashboardResponse.data.stats.recentPatients) ? dashboardResponse.data.stats.recentPatients : [];
+          if (dashboardResponse.success && dashboardResponse.data && (dashboardResponse.data as DashboardResponse).stats?.recentPatients) {
+            console.log('Successfully fetched patients from doctor dashboard:', (dashboardResponse.data as DashboardResponse).stats!.recentPatients!.length);
+            patientsData = Array.isArray((dashboardResponse.data as DashboardResponse).stats!.recentPatients) ? (dashboardResponse.data as DashboardResponse).stats!.recentPatients! : [];
           } else {
             console.warn('No patients found in doctor dashboard response');
             patientsData = [];
@@ -150,7 +159,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
       // Fetch doctor dashboard stats
       const response = await apiService.request('/dashboard/doctor');
       if (response.success && response.data) {
-        const stats = response.data.stats;
+        const stats = (response.data as DashboardResponse).stats;
         setStats(prev => ({ 
           ...prev, 
           recentRequests: stats?.totalMedicalConditions || 0,
@@ -164,20 +173,20 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
 
   const handleViewPatient = async (patient: Patient) => {
     // Show OTP modal for passport access
-    setSelectedPatient(patient);
+    setSelectedPatient(patient as DoctorPatient);
     setShowOTPModal(true);
   };
 
   const handleOTPSuccess = (token: string) => {
     console.log('OTP Success - Patient:', selectedPatient?._id, 'Token:', token);
-    setAccessToken(token);
+    // setAccessToken(token);
     setShowOTPModal(false);
     setShowPassportView(true);
   };
 
   const handleClosePassportView = () => {
     setShowPassportView(false);
-    setAccessToken('');
+    // setAccessToken('');
     setSelectedPatient(null);
   };
 
@@ -186,13 +195,13 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
     setSelectedPatient(null);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  // const formatDate = (dateString: string) => {
+  //   return new Date(dateString).toLocaleDateString('en-US', {
+  //     year: 'numeric',
+  //     month: 'short',
+  //     day: 'numeric'
+  //   });
+  // };
 
   const calculateAge = (dateOfBirth: string) => {
     const today = new Date();
@@ -270,13 +279,15 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
     }
   };
 
+  // Check authentication and redirect if needed
+  useEffect(() => {
+    if (!user || user.role !== 'doctor') {
+      window.location.href = '/';
+    }
+  }, [user]);
+
   // Check authentication
   if (!user || user.role !== 'doctor') {
-    // Redirect to home page if not authenticated as doctor
-    React.useEffect(() => {
-      window.location.href = '/';
-    }, []);
-    
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -612,14 +623,44 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
         />
       )}
 
-      {/* Patient Passport View */}
+      {/* Patient Passport View - Temporarily disabled */}
       {showPassportView && selectedPatient && (
-        <PatientPassportView
-          patientId={selectedPatient._id}
-          accessToken={accessToken}
-          onClose={handleClosePassportView}
-          isEditable={true}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Patient Passport - {selectedPatient.user?.name || 'Unknown Patient'}
+                </h2>
+                <button
+                  onClick={handleClosePassportView}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Eye className="w-8 h-8 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Patient Passport View</h3>
+                <p className="text-gray-500 mb-4">
+                  This feature is being updated. You can view patient information in the table above.
+                </p>
+                <button
+                  onClick={handleClosePassportView}
+                  className="btn-primary"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Permission Request Modal */}
