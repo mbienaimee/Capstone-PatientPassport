@@ -1,81 +1,65 @@
 import nodemailer from 'nodemailer';
 
-// Simple email service that works reliably
-class SimpleEmailService {
+// Email service optimized for Render deployment
+class RenderEmailService {
   private transporter: nodemailer.Transporter | null = null;
+  private isProduction: boolean = process.env.NODE_ENV === 'production';
 
   constructor() {
-    // Initialize transporter asynchronously
     this.initializeTransporter().catch(error => {
       console.error('Failed to initialize email transporter:', error);
     });
   }
 
   private async initializeTransporter() {
-    // Try multiple email providers
-    const providers = [
-      // Gmail
-      {
-        name: 'Gmail',
-        config: {
+    // Only try Gmail if credentials are provided
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      try {
+        console.log('🔧 Initializing Gmail email service...');
+        
+        const transporter = nodemailer.createTransporter({
           host: 'smtp.gmail.com',
           port: 587,
           secure: false,
           auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS?.replace(/\s/g, '') // Remove spaces
+            pass: process.env.EMAIL_PASS.replace(/\s/g, '') // Remove spaces
           },
           tls: {
             ciphers: 'SSLv3',
             rejectUnauthorized: false
-          }
-        }
-      },
-      // Outlook
-      {
-        name: 'Outlook',
-        config: {
-          host: 'smtp-mail.outlook.com',
-          port: 587,
-          secure: false,
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS?.replace(/\s/g, '')
           },
-          tls: {
-            ciphers: 'SSLv3',
-            rejectUnauthorized: false
-          }
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 10000,   // 10 seconds
+          socketTimeout: 10000      // 10 seconds
+        });
+        
+        // Test connection with shorter timeout
+        const success = await Promise.race([
+          transporter.verify(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Connection timeout')), 8000)
+          )
+        ]);
+        
+        if (success) {
+          console.log('✅ Gmail email provider connected successfully');
+          this.transporter = transporter;
+          return;
         }
-      }
-    ];
-
-    // Try each provider
-    for (const provider of providers) {
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        try {
-          const transporter = nodemailer.createTransport(provider.config);
-          // Test connection synchronously
-          const success = await transporter.verify();
-          if (success) {
-            console.log(`✅ ${provider.name} email provider connected successfully`);
-            this.transporter = transporter;
-            return; // Exit early if successful
-          }
-        } catch (error) {
-          console.log(`❌ ${provider.name} email provider failed:`, error?.message || error);
-        }
+      } catch (error) {
+        console.log('❌ Gmail email provider failed:', error?.message || error);
+        console.log('🔄 Falling back to development mode');
       }
     }
     
-    if (!this.transporter) {
-      console.log('⚠️  No email providers configured - using development mode');
-      console.log('   To enable real email sending, create a .env file with Gmail credentials');
-    }
+    // Fallback to development mode
+    console.log('⚠️  Using development mode for email sending');
+    console.log('📧 Emails will be logged to console instead of sent');
   }
 
   async sendEmail(mailOptions: nodemailer.SendMailOptions): Promise<void> {
-    // Wait for transporter to be initialized if it's not ready yet
+    // Wait for transporter to be initialized
     if (!this.transporter) {
       console.log('⏳ Waiting for email transporter to initialize...');
       await this.waitForTransporter();
@@ -83,18 +67,27 @@ class SimpleEmailService {
 
     if (this.transporter) {
       try {
-        const result = await this.transporter.sendMail(mailOptions);
+        // Try to send email with timeout
+        const result = await Promise.race([
+          this.transporter.sendMail(mailOptions),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Email send timeout')), 15000)
+          )
+        ]);
+        
         console.log('✅ Email sent successfully:', result.messageId);
+        return;
       } catch (error) {
-        console.error('❌ Email sending failed:', error);
-        await this.sendEmailDev(mailOptions);
+        console.error('❌ Email sending failed:', error?.message || error);
+        console.log('🔄 Falling back to development mode');
       }
-    } else {
-      await this.sendEmailDev(mailOptions);
     }
+    
+    // Always fallback to development mode
+    await this.sendEmailDev(mailOptions);
   }
 
-  private async waitForTransporter(maxWaitTime = 5000): Promise<void> {
+  private async waitForTransporter(maxWaitTime = 3000): Promise<void> {
     const startTime = Date.now();
     while (!this.transporter && (Date.now() - startTime) < maxWaitTime) {
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -102,19 +95,25 @@ class SimpleEmailService {
   }
 
   private async sendEmailDev(mailOptions: nodemailer.SendMailOptions): Promise<void> {
-    console.log('='.repeat(60));
-    console.log('📧 EMAIL (Development Mode)');
-    console.log('='.repeat(60));
-    console.log('To:', mailOptions.to);
-    console.log('From:', mailOptions.from);
-    console.log('Subject:', mailOptions.subject);
-    console.log('Content:', mailOptions.html || mailOptions.text);
-    console.log('='.repeat(60));
+    console.log('='.repeat(80));
+    console.log('📧 EMAIL (Development Mode - Render Free Tier Limitation)');
+    console.log('='.repeat(80));
+    console.log('📬 To:', mailOptions.to);
+    console.log('📤 From:', mailOptions.from);
+    console.log('📋 Subject:', mailOptions.subject);
+    console.log('📄 Content Preview:', (mailOptions.html || mailOptions.text || '').substring(0, 200) + '...');
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    console.log('='.repeat(80));
+    console.log('💡 To enable real email sending:');
+    console.log('   1. Upgrade to Render Pro plan (removes network restrictions)');
+    console.log('   2. Use a different hosting service (Vercel, Railway, etc.)');
+    console.log('   3. Use a third-party email service (SendGrid, Mailgun)');
+    console.log('='.repeat(80));
   }
 }
 
 // Create singleton instance
-const simpleEmailService = new SimpleEmailService();
+const renderEmailService = new RenderEmailService();
 
 // Export functions
 export const sendOTPEmail = async (email: string, otpCode: string): Promise<void> => {
@@ -147,7 +146,7 @@ export const sendOTPEmail = async (email: string, otpCode: string): Promise<void
     `
   };
 
-  await simpleEmailService.sendEmail(mailOptions);
+  await renderEmailService.sendEmail(mailOptions);
 };
 
 export const sendWelcomeEmail = async (email: string, name: string): Promise<void> => {
@@ -176,7 +175,7 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
     `
   };
 
-  await simpleEmailService.sendEmail(mailOptions);
+  await renderEmailService.sendEmail(mailOptions);
 };
 
 export const sendPassportAccessOTPEmail = async (email: string, otpCode: string, doctorName: string, patientName: string): Promise<void> => {
@@ -237,7 +236,7 @@ export const sendPassportAccessOTPEmail = async (email: string, otpCode: string,
     `
   };
 
-  await simpleEmailService.sendEmail(mailOptions);
+  await renderEmailService.sendEmail(mailOptions);
 };
 
 export const sendNotificationEmail = async (email: string, subject: string, htmlContent: string): Promise<void> => {
@@ -248,5 +247,5 @@ export const sendNotificationEmail = async (email: string, subject: string, html
     html: htmlContent
   };
 
-  await simpleEmailService.sendEmail(mailOptions);
+  await renderEmailService.sendEmail(mailOptions);
 };
