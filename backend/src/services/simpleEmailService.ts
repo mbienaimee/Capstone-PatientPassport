@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
-// Email service optimized for Render deployment
-class RenderEmailService {
+// Email service with SendGrid support for Render free tier
+class ProductionEmailService {
   private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
@@ -11,8 +11,35 @@ class RenderEmailService {
   }
 
   private async initializeTransporter() {
-    // Only try Gmail if credentials are provided
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    // Try SendGrid first (works on Render free tier)
+    if (process.env.EMAIL_USER === 'apikey' && process.env.EMAIL_PASS) {
+      try {
+        console.log('🔧 Initializing SendGrid email service...');
+        
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.sendgrid.net',
+          port: 587,
+          secure: false,
+          auth: {
+            user: 'apikey',
+            pass: process.env.EMAIL_PASS
+          }
+        });
+        
+        // Test connection
+        const success = await transporter.verify();
+        if (success) {
+          console.log('✅ SendGrid email provider connected successfully');
+          this.transporter = transporter;
+          return;
+        }
+      } catch (error) {
+        console.log('❌ SendGrid email provider failed:', error?.message || error);
+      }
+    }
+
+    // Try Gmail as fallback (only works on paid Render plans)
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS && process.env.EMAIL_USER !== 'apikey') {
       try {
         console.log('🔧 Initializing Gmail email service...');
         
@@ -22,18 +49,18 @@ class RenderEmailService {
           secure: false,
           auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS.replace(/\s/g, '') // Remove spaces
+            pass: process.env.EMAIL_PASS.replace(/\s/g, '')
           },
           tls: {
             ciphers: 'SSLv3',
             rejectUnauthorized: false
           },
-          connectionTimeout: 10000, // 10 seconds
-          greetingTimeout: 10000,   // 10 seconds
-          socketTimeout: 10000      // 10 seconds
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 10000
         });
         
-        // Test connection with shorter timeout
+        // Test connection with timeout
         const success = await Promise.race([
           transporter.verify(),
           new Promise((_, reject) => 
@@ -48,13 +75,15 @@ class RenderEmailService {
         }
       } catch (error) {
         console.log('❌ Gmail email provider failed:', error?.message || error);
-        console.log('🔄 Falling back to development mode');
       }
     }
     
-    // Fallback to development mode
-    console.log('⚠️  Using development mode for email sending');
-    console.log('📧 Emails will be logged to console instead of sent');
+    // No email provider configured
+    console.log('⚠️  No email providers configured');
+    console.log('📧 To enable real email sending:');
+    console.log('   1. Set up SendGrid (free): EMAIL_USER=apikey, EMAIL_PASS=your-sendgrid-key');
+    console.log('   2. Upgrade Render plan for Gmail support');
+    console.log('   3. Use alternative hosting (Railway, Vercel)');
   }
 
   async sendEmail(mailOptions: nodemailer.SendMailOptions): Promise<void> {
@@ -66,24 +95,18 @@ class RenderEmailService {
 
     if (this.transporter) {
       try {
-        // Try to send email with timeout
-        const result = await Promise.race([
-          this.transporter.sendMail(mailOptions),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Email send timeout')), 15000)
-          )
-        ]);
-        
+        const result = await this.transporter.sendMail(mailOptions);
         console.log('✅ Email sent successfully:', result.messageId);
+        console.log('📧 Email delivered to:', mailOptions.to);
         return;
       } catch (error) {
         console.error('❌ Email sending failed:', error?.message || error);
-        console.log('🔄 Falling back to development mode');
+        throw error; // Re-throw to handle in calling code
       }
     }
     
-    // Always fallback to development mode
-    await this.sendEmailDev(mailOptions);
+    // No transporter available
+    throw new Error('No email service configured. Please set up SendGrid or upgrade Render plan.');
   }
 
   private async waitForTransporter(maxWaitTime = 3000): Promise<void> {
@@ -92,32 +115,15 @@ class RenderEmailService {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
-
-  private async sendEmailDev(mailOptions: nodemailer.SendMailOptions): Promise<void> {
-    console.log('='.repeat(80));
-    console.log('📧 EMAIL (Development Mode - Render Free Tier Limitation)');
-    console.log('='.repeat(80));
-    console.log('📬 To:', mailOptions.to);
-    console.log('📤 From:', mailOptions.from);
-    console.log('📋 Subject:', mailOptions.subject);
-    console.log('📄 Content Preview:', String(mailOptions.html || mailOptions.text || '').substring(0, 200) + '...');
-    console.log('⏰ Timestamp:', new Date().toISOString());
-    console.log('='.repeat(80));
-    console.log('💡 To enable real email sending:');
-    console.log('   1. Upgrade to Render Pro plan (removes network restrictions)');
-    console.log('   2. Use a different hosting service (Vercel, Railway, etc.)');
-    console.log('   3. Use a third-party email service (SendGrid, Mailgun)');
-    console.log('='.repeat(80));
-  }
 }
 
 // Create singleton instance
-const renderEmailService = new RenderEmailService();
+const productionEmailService = new ProductionEmailService();
 
 // Export functions
 export const sendOTPEmail = async (email: string, otpCode: string): Promise<void> => {
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@patientpassport.com',
+    from: process.env.EMAIL_FROM || 'noreply@patientpassport.com',
     to: email,
     subject: 'Patient Passport - OTP Verification',
     html: `
@@ -145,12 +151,12 @@ export const sendOTPEmail = async (email: string, otpCode: string): Promise<void
     `
   };
 
-  await renderEmailService.sendEmail(mailOptions);
+  await productionEmailService.sendEmail(mailOptions);
 };
 
 export const sendWelcomeEmail = async (email: string, name: string): Promise<void> => {
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@patientpassport.com',
+    from: process.env.EMAIL_FROM || 'noreply@patientpassport.com',
     to: email,
     subject: 'Welcome to PatientPassport!',
     html: `
@@ -174,12 +180,12 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
     `
   };
 
-  await renderEmailService.sendEmail(mailOptions);
+  await productionEmailService.sendEmail(mailOptions);
 };
 
 export const sendPassportAccessOTPEmail = async (email: string, otpCode: string, doctorName: string, patientName: string): Promise<void> => {
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@patientpassport.com',
+    from: process.env.EMAIL_FROM || 'noreply@patientpassport.com',
     to: email,
     subject: 'Patient Passport Access Request - OTP Code',
     html: `
@@ -235,16 +241,16 @@ export const sendPassportAccessOTPEmail = async (email: string, otpCode: string,
     `
   };
 
-  await renderEmailService.sendEmail(mailOptions);
+  await productionEmailService.sendEmail(mailOptions);
 };
 
 export const sendNotificationEmail = async (email: string, subject: string, htmlContent: string): Promise<void> => {
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@patientpassport.com',
+    from: process.env.EMAIL_FROM || 'noreply@patientpassport.com',
     to: email,
     subject: subject,
     html: htmlContent
   };
 
-  await renderEmailService.sendEmail(mailOptions);
+  await productionEmailService.sendEmail(mailOptions);
 };
