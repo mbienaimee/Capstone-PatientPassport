@@ -1,4 +1,4 @@
-import api from './api';
+import { apiService } from './api';
 
 export interface AccessRequestData {
   patientId: string;
@@ -37,37 +37,46 @@ export interface AccessRequest {
 class AccessControlService {
   // Create access request (Doctor)
   async createAccessRequest(data: AccessRequestData) {
-    const response = await api.post('/access-control/request', data);
+    const response = await apiService.request('/access-control/request', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
     return response.data;
   }
 
   // Get pending requests for patient
   async getPendingRequests() {
-    const response = await api.get('/access-control/patient/pending');
+    const response = await apiService.request('/access-control/patient/pending');
     return response.data;
   }
 
   // Get requests by doctor
   async getDoctorRequests() {
-    const response = await api.get('/access-control/doctor/requests');
+    const response = await apiService.request('/access-control/doctor/requests');
     return response.data;
   }
 
   // Patient responds to access request
   async respondToRequest(requestId: string, response: AccessResponse) {
-    const apiResponse = await api.post(`/access-control/respond/${requestId}`, response);
+    const apiResponse = await apiService.request(`/access-control/respond/${requestId}`, {
+      method: 'POST',
+      body: JSON.stringify(response),
+    });
     return apiResponse.data;
   }
 
   // Get specific access request
   async getAccessRequest(requestId: string) {
-    const response = await api.get(`/access-control/${requestId}`);
+    const response = await apiService.request(`/access-control/${requestId}`);
     return response.data;
   }
 
   // Emergency access
   async createEmergencyAccess(data: Omit<AccessRequestData, 'requestType'>) {
-    const response = await api.post('/access-control/emergency', data);
+    const response = await apiService.request('/access-control/emergency', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
     return response.data;
   }
 }

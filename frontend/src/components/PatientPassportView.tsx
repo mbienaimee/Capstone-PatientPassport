@@ -177,7 +177,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
         try {
           const patientResponse = await apiService.getPatient(patientId);
           if (patientResponse.success && patientResponse.data) {
-            setPatientData(patientResponse.data);
+            setPatientData((patientResponse.data as any) || null);
             await fetchMedicalData();
           } else {
             setError('Failed to load patient data');

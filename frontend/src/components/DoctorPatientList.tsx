@@ -65,7 +65,7 @@ const DoctorPatientList: React.FC<DoctorPatientListProps> = ({ doctor, onClose }
       setLoading(true);
       const response = await apiService.request('/patients');
       if (response.success) {
-        setPatients(response.data);
+        setPatients((response.data as any) || []);
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -79,7 +79,7 @@ const DoctorPatientList: React.FC<DoctorPatientListProps> = ({ doctor, onClose }
       // First check if doctor already has access
       const accessCheckResponse = await apiService.request(`/access-control/check-access/${patientId}`);
       
-      if (accessCheckResponse.success && accessCheckResponse.data.hasAccess) {
+      if (accessCheckResponse.success && (accessCheckResponse.data as any)?.hasAccess) {
         // Doctor has access, open patient passport
         window.open(`/patient-passport/${patientId}`, '_blank');
       } else {

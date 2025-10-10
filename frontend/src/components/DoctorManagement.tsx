@@ -86,7 +86,7 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
       const response = await apiService.request(`/hospitals/${hospitalId}/doctors`);
       console.log('Doctors response:', response);
       if (response.success) {
-        setDoctors(response.data);
+        setDoctors((response.data as any) || []);
       }
     } catch (error) {
       console.error('Error fetching doctors:', error);

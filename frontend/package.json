@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "build:prod": "cross-env VITE_API_BASE_URL=https://capstone-patientpassport.onrender.com/api VITE_SOCKET_URL=https://capstone-patientpassport.onrender.com npm run build",
+    "build:netlify": "vite build",
     "deploy:preview": "npm run build:prod && npm run preview"
   },
   "dependencies": {

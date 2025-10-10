@@ -445,4 +445,7 @@ class ApiService {
 
 export const apiService = new ApiService();
 
+// Default export for backward compatibility
+export default apiService;
+
 export { ApiError };

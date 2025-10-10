@@ -17,7 +17,7 @@ const PatientAccessRequestList: React.FC = () => {
     try {
       setLoading(true);
       const response = await accessControlService.getPendingRequests();
-      setRequests(response.data);
+      setRequests((response.data as any) || []);
     } catch (error: any) {
       console.error('Error fetching requests:', error);
       toast.error('Failed to load access requests');

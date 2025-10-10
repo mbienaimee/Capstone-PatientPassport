@@ -1,4 +1,4 @@
-import api from './api';
+import { apiService } from './api';
 
 export interface Notification {
   _id: string;
@@ -31,31 +31,42 @@ class NotificationService {
     offset?: number;
     unreadOnly?: boolean;
   }) {
-    const response = await api.get('/notifications', { params });
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+    if (params?.unreadOnly) queryParams.append('unreadOnly', 'true');
+    
+    const response = await apiService.request(`/notifications?${queryParams.toString()}`);
     return response.data;
   }
 
   // Mark notification as read
   async markAsRead(notificationId: string) {
-    const response = await api.patch(`/notifications/${notificationId}/read`);
+    const response = await apiService.request(`/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+    });
     return response.data;
   }
 
   // Mark all notifications as read
   async markAllAsRead() {
-    const response = await api.patch('/notifications/read-all');
+    const response = await apiService.request('/notifications/read-all', {
+      method: 'PATCH',
+    });
     return response.data;
   }
 
   // Delete notification
   async deleteNotification(notificationId: string) {
-    const response = await api.delete(`/notifications/${notificationId}`);
+    const response = await apiService.request(`/notifications/${notificationId}`, {
+      method: 'DELETE',
+    });
     return response.data;
   }
 
   // Get notification statistics
   async getStats() {
-    const response = await api.get('/notifications/stats');
+    const response = await apiService.request('/notifications/stats');
     return response.data;
   }
 }

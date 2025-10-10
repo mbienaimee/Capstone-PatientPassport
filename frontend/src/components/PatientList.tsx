@@ -47,7 +47,7 @@ const PatientList: React.FC<PatientListProps> = ({ hospitalId, onViewPatient }) 
       const response = await apiService.getHospitalPatients(hospitalId);
       
       if (response.success && response.data) {
-        setPatients(response.data);
+        setPatients((response.data as any) || []);
       } else {
         setError('Failed to fetch patients');
       }

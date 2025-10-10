@@ -22,7 +22,7 @@ const NotificationCenter: React.FC = () => {
         limit: showAll ? 50 : 10,
         unreadOnly: !showAll
       });
-      setNotifications(response.data.notifications);
+      setNotifications((response.data as any)?.notifications || []);
     } catch (error: any) {
       console.error('Error fetching notifications:', error);
       toast.error('Failed to load notifications');
@@ -34,7 +34,7 @@ const NotificationCenter: React.FC = () => {
   const fetchStats = async () => {
     try {
       const response = await notificationService.getStats();
-      setStats(response.data);
+      setStats((response.data as any) || {});
     } catch (error: any) {
       console.error('Error fetching notification stats:', error);
     }

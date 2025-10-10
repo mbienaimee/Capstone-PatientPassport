@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         console.log('Setting user from getCurrentUser:', response.data);
         // Handle nested user structure
-        const userData = response.data.user || response.data;
+        const userData = (response.data as any)?.user || response.data;
         console.log('Extracted user data:', userData);
         setUser(userData);
           } else {
