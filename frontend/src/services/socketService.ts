@@ -7,7 +7,7 @@ class SocketService {
   connect(token: string) {
     this.token = token;
     
-    this.socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
+    this.socket = io(import.meta.env.VITE_SOCKET_URL || 'https://capstone-patientpassport.onrender.com', {
       auth: {
         token: token
       }

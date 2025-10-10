@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:prod": "cross-env VITE_API_BASE_URL=https://capstone-patientpassport.onrender.com/api VITE_SOCKET_URL=https://capstone-patientpassport.onrender.com npm run build",
+    "deploy:preview": "npm run build:prod && npm run preview"
   },
   "dependencies": {
     "@types/socket.io-client": "^1.4.36",
@@ -22,16 +24,20 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@types/node": "^24.7.1",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^5.0.3",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^10.1.0",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.4.0",
     "postcss": "^8.5.6",
+    "react-hook-form": "^7.64.0",
+    "react-hot-toast": "^2.6.0",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.44.0",
