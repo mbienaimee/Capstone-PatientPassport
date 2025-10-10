@@ -19,7 +19,7 @@ class RenderCompatibleEmailService {
       try {
         console.log('📧 Attempting SendGrid connection...');
         
-        const transporter = nodemailer.createTransporter({
+        const transporter = nodemailer.createTransport({
           host: 'smtp.sendgrid.net',
           port: 587,
           secure: false,
@@ -56,7 +56,7 @@ class RenderCompatibleEmailService {
       try {
         console.log('📧 Attempting Gmail connection...');
         
-        const transporter = nodemailer.createTransporter({
+        const transporter = nodemailer.createTransport({
           host: 'smtp.gmail.com',
           port: 587,
           secure: false,
