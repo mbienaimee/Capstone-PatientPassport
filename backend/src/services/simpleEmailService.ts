@@ -3,7 +3,6 @@ import nodemailer from 'nodemailer';
 // Email service optimized for Render deployment
 class RenderEmailService {
   private transporter: nodemailer.Transporter | null = null;
-  private isProduction: boolean = process.env.NODE_ENV === 'production';
 
   constructor() {
     this.initializeTransporter().catch(error => {
@@ -17,7 +16,7 @@ class RenderEmailService {
       try {
         console.log('🔧 Initializing Gmail email service...');
         
-        const transporter = nodemailer.createTransporter({
+        const transporter = nodemailer.createTransport({
           host: 'smtp.gmail.com',
           port: 587,
           secure: false,
@@ -101,7 +100,7 @@ class RenderEmailService {
     console.log('📬 To:', mailOptions.to);
     console.log('📤 From:', mailOptions.from);
     console.log('📋 Subject:', mailOptions.subject);
-    console.log('📄 Content Preview:', (mailOptions.html || mailOptions.text || '').substring(0, 200) + '...');
+    console.log('📄 Content Preview:', String(mailOptions.html || mailOptions.text || '').substring(0, 200) + '...');
     console.log('⏰ Timestamp:', new Date().toISOString());
     console.log('='.repeat(80));
     console.log('💡 To enable real email sending:');
