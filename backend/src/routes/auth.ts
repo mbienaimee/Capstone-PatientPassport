@@ -15,6 +15,7 @@ import {
   resendEmailVerification,
   verifyRegistrationOTP
 } from '@/controllers/authController';
+import { testEmail } from '@/controllers/testEmailController';
 import { authenticate } from '@/middleware/auth';
 import { authLimiter } from '@/middleware/rateLimiter';
 import {
@@ -79,6 +80,9 @@ router.post('/resend-verification', authLimiter, resendEmailVerification);
 
 // OTP Verification Routes
 router.post('/verify-registration-otp', authLimiter, verifyRegistrationOTP);
+
+// Test Email Route (for debugging)
+router.post('/test-email', testEmail);
 
 export default router;
 
