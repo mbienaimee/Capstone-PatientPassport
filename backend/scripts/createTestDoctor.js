@@ -39,7 +39,7 @@ async function createTestDoctor() {
     const doctor = await Doctor.create({
       user: user._id,
       licenseNumber: 'DOC-TEST-123456',
-      specialization: 'General Medicine',
+      specialization: 'General Practice',
       hospital: hospital._id,
       isActive: true
     });

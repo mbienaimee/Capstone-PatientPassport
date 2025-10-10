@@ -14,6 +14,7 @@ import OTPVerification from './components/OTPVerification';
 import HospitalDashboard from './components/HospitalDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import DoctorDashboard from './components/DoctorDashboard';
+import EnhancedDoctorDashboard from './components/EnhancedDoctorDashboard';
 import MyPatients from './components/MyPatients';
 import SearchPatient from './components/SearchPatient';
 import PatientListDashboard from './components/PatientListDashboard';
@@ -23,6 +24,7 @@ import DoctorPatientPassport from './components/DoctorPatientPassport';
 import DoctorAccessRequest from './components/DoctorAccessRequest';
 import DoctorLoginPage from './components/DoctorLoginPage';
 import DoctorDashboardTest from './components/DoctorDashboardTest';
+import HospitalDashboardDebug from './components/HospitalDashboardDebug';
 
 // Wrapper component for OTP verification to handle state
 const OTPVerificationWrapper: React.FC = () => {
@@ -72,6 +74,7 @@ export default function App() {
               
               {/* Hospital Routes */}
               <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
+              <Route path="/hospital-dashboard-debug" element={<HospitalDashboardDebug />} />
               <Route path="/doctor-patient-passport" element={<DoctorPatientPassport />} />
               <Route path="/doctor-access-request" element={<DoctorAccessRequest />} />
               
@@ -83,8 +86,10 @@ export default function App() {
               
               {/* Doctor Routes */}
               <Route path="/doctor-login" element={<DoctorLoginPage />} />
-              <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+              <Route path="/doctor-dashboard" element={<EnhancedDoctorDashboard />} />
+              <Route path="/doctor-dashboard-original" element={<DoctorDashboard />} />
               <Route path="/doctor-dashboard-test" element={<DoctorDashboardTest />} />
+              <Route path="/doctor-dashboard-debug" element={<DoctorDashboardTest />} />
               <Route path="/my-patients" element={<MyPatients />} />
               <Route path="/search-patient" element={<SearchPatient />} />
               

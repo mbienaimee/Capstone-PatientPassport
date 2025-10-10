@@ -25,7 +25,8 @@ export class ApiError extends Error {
 
 // User Types
 export interface User {
-  id: string;
+  _id: string;
+  id?: string; // For compatibility
   name: string;
   email: string;
   role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';

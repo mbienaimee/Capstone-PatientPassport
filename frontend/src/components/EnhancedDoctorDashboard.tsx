@@ -12,8 +12,19 @@ import {
   Bell,
   Activity,
   User,
-  ChevronDown
+  ChevronDown,
+  Search,
+  Filter,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  FileText,
+  Heart,
+  Pill,
+  Stethoscope
 } from 'lucide-react';
+import { useNotification } from '../contexts/NotificationContext';
 
 interface DoctorPatient {
   _id: string;
@@ -38,22 +49,22 @@ interface DoctorPatient {
   status: 'active' | 'inactive';
 }
 
-
 interface DoctorDashboardProps {
   onLogout?: () => void;
 }
 
-interface DashboardResponse {
-  stats?: {
-    recentPatients?: DoctorPatient[];
-    totalMedicalConditions?: number;
-    totalMedications?: number;
-  };
+interface DashboardStats {
+  totalPatients: number;
+  recentRequests: number;
+  activeAccess: number;
+  systemStatus: 'online' | 'offline';
 }
 
-const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
-  console.log('DoctorDashboard component rendered');
+const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   const { user, logout, isLoading } = useAuth();
+  const { showNotification } = useNotification();
+  
+  // State management
   const [patients, setPatients] = useState<DoctorPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOTPModal, setShowOTPModal] = useState(false);
@@ -61,51 +72,49 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   const [showPassportView, setShowPassportView] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [accessToken, setAccessToken] = useState<string>('');
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     recentRequests: 0,
-    activeAccess: 0
+    activeAccess: 0,
+    systemStatus: 'online'
   });
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [permissionReason, setPermissionReason] = useState('');
-  const [requestedData, setRequestedData] = useState<string[]>([]);
-  const [submittingPermission, setSubmittingPermission] = useState(false);
+  
+  // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [patientsPerPage] = useState(10);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const dataTypes = [
-    { key: 'medicalHistory', label: 'Medical History' },
-    { key: 'medications', label: 'Current Medications' },
-    { key: 'testResults', label: 'Test Results' },
-    { key: 'allergies', label: 'Allergies' },
-    { key: 'emergencyContact', label: 'Emergency Contact' },
-    { key: 'hospitalVisits', label: 'Hospital Visits' }
-  ];
-
+  // Initialize dashboard
   useEffect(() => {
-    console.log('DoctorDashboard useEffect triggered, user:', user);
-    console.log('User role:', user?.role);
-    console.log('User authenticated:', !!user);
-    console.log('User object details:', JSON.stringify(user, null, 2));
-    
-    // Check if user is authenticated and is a doctor
     if (!user || user.role !== 'doctor') {
-      console.error('User not authenticated or not a doctor', { user });
-      console.log('User check failed - user exists:', !!user, 'role is doctor:', user?.role === 'doctor');
       return;
     }
     
-    console.log('User is authenticated as doctor, fetching data...');
-    fetchPatients();
-    fetchStats();
+    initializeDashboard();
   }, [user]);
 
+  const initializeDashboard = async () => {
+    try {
+      setError(null);
+      await Promise.all([
+        fetchPatients(),
+        fetchStats()
+      ]);
+    } catch (err) {
+      console.error('Error initializing dashboard:', err);
+      setError('Failed to load dashboard data');
+      showNotification({
+        type: 'error',
+        title: 'Dashboard Error',
+        message: 'Failed to load dashboard data. Please refresh the page.'
+      });
+    }
+  };
 
   const fetchPatients = async (isRefresh = false) => {
-    console.log('fetchPatients called, isRefresh:', isRefresh);
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -113,52 +122,55 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
         setLoading(true);
       }
       
-      console.log('Fetching patients...');
+      console.log('Fetching patients for doctor dashboard...');
+      
+      // Try multiple endpoints to get patients
       let patientsData: DoctorPatient[] = [];
       
       try {
-        // Try to fetch all patients from the patients endpoint
+        // Primary: Get all patients
         const response = await apiService.getPatients();
         console.log('Patients API response:', response);
         
         if (response.success && response.data) {
-          console.log('Successfully fetched patients from /patients endpoint:', response.data.length);
           patientsData = Array.isArray(response.data) ? response.data as unknown as DoctorPatient[] : [];
-        } else {
-          console.warn('Failed to fetch patients from /patients endpoint:', response.message);
-          throw new Error('Patients API failed');
+          console.log(`Successfully fetched ${patientsData.length} patients`);
         }
       } catch (patientsError) {
-        console.warn('Patients API failed, trying doctor dashboard endpoint:', patientsError);
+        console.warn('Primary patients API failed, trying alternative:', patientsError);
         
-        // Fallback: try to get patients from doctor dashboard
+        // Fallback: Try doctor dashboard endpoint
         try {
           const dashboardResponse = await apiService.request('/dashboard/doctor');
-          if (dashboardResponse.success && dashboardResponse.data && (dashboardResponse.data as DashboardResponse).stats?.recentPatients) {
-            console.log('Successfully fetched patients from doctor dashboard:', (dashboardResponse.data as DashboardResponse).stats!.recentPatients!.length);
-            patientsData = Array.isArray((dashboardResponse.data as DashboardResponse).stats!.recentPatients) ? (dashboardResponse.data as DashboardResponse).stats!.recentPatients! : [];
-          } else {
-            console.warn('No patients found in doctor dashboard response');
-            patientsData = [];
+          if (dashboardResponse.success && dashboardResponse.data) {
+            const dashboardData = dashboardResponse.data as any;
+            if (dashboardData.stats?.recentPatients) {
+              patientsData = Array.isArray(dashboardData.stats.recentPatients) ? dashboardData.stats.recentPatients : [];
+              console.log(`Fetched ${patientsData.length} patients from dashboard`);
+            }
           }
         } catch (dashboardError) {
-          console.error('Both patients API and doctor dashboard failed:', dashboardError);
-          patientsData = [];
+          console.error('All patient endpoints failed:', dashboardError);
+          throw new Error('Unable to fetch patients from any endpoint');
         }
       }
       
       setPatients(patientsData);
       setStats(prev => ({ 
         ...prev, 
-        totalPatients: patientsData.length,
-        recentRequests: 0, // This will be updated by fetchStats
-        activeAccess: 0 // This will be updated by fetchStats
+        totalPatients: patientsData.length
       }));
       
     } catch (error) {
       console.error('Error fetching patients:', error);
-      // Set empty array on error
+      setError('Failed to load patients');
       setPatients([]);
+      
+      showNotification({
+        type: 'error',
+        title: 'Patient Load Error',
+        message: 'Failed to load patient list. Please try refreshing.'
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -167,38 +179,57 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
 
   const fetchStats = async () => {
     try {
-      // Fetch doctor dashboard stats
       const response = await apiService.request('/dashboard/doctor');
       if (response.success && response.data) {
-        const stats = (response.data as DashboardResponse).stats;
+        const dashboardData = response.data as any;
+        const stats = dashboardData.stats || {};
+        
         setStats(prev => ({ 
           ...prev, 
-          recentRequests: stats?.totalMedicalConditions || 0,
-          activeAccess: stats?.totalMedications || 0
+          recentRequests: stats.totalMedicalConditions || 0,
+          activeAccess: stats.totalMedications || 0,
+          systemStatus: 'online'
         }));
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
+      setStats(prev => ({ 
+        ...prev, 
+        systemStatus: 'offline'
+      }));
     }
   };
 
+  // Patient access workflow
   const handleViewPatient = async (patient: DoctorPatient) => {
-    // Show OTP modal for passport access
+    console.log('Doctor requesting access to patient:', patient.user?.name);
     setSelectedPatient(patient);
     setShowOTPModal(true);
   };
 
   const handleOTPSuccess = (token: string) => {
-    console.log('OTP Success - Patient:', selectedPatient?._id, 'Token:', token);
+    console.log('OTP verification successful, granting access to:', selectedPatient?.user?.name);
     setAccessToken(token);
     setShowOTPModal(false);
     setShowPassportView(true);
+    
+    showNotification({
+      type: 'success',
+      title: 'Access Granted!',
+      message: `You now have access to ${selectedPatient?.user?.name}'s Patient Passport for 1 hour.`
+    });
   };
 
   const handleClosePassportView = () => {
     setShowPassportView(false);
     setAccessToken('');
     setSelectedPatient(null);
+    
+    showNotification({
+      type: 'info',
+      title: 'Access Closed',
+      message: 'Patient passport access has been closed.'
+    });
   };
 
   const handleCancelOTP = () => {
@@ -206,15 +237,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
     setSelectedPatient(null);
   };
 
-  // const formatDate = (dateString: string) => {
-  //   return new Date(dateString).toLocaleDateString('en-US', {
-  //     year: 'numeric',
-  //     month: 'short',
-  //     day: 'numeric'
-  //   });
-  // };
-
-  // Filter and paginate patients
+  // Search and filter functions
   const filteredPatients = patients.filter(patient => {
     const matchesSearch = searchTerm === '' || 
       patient.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -234,52 +257,20 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilterStatus(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
+    setCurrentPage(1);
   };
 
-  const handleDataTypeToggle = (dataType: string) => {
-    setRequestedData(prev => 
-      prev.includes(dataType) 
-        ? prev.filter(item => item !== dataType)
-        : [...prev, dataType]
-    );
+  const handleRefresh = () => {
+    fetchPatients(true);
+    fetchStats();
   };
 
-  const handlePermissionRequest = async () => {
-    if (!selectedPatient || !permissionReason.trim() || requestedData.length === 0) {
-      return;
-    }
-
-    try {
-      setSubmittingPermission(true);
-      
-      // Here you would typically make an API call to request permission
-      // For now, we'll just simulate the request
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Show success message or handle the response
-      alert('Permission request sent successfully!');
-      
-      // Close modal and reset state
-      setShowPermissionModal(false);
-      setSelectedPatient(null);
-      setPermissionReason('');
-      setRequestedData([]);
-      
-    } catch (error) {
-      console.error('Error sending permission request:', error);
-      alert('Failed to send permission request. Please try again.');
-    } finally {
-      setSubmittingPermission(false);
-    }
-  };
-
-  // Check authentication and redirect if needed
+  // Authentication check
   useEffect(() => {
     if (!isLoading && (!user || user.role !== 'doctor')) {
       window.location.href = '/';
@@ -303,23 +294,26 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
     };
   }, [showProfileDropdown]);
 
-  // Show loading while authentication is being checked
+  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking authentication...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600 font-medium">Loading Doctor Dashboard...</p>
         </div>
       </div>
     );
   }
 
-  // Check authentication
+  // Authentication check
   if (!user || user.role !== 'doctor') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
         <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">You need to be logged in as a doctor to access this page.</p>
           <p className="text-sm text-gray-500 mb-4">Redirecting to home page...</p>
@@ -338,7 +332,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
               <Logo size="sm" className="text-green-600" />
               <div className="hidden md:block">
                 <h1 className="text-xl font-bold text-gray-900">Doctor Portal</h1>
-                <p className="text-sm text-gray-600">Patient Management System</p>
+                <p className="text-sm text-gray-600">Patient Passport Management System</p>
               </div>
             </div>
             <div className="relative">
@@ -393,11 +387,11 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <User className="h-6 w-6 text-white" />
+                    <Stethoscope className="h-6 w-6 text-white" />
                   </div>
                   <div>
                     <h1 className="text-3xl font-bold">Welcome back, Dr. {user?.name?.split(' ')[1] || user?.name}</h1>
-                    <p className="text-green-100 text-lg">Manage your patients and access medical records</p>
+                    <p className="text-green-100 text-lg">Access patient passports and manage medical records</p>
                   </div>
                 </div>
               </div>
@@ -422,16 +416,16 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                  <Bell className="h-6 w-6 text-white" />
+                  <Users className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-600">Pending Requests</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.recentRequests}</p>
+                  <p className="text-sm font-semibold text-gray-600">Total Patients</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalPatients}</p>
                 </div>
               </div>
               <div className="text-right">
                 <div className="h-2 w-16 bg-green-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500 rounded-full" style={{width: '60%'}}></div>
+                  <div className="h-full bg-green-500 rounded-full" style={{width: '75%'}}></div>
                 </div>
               </div>
             </div>
@@ -459,44 +453,58 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
           <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 md:col-span-2 lg:col-span-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <Activity className="h-6 w-6 text-white" />
+                <div className={`h-12 w-12 bg-gradient-to-br rounded-xl flex items-center justify-center ${
+                  stats.systemStatus === 'online' 
+                    ? 'from-green-500 to-green-600' 
+                    : 'from-red-500 to-red-600'
+                }`}>
+                  {stats.systemStatus === 'online' ? (
+                    <CheckCircle className="h-6 w-6 text-white" />
+                  ) : (
+                    <AlertCircle className="h-6 w-6 text-white" />
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-600">System Status</p>
-                  <p className="text-lg font-bold text-green-600">Online</p>
+                  <p className={`text-lg font-bold ${
+                    stats.systemStatus === 'online' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {stats.systemStatus === 'online' ? 'Online' : 'Offline'}
+                  </p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+                <div className={`h-3 w-3 rounded-full animate-pulse ${
+                  stats.systemStatus === 'online' ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Patient List Header */}
+        {/* Patient Management Section */}
         <div className="bg-white rounded-2xl shadow-xl border border-green-200/50 mb-8 overflow-hidden">
           <div className="bg-gradient-to-r from-green-500 to-green-600 px-8 py-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
                   <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Users className="h-5 w-5 text-white" />
+                    <FileText className="h-5 w-5 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-white">Patient Management</h2>
+                  <h2 className="text-2xl font-bold text-white">Patient Passport Access</h2>
                 </div>
-                <p className="text-green-100 text-lg">Access and manage patient medical records</p>
+                <p className="text-green-100 text-lg">Request OTP access to view patient medical records</p>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
-                  <span className="text-sm font-semibold text-white">{stats.totalPatients} Patients</span>
+                  <span className="text-sm font-semibold text-white">{stats.totalPatients} Patients Available</span>
                 </div>
                 <button
-                  onClick={() => fetchPatients(true)}
+                  onClick={handleRefresh}
                   disabled={refreshing}
                   className="inline-flex items-center px-6 py-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-xl hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
-                  <Activity className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                   {refreshing ? 'Refreshing...' : 'Refresh'}
                 </button>
               </div>
@@ -504,20 +512,21 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
           </div>
           
           <div className="p-8">
-            {/* Search and Filter Row */}
+            {/* Search and Filter Controls */}
             <div className="flex flex-col lg:flex-row gap-6 mb-8">
               <div className="flex-1">
                 <label htmlFor="search" className="block text-sm font-semibold text-gray-700 mb-3">
                   🔍 Search Patients
                 </label>
                 <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <input
                     type="text"
                     id="search"
                     value={searchTerm}
                     onChange={handleSearchChange}
                     placeholder="Search by name, national ID, or email..."
-                    className="w-full pl-4 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-gray-50 hover:bg-white transition-colors"
+                    className="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-gray-50 hover:bg-white transition-colors"
                   />
                 </div>
               </div>
@@ -525,16 +534,19 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                 <label htmlFor="status-filter" className="block text-sm font-semibold text-gray-700 mb-3">
                   📊 Filter by Status
                 </label>
-                <select
-                  id="status-filter"
-                  value={filterStatus}
-                  onChange={handleFilterChange}
-                  className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-gray-50 hover:bg-white transition-colors"
-                >
-                  <option value="all">All Patients</option>
-                  <option value="active">Active Only</option>
-                  <option value="inactive">Inactive Only</option>
-                </select>
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <select
+                    id="status-filter"
+                    value={filterStatus}
+                    onChange={handleFilterChange}
+                    className="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-gray-50 hover:bg-white transition-colors"
+                  >
+                    <option value="all">All Patients</option>
+                    <option value="active">Active Only</option>
+                    <option value="inactive">Inactive Only</option>
+                  </select>
+                </div>
               </div>
             </div>
             
@@ -569,6 +581,22 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600 mx-auto mb-4"></div>
                   <p className="text-lg text-gray-600 font-medium">Loading patients...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-96 text-gray-500 bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl border-2 border-dashed border-red-300">
+                <div className="text-center">
+                  <div className="h-24 w-24 bg-red-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                    <AlertCircle className="h-12 w-12 text-red-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">⚠️ Error Loading Patients</h3>
+                  <p className="text-lg text-gray-600 mb-8 max-w-md">{error}</p>
+                  <button
+                    onClick={handleRefresh}
+                    className="bg-red-600 text-white px-8 py-4 rounded-xl hover:bg-red-700 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                  >
+                    Try Again
+                  </button>
                 </div>
               </div>
             ) : filteredPatients.length === 0 ? (
@@ -612,6 +640,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                             {patient.user?.name || 'Unknown Patient'}
                           </h3>
                           <p className="text-sm text-gray-600">ID: {patient.nationalId || 'N/A'}</p>
+                          <p className="text-sm text-gray-500">Email: {patient.user?.email || 'N/A'}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
@@ -627,7 +656,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                           className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center space-x-2"
                         >
                           <Eye className="h-4 w-4" />
-                          <span>View Records</span>
+                          <span>Request Access</span>
                         </button>
                       </div>
                     </div>
@@ -726,104 +755,9 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
           onClose={handleClosePassportView}
         />
       )}
-
-      {/* Permission Request Modal */}
-      {showPermissionModal && selectedPatient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">Request Patient Access</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                Request permission to view {selectedPatient.user?.name || 'Unknown Patient'}'s medical records
-              </p>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Reason for Access */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for Access *
-                </label>
-                <textarea
-                  value={permissionReason}
-                  onChange={(e) => setPermissionReason(e.target.value)}
-                  placeholder="Please explain why you need access to this patient's medical records..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  rows={4}
-                  required
-                />
-                <div className="mt-1 flex justify-between text-sm">
-                  <span className={`${permissionReason.trim().length < 10 ? 'text-red-600' : 'text-gray-500'}`}>
-                    Minimum 10 characters required
-                  </span>
-                  <span className={`${permissionReason.trim().length > 500 ? 'text-red-600' : 'text-gray-500'}`}>
-                    {permissionReason.trim().length}/500
-                  </span>
-                </div>
-              </div>
-
-              {/* Data Types to Request */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Data Types to Request *
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {dataTypes.map((dataType) => (
-                    <label key={dataType.key} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={requestedData.includes(dataType.key)}
-                        onChange={() => handleDataTypeToggle(dataType.key)}
-                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                      />
-                      <span className="text-sm text-gray-700">{dataType.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Access Duration */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <Shield className="h-5 w-5 text-blue-400" />
-                  </div>
-                  <div className="ml-3">
-                    <h4 className="text-sm font-medium text-blue-800">Access Duration</h4>
-                    <p className="text-sm text-blue-700 mt-1">
-                      This access request will expire in 24 hours. The patient will be notified and can approve or deny your request.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={() => {
-                  setShowPermissionModal(false);
-                  setSelectedPatient(null);
-                  setPermissionReason('');
-                  setRequestedData([]);
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePermissionRequest}
-                disabled={submittingPermission || !permissionReason.trim() || permissionReason.trim().length < 10 || permissionReason.trim().length > 500 || requestedData.length === 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submittingPermission ? 'Sending Request...' : 'Send Request'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export default DoctorDashboard;
+export default EnhancedDoctorDashboard;
+

@@ -4,7 +4,8 @@ import { apiService, ApiError } from '../services/api';
 
 // Define types locally to avoid import issues
 interface User {
-  id: string;
+  _id: string;
+  id?: string; // For compatibility
   name: string;
   email: string;
   role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
@@ -40,15 +41,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('=== CHECKING AUTH ON MOUNT ===');
         const token = localStorage.getItem('token');
+        const user = localStorage.getItem('user');
+        console.log('Token in localStorage:', token ? 'Present' : 'Missing');
+        console.log('User in localStorage:', user ? 'Present' : 'Missing');
+        
         if (token) {
+          console.log('Token found, calling getCurrentUser...');
           const response = await apiService.getCurrentUser();
-          if (response.success && response.data) {
-            setUser(response.data);
+          console.log('getCurrentUser response:', response);
+          
+      if (response.success && response.data) {
+        console.log('Setting user from getCurrentUser:', response.data);
+        // Handle nested user structure
+        const userData = response.data.user || response.data;
+        console.log('Extracted user data:', userData);
+        setUser(userData);
           } else {
+            console.log('getCurrentUser failed, clearing localStorage');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
           }
+        } else {
+          console.log('No token found, user will remain null');
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
@@ -56,6 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('user');
       } finally {
         setIsLoading(false);
+        console.log('=== AUTH CHECK COMPLETE ===');
       }
     };
 
@@ -66,25 +83,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     
     try {
+      console.log('=== AUTH CONTEXT LOGIN START ===');
       console.log('Attempting login with:', { email: formData.email, role: 'checking...' });
       const response = await apiService.login(formData);
       console.log('Login response:', response);
+      console.log('Response success:', response.success);
+      console.log('Response data:', response.data);
       
       if (response.success && response.data) {
         const { user: userData, token } = response.data;
         console.log('Login successful, user data:', userData);
+        console.log('Token received:', token ? 'Present' : 'Missing');
+        console.log('User role:', userData.role);
+        
+        console.log('Setting user in context...');
         setUser(userData);
+        
+        console.log('Storing in localStorage...');
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('token', token);
+        
+        console.log('Verifying storage...');
+        console.log('Token stored in localStorage:', localStorage.getItem('token') ? 'Yes' : 'No');
+        console.log('User stored in localStorage:', localStorage.getItem('user') ? 'Yes' : 'No');
+        
+        console.log('=== AUTH CONTEXT LOGIN SUCCESS ===');
         return true;
       }
       console.log('Login failed - no success or data:', response);
+      console.log('=== AUTH CONTEXT LOGIN FAILED ===');
       return false;
     } catch (error) {
       console.error('Login error:', error);
       if (error instanceof ApiError) {
         console.error('API Error:', error.message, error.status);
       }
+      console.log('=== AUTH CONTEXT LOGIN ERROR ===');
       return false;
     } finally {
       setIsLoading(false);

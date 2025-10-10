@@ -235,39 +235,43 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
+      <div className="bg-white rounded-lg shadow-sm border border-green-200 p-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <div className="p-4 bg-green-100 rounded-2xl mr-6">
-              <Stethoscope className="h-8 w-8 text-green-600" />
-            </div>
+            <Stethoscope className="h-6 w-6 text-green-600 mr-3" />
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">Medical Staff Management</h2>
-              <p className="text-lg text-gray-600">Manage doctors and medical professionals in your hospital</p>
+              <h2 className="text-xl font-semibold text-gray-900">Medical Staff Management</h2>
+              <p className="text-sm text-gray-500">Manage doctors and medical professionals in your hospital</p>
             </div>
           </div>
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center font-semibold"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center text-sm font-medium"
           >
-            <UserPlus className="h-5 w-5 mr-2" />
-            Add New Doctor
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Doctor
           </button>
         </div>
       </div>
 
       {/* Add/Edit Doctor Form */}
       {showAddForm && (
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
-          <div className="flex items-center mb-6">
-            <div className="p-3 bg-green-100 rounded-xl mr-4">
-              <UserPlus className="h-6 w-6 text-green-600" />
+        <div className="bg-white rounded-lg shadow-sm border border-green-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <UserPlus className="h-5 w-5 text-green-600 mr-3" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                {editingDoctor ? 'Edit Doctor Information' : 'Add New Doctor'}
+              </h3>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900">
-              {editingDoctor ? 'Edit Doctor Information' : 'Add New Doctor'}
-            </h3>
+            <button
+              onClick={handleCancel}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -341,17 +345,17 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
               </div>
             </div>
             
-            <div className="flex justify-end space-x-4 pt-6">
+            <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-semibold"
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
               >
                 {editingDoctor ? 'Update Doctor' : 'Add Doctor'}
               </button>
@@ -361,96 +365,88 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
       )}
 
       {/* Doctors List */}
-      <div className="bg-white rounded-2xl shadow-xl border border-green-100">
-        <div className="p-8">
+      <div className="bg-white rounded-lg shadow-sm border border-green-200">
+        <div className="p-6">
           <div className="flex items-center mb-6">
-            <div className="p-3 bg-green-100 rounded-xl mr-4">
-              <Users className="h-6 w-6 text-green-600" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900">Current Medical Staff</h3>
+            <Users className="h-5 w-5 text-green-600 mr-3" />
+            <h3 className="text-lg font-semibold text-gray-900">Current Medical Staff</h3>
           </div>
           
           {doctors.length === 0 ? (
             <div className="text-center py-12">
-              <div className="p-6 bg-green-50 rounded-2xl inline-block mb-6">
-                <Stethoscope className="h-16 w-16 text-green-400 mx-auto" />
+              <div className="p-4 bg-green-50 rounded-lg inline-block mb-4">
+                <Stethoscope className="h-12 w-12 text-green-400 mx-auto" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">No Medical Staff Yet</h3>
-              <p className="text-lg text-gray-600 mb-8">Add your first doctor to start building your medical team</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Medical Staff Yet</h3>
+              <p className="text-gray-500 mb-6">Add your first doctor to start building your medical team</p>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold text-lg"
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
-                <UserPlus className="h-5 w-5 mr-2 inline-block" />
+                <UserPlus className="h-4 w-4 mr-2 inline-block" />
                 Add First Doctor
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {doctors.map((doctor) => (
-                <div key={doctor._id} className="bg-white rounded-xl p-6 border border-green-200 hover:shadow-md transition-all duration-200">
+                <div key={doctor._id} className="border border-green-200 rounded-lg p-4 hover:bg-green-50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-6">
-                      <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center">
-                        <Stethoscope className="h-6 w-6 text-green-600" />
+                    <div className="flex items-center space-x-4">
+                      <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Stethoscope className="h-5 w-5 text-green-600" />
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center space-x-4">
-                          <h4 className="text-lg font-bold text-gray-900">Dr. {doctor.user.name}</h4>
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                        <div className="flex items-center space-x-3">
+                          <h4 className="font-medium text-gray-900">Dr. {doctor.user.name}</h4>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             doctor.isActive 
-                              ? 'bg-green-100 text-green-800 border border-green-200' 
-                              : 'bg-red-100 text-red-800 border border-red-200'
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
                           }`}>
-                            {doctor.isActive ? '✓ Active' : '⚠ Inactive'}
+                            {doctor.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-6 mt-2">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Mail className="h-4 w-4 mr-2 text-green-500" />
-                            <span>{doctor.user.email}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Shield className="h-4 w-4 mr-2 text-green-500" />
-                            <span>License: {doctor.licenseNumber}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Users className="h-4 w-4 mr-2 text-green-500" />
-                            <span>Patients: {doctor.patients.length}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="font-medium text-green-600">{doctor.specialization}</span>
-                          </div>
+                        <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                          <span className="flex items-center">
+                            <Mail className="h-3 w-3 mr-1" />
+                            {doctor.user.email}
+                          </span>
+                          <span className="flex items-center">
+                            <Shield className="h-3 w-3 mr-1" />
+                            {doctor.licenseNumber}
+                          </span>
+                          <span className="flex items-center">
+                            <Users className="h-3 w-3 mr-1" />
+                            {doctor.patients.length} patients
+                          </span>
+                          <span className="font-medium text-green-600">{doctor.specialization}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
                       <button
                         onClick={() => handleDoctorLogin(doctor)}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 px-4 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                        className="bg-green-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-green-700 transition-colors"
                       >
-                        <LogIn className="h-4 w-4 mr-2" />
                         Login
                       </button>
                       <button
                         onClick={() => handleChangePassword(doctor)}
-                        className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white py-2 px-4 rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                        className="bg-gray-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-gray-700 transition-colors"
                       >
-                        <Key className="h-4 w-4 mr-2" />
                         Password
                       </button>
                       <button
                         onClick={() => handleEditDoctor(doctor)}
-                        className="bg-gradient-to-r from-yellow-500 to-orange-600 text-white py-2 px-4 rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                        className="bg-yellow-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-yellow-700 transition-colors"
                       >
-                        <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </button>
                       <button
                         onClick={() => handleRemoveDoctor(doctor._id)}
-                        className="bg-gradient-to-r from-red-500 to-pink-600 text-white py-2 px-4 rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-200 text-sm flex items-center font-semibold"
+                        className="bg-red-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-red-700 transition-colors"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
                         Remove
                       </button>
                     </div>
@@ -521,24 +517,24 @@ const ChangePasswordModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+        <div className="flex items-center justify-between p-6 border-b border-green-200">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Change Password</h2>
-            <p className="text-sm text-gray-600">Dr. {doctor.user.name}</p>
+            <h2 className="text-lg font-semibold text-gray-900">Change Password</h2>
+            <p className="text-sm text-green-600">Dr. {doctor.user.name}</p>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 New Password
               </label>
               <input
@@ -546,13 +542,13 @@ const ChangePasswordModal: React.FC<{
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password
               </label>
               <input
@@ -560,7 +556,7 @@ const ChangePasswordModal: React.FC<{
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 required
               />
             </div>
@@ -569,14 +565,14 @@ const ChangePasswordModal: React.FC<{
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
               >
                 {loading ? 'Changing...' : 'Change Password'}
               </button>

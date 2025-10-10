@@ -1,0 +1,1520 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "PatientPassport API",
+    "version": "1.0.0",
+    "description": "A comprehensive API for managing patient medical records and hospital operations",
+    "contact": {
+      "name": "PatientPassport Team",
+      "email": "support@patientpassport.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.patientpassport.com",
+      "description": "Production server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["patient", "doctor", "hospital", "receptionist", "admin"], "description": "User role. 'admin' is system-only, not available for registration" },
+          "avatar": { "type": "string" },
+          "isActive": { "type": "boolean" },
+          "isEmailVerified": { "type": "boolean" },
+          "lastLogin": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Patient": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "user": { "type": "string" },
+          "nationalId": { "type": "string" },
+          "dateOfBirth": { "type": "string", "format": "date" },
+          "gender": { "type": "string", "enum": ["male", "female", "other", "prefer_not_to_say"] },
+          "contactNumber": { "type": "string" },
+          "address": { "type": "string" },
+          "emergencyContact": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "relationship": { "type": "string" },
+              "phone": { "type": "string" }
+            }
+          },
+          "bloodType": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+          "allergies": { "type": "array", "items": { "type": "string" } },
+          "status": { "type": "string", "enum": ["active", "inactive"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Hospital": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "user": { "type": "string" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "contact": { "type": "string" },
+          "licenseNumber": { "type": "string" },
+          "adminContact": { "type": "string", "format": "email" },
+          "status": { "type": "string", "enum": ["active", "pending", "inactive"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MedicalRecord": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "patientId": { "type": "string" },
+          "type": { "type": "string", "enum": ["condition", "medication", "test", "visit", "image"] },
+          "data": { "type": "object" },
+          "createdBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AccessRequest": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "patientId": { "type": "string" },
+          "doctorId": { "type": "string" },
+          "hospitalId": { "type": "string" },
+          "requestType": { "type": "string", "enum": ["view", "edit", "emergency"] },
+          "reason": { "type": "string" },
+          "requestedData": { "type": "array", "items": { "type": "string" } },
+          "status": { "type": "string", "enum": ["pending", "approved", "denied", "expired"] },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "userId": { "type": "string" },
+          "type": { "type": "string", "enum": ["access_request", "access_approved", "access_denied", "emergency_access"] },
+          "title": { "type": "string" },
+          "message": { "type": "string" },
+          "isRead": { "type": "boolean" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string" },
+          "errors": { "type": "object" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check endpoint",
+        "description": "Check if the API is running",
+        "tags": ["Health"],
+        "responses": {
+          "200": {
+            "description": "API is running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "timestamp": { "type": "string" },
+                    "environment": { "type": "string" },
+                    "version": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user (Patient, Hospital, Doctor, Receptionist)",
+        "description": "Register a new user with email and password. Creates both user account and role-specific profile (Patient/Hospital/Doctor/Receptionist). Requires OTP verification to complete registration. Admin role is system-only and not available for public registration.",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "description": "Full name of the user" },
+                  "email": { "type": "string", "format": "email", "description": "Email address for login" },
+                  "password": { "type": "string", "minLength": 8, "description": "Password for login" },
+                  "confirmPassword": { "type": "string", "description": "Password confirmation" },
+                  "role": { 
+                    "type": "string", 
+                    "enum": ["patient", "doctor", "hospital", "receptionist"],
+                    "description": "User role - determines what profile is created. Note: 'admin' role is system-only, not available for registration"
+                  },
+                  "nationalId": { 
+                    "type": "string", 
+                    "description": "Required for patient registration - National ID number" 
+                  },
+                  "dateOfBirth": { 
+                    "type": "string", 
+                    "format": "date",
+                    "description": "Required for patient registration - Date of birth" 
+                  },
+                  "gender": { 
+                    "type": "string", 
+                    "enum": ["male", "female", "other", "prefer_not_to_say"],
+                    "description": "Required for patient registration - Gender" 
+                  },
+                  "contactNumber": { 
+                    "type": "string",
+                    "description": "Required for patient registration - Contact phone number" 
+                  },
+                  "address": { 
+                    "type": "string",
+                    "description": "Required for patient registration - Address" 
+                  },
+                  "emergencyContact": {
+                    "type": "object",
+                    "description": "Required for patient registration - Emergency contact information",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "relationship": { "type": "string" },
+                      "phone": { "type": "string" }
+                    }
+                  },
+                  "hospitalName": { 
+                    "type": "string",
+                    "description": "Required for hospital registration - Hospital name" 
+                  },
+                  "licenseNumber": { 
+                    "type": "string",
+                    "description": "Required for hospital/doctor registration - License number" 
+                  },
+                  "specialization": { 
+                    "type": "string",
+                    "description": "Required for doctor registration - Medical specialization" 
+                  }
+                },
+                "required": ["name", "email", "password", "confirmPassword", "role"]
+              },
+              "examples": {
+                "patientRegistration": {
+                  "summary": "Patient Registration Example",
+                  "value": {
+                    "name": "John Doe",
+                    "email": "john@example.com",
+                    "password": "Patient123!",
+                    "confirmPassword": "Patient123!",
+                    "role": "patient",
+                    "nationalId": "1234567890123456",
+                    "dateOfBirth": "1990-01-15",
+                    "gender": "male",
+                    "contactNumber": "+250788123456",
+                    "address": "Kigali, Rwanda",
+                    "emergencyContact": {
+                      "name": "Jane Doe",
+                      "relationship": "Spouse",
+                      "phone": "+250788654321"
+                    }
+                  }
+                },
+                "hospitalRegistration": {
+                  "summary": "Hospital Registration Example",
+                  "value": {
+                    "name": "Kigali General Hospital",
+                    "email": "contact@kigalihospital.com",
+                    "password": "Hospital123!",
+                    "confirmPassword": "Hospital123!",
+                    "role": "hospital",
+                    "hospitalName": "Kigali General Hospital",
+                    "licenseNumber": "HOSP-2024-001",
+                    "address": "Kigali City Center",
+                    "contact": "+250788000000"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully. OTP sent to email for verification. Use /api/auth/verify-registration-otp to complete registration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": { "$ref": "#/components/schemas/User" },
+                        "requiresOTPVerification": { "type": "boolean", "description": "Always true - OTP verification required" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login user",
+        "description": "Authenticate user with email/password or national ID",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "nationalId": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": { "$ref": "#/components/schemas/User" },
+                        "token": { "type": "string" },
+                        "refreshToken": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Get current user",
+        "description": "Get the current authenticated user's profile",
+        "tags": ["Authentication"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/auth/request-otp": {
+      "post": {
+        "summary": "Request OTP",
+        "description": "Request OTP for login or verification",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": { "type": "string", "description": "Email address or national ID" },
+                  "type": { "type": "string", "enum": ["email", "nationalId"], "description": "Type of identifier used" }
+                },
+                "required": ["identifier", "type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/auth/verify-otp": {
+      "post": {
+        "summary": "Verify OTP",
+        "description": "Verify OTP for login",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": { "type": "string", "description": "Email address or national ID" },
+                  "otpCode": { "type": "string", "minLength": 6, "maxLength": 6 },
+                  "type": { "type": "string", "enum": ["email", "nationalId"], "description": "Type of identifier used" }
+                },
+                "required": ["identifier", "otpCode", "type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": { "$ref": "#/components/schemas/User" },
+                        "token": { "type": "string" },
+                        "refreshToken": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/auth/verify-email": {
+      "get": {
+        "summary": "Verify email",
+        "description": "Verify email using verification token",
+        "tags": ["Authentication"],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Email verification token"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/auth/resend-verification": {
+      "post": {
+        "summary": "Resend email verification",
+        "description": "Resend email verification link",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification email sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/auth/verify-registration-otp": {
+      "post": {
+        "summary": "Verify registration OTP",
+        "description": "Verify OTP sent during registration to complete account setup",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "otpCode": { "type": "string", "minLength": 6, "maxLength": 6 }
+                },
+                "required": ["email", "otpCode"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration OTP verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": { "$ref": "#/components/schemas/User" },
+                        "token": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/patients": {
+      "get": {
+        "summary": "Get all patients",
+        "description": "Retrieve all patients (Admin, Doctor only)",
+        "tags": ["Patients"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Patients retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Patient" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "total": { "type": "integer" },
+                        "pages": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "summary": "Create patient record for existing user",
+        "description": "Create a patient record for an existing user account (Admin only). This is for linking existing users to patient profiles. For new patient registration with login credentials, use POST /api/auth/register with role='patient'",
+        "tags": ["Patients"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user": { "type": "string", "description": "User ID of the existing user account" },
+                  "nationalId": { "type": "string" },
+                  "dateOfBirth": { "type": "string", "format": "date" },
+                  "gender": { "type": "string", "enum": ["male", "female", "other", "prefer_not_to_say"] },
+                  "contactNumber": { "type": "string" },
+                  "address": { "type": "string" },
+                  "emergencyContact": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "relationship": { "type": "string" },
+                      "phone": { "type": "string" }
+                    }
+                  },
+                  "bloodType": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+                  "allergies": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["user", "nationalId", "dateOfBirth", "gender", "contactNumber", "address", "emergencyContact"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Patient created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Patient" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/patients/{id}": {
+      "get": {
+        "summary": "Get patient by ID",
+        "description": "Retrieve a specific patient by ID",
+        "tags": ["Patients"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Patient retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/Patient" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "summary": "Update patient",
+        "description": "Update patient information (Admin, Doctor only)",
+        "tags": ["Patients"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "contactNumber": { "type": "string" },
+                  "address": { "type": "string" },
+                  "bloodType": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+                  "allergies": { "type": "array", "items": { "type": "string" } },
+                  "status": { "type": "string", "enum": ["active", "inactive"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patient updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Patient" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "summary": "Delete patient",
+        "description": "Delete a patient record (Admin only)",
+        "tags": ["Patients"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Patient deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/hospitals": {
+      "get": {
+        "summary": "Get all hospitals",
+        "description": "Retrieve all hospitals (Admin only)",
+        "tags": ["Hospitals"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Hospitals retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Hospital" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "summary": "Create new hospital",
+        "description": "Create a new hospital record (Admin only)",
+        "tags": ["Hospitals"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "address": { "type": "string" },
+                  "contact": { "type": "string" },
+                  "licenseNumber": { "type": "string" },
+                  "adminContact": { "type": "string", "format": "email" }
+                },
+                "required": ["name", "address", "contact", "licenseNumber", "adminContact"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hospital created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Hospital" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/medical-records": {
+      "post": {
+        "summary": "Add medical record",
+        "description": "Add a new medical record for a patient",
+        "tags": ["Medical Records"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "patientId": { "type": "string" },
+                  "type": { "type": "string", "enum": ["condition", "medication", "test", "visit", "image"] },
+                  "data": { "type": "object" }
+                },
+                "required": ["patientId", "type", "data"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Medical record created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/MedicalRecord" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/access-control/request": {
+      "post": {
+        "summary": "Create access request",
+        "description": "Doctor requests access to patient data",
+        "tags": ["Access Control"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "patientId": { "type": "string" },
+                  "hospitalId": { "type": "string" },
+                  "requestType": { "type": "string", "enum": ["view", "edit", "emergency"] },
+                  "reason": { "type": "string" },
+                  "requestedData": { "type": "array", "items": { "type": "string" } },
+                  "expiresInHours": { "type": "integer", "minimum": 1, "maximum": 168 }
+                },
+                "required": ["patientId", "hospitalId", "requestType", "reason", "requestedData"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Access request created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/AccessRequest" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "summary": "Get user notifications",
+        "description": "Retrieve notifications for the current user",
+        "tags": ["Notifications"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "notifications": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/Notification" }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "total": { "type": "integer" },
+                            "limit": { "type": "integer" },
+                            "offset": { "type": "integer" },
+                            "hasMore": { "type": "boolean" }
+                          }
+                        },
+                        "unreadCount": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/dashboard/admin": {
+      "get": {
+        "summary": "Get admin dashboard",
+        "description": "Get comprehensive admin dashboard with system statistics, pending approvals, and recent activity",
+        "tags": ["Dashboard"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Admin dashboard data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalPatients": { "type": "integer", "description": "Total number of patients in system" },
+                        "totalHospitals": { "type": "integer", "description": "Total number of hospitals" },
+                        "totalDoctors": { "type": "integer", "description": "Total number of doctors" },
+                        "totalReceptionists": { "type": "integer", "description": "Total number of receptionists" },
+                        "activePatients": { "type": "integer", "description": "Number of active patients" },
+                        "pendingHospitals": { "type": "integer", "description": "Number of hospitals pending approval" },
+                        "pendingDoctors": { "type": "integer", "description": "Number of doctors pending approval" },
+                        "newRegistrationsToday": { "type": "integer", "description": "New registrations today" },
+                        "newRegistrationsThisWeek": { "type": "integer", "description": "New registrations this week" },
+                        "newRegistrationsThisMonth": { "type": "integer", "description": "New registrations this month" },
+                        "recentActivity": {
+                          "type": "array",
+                          "description": "Recent system activity",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": { "type": "string", "enum": ["registration", "login", "approval", "rejection"] },
+                              "description": { "type": "string" },
+                              "timestamp": { "type": "string", "format": "date-time" },
+                              "user": { "type": "string" }
+                            }
+                          }
+                        },
+                        "pendingApprovals": {
+                          "type": "array",
+                          "description": "Items pending admin approval",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string" },
+                              "type": { "type": "string", "enum": ["hospital", "doctor"] },
+                              "name": { "type": "string" },
+                              "email": { "type": "string" },
+                              "submittedAt": { "type": "string", "format": "date-time" },
+                              "details": { "type": "object" }
+                            }
+                          }
+                        },
+                        "systemHealth": {
+                          "type": "object",
+                          "properties": {
+                            "databaseStatus": { "type": "string", "enum": ["healthy", "warning", "error"] },
+                            "emailServiceStatus": { "type": "string", "enum": ["healthy", "warning", "error"] },
+                            "lastBackup": { "type": "string", "format": "date-time" },
+                            "uptime": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/hospitals/pending": {
+      "get": {
+        "summary": "Get pending hospitals",
+        "description": "Get all hospitals pending admin approval",
+        "tags": ["Admin Management"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Pending hospitals retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Hospital" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/hospitals/{id}/approve": {
+      "patch": {
+        "summary": "Approve hospital",
+        "description": "Approve a pending hospital registration",
+        "tags": ["Admin Management"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Hospital ID"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notes": { "type": "string", "description": "Optional approval notes" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital approved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Hospital" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/hospitals/{id}/reject": {
+      "patch": {
+        "summary": "Reject hospital",
+        "description": "Reject a pending hospital registration",
+        "tags": ["Admin Management"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Hospital ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": { "type": "string", "description": "Reason for rejection" }
+                },
+                "required": ["reason"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital rejected successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "summary": "Get all users",
+        "description": "Get all users in the system with filtering and pagination",
+        "tags": ["Admin Management"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["patient", "doctor", "hospital", "receptionist"] },
+            "description": "Filter by user role"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["active", "inactive", "pending"] },
+            "description": "Filter by user status"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/User" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "total": { "type": "integer" },
+                        "pages": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/status": {
+      "patch": {
+        "summary": "Update user status",
+        "description": "Activate or deactivate a user account",
+        "tags": ["Admin Management"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "User ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isActive": { "type": "boolean", "description": "User active status" },
+                  "reason": { "type": "string", "description": "Reason for status change" }
+                },
+                "required": ["isActive"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/system/stats": {
+      "get": {
+        "summary": "Get system statistics",
+        "description": "Get comprehensive system statistics and analytics",
+        "tags": ["Admin Management"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "System statistics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userGrowth": {
+                          "type": "object",
+                          "properties": {
+                            "daily": { "type": "array", "items": { "type": "integer" } },
+                            "weekly": { "type": "array", "items": { "type": "integer" } },
+                            "monthly": { "type": "array", "items": { "type": "integer" } }
+                          }
+                        },
+                        "roleDistribution": {
+                          "type": "object",
+                          "properties": {
+                            "patients": { "type": "integer" },
+                            "doctors": { "type": "integer" },
+                            "hospitals": { "type": "integer" },
+                            "receptionists": { "type": "integer" }
+                          }
+                        },
+                        "activityMetrics": {
+                          "type": "object",
+                          "properties": {
+                            "loginsToday": { "type": "integer" },
+                            "registrationsToday": { "type": "integer" },
+                            "medicalRecordsCreated": { "type": "integer" },
+                            "accessRequestsToday": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/patient": {
+      "get": {
+        "summary": "Get patient dashboard",
+        "description": "Get patient dashboard with medical records and appointments",
+        "tags": ["Dashboard"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Dashboard data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "patient": { "$ref": "#/components/schemas/Patient" },
+                        "recentRecords": { "type": "array", "items": { "$ref": "#/components/schemas/MedicalRecord" } },
+                        "upcomingAppointments": { "type": "array" },
+                        "emergencyContacts": { "type": "array" },
+                        "allergies": { "type": "array" },
+                        "medications": { "type": "array" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Health check endpoints"
+    },
+    {
+      "name": "Authentication",
+      "description": "Complete user registration and authentication flow. Supports Patient, Hospital, Doctor, and Receptionist registration with OTP verification. Admin role is system-only."
+    },
+    {
+      "name": "Patients",
+      "description": "Patient management operations"
+    },
+    {
+      "name": "Hospitals",
+      "description": "Hospital management operations"
+    },
+    {
+      "name": "Medical Records",
+      "description": "Medical record management"
+    },
+    {
+      "name": "Access Control",
+      "description": "Patient data access control"
+    },
+    {
+      "name": "Notifications",
+      "description": "User notification management"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard and statistics"
+    },
+    {
+      "name": "Admin Management",
+      "description": "System administration endpoints for managing users, hospitals, and system operations"
+    }
+  ]
+}

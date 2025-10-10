@@ -36,6 +36,11 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  // Automatically request OTP when component mounts
+  useEffect(() => {
+    handleRequestOTP();
+  }, []);
+
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, ''); // Only allow digits
     if (value.length <= 6) {

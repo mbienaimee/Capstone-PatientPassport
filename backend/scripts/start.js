@@ -14,28 +14,29 @@ const startApp = () => {
   });
 
   child.on('error', (error) => {
-    console.error('❌ Failed to start application:', error);
+    console.error(' Failed to start application:', error);
     process.exit(1);
   });
 
   child.on('exit', (code) => {
-    console.log(`\n📊 Application exited with code ${code}`);
+    console.log(`\n Application exited with code ${code}`);
     process.exit(code);
   });
 
   // Handle graceful shutdown
   process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down gracefully...');
+    console.log('\n Shutting down gracefully...');
     child.kill('SIGINT');
   });
 
   process.on('SIGTERM', () => {
-    console.log('\n🛑 Shutting down gracefully...');
+    console.log('\n Shutting down gracefully...');
     child.kill('SIGTERM');
   });
 };
 
 startApp();
+
 
 
 

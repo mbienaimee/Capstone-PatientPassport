@@ -3,13 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
-// import rateLimit from 'express-rate-limit'; // Unused import removed
-import swaggerJsdoc from 'swagger-jsdoc';
 import * as swaggerUi from 'swagger-ui-express';
+import * as fs from 'fs';
+import * as path from 'path';
 import 'express-async-errors';
 import * as dotenv from 'dotenv';
 
-// Import routes
 import authRoutes from './routes/auth';
 import patientRoutes from './routes/patients';
 import hospitalRoutes from './routes/hospitals';
@@ -20,7 +19,6 @@ import assignmentRoutes from './routes/assignments';
 import accessControlRoutes from './routes/accessControl';
 import notificationRoutes from './routes/notifications';
 import passportAccessRoutes from './routes/passportAccess';
-import patientPassportRoutes from './routes/patientPassport';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -31,114 +29,10 @@ dotenv.config();
 
 const app = express();
 
-// Swagger configuration
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'PatientPassport API',
-      version: '1.0.0',
-      description: 'A comprehensive API for managing patient medical records and hospital operations',
-      contact: {
-        name: 'PatientPassport Team',
-        email: 'support@patientpassport.com'
-      },
-      license: {
-        name: 'MIT',
-        url: 'https://opensource.org/licenses/MIT'
-      }
-    },
-    servers: [
-      {
-        url: process.env['NODE_ENV'] === 'production' 
-          ? 'https://api.patientpassport.com' 
-          : `http://localhost:${process.env['PORT'] || 5000}`,
-        description: process.env['NODE_ENV'] === 'production' ? 'Production server' : 'Development server'
-      }
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
-        }
-      },
-      schemas: {
-        User: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            name: { type: 'string' },
-            email: { type: 'string', format: 'email' },
-            role: { type: 'string', enum: ['patient', 'doctor', 'admin', 'hospital', 'receptionist'] },
-            avatar: { type: 'string' },
-            isActive: { type: 'boolean' },
-            isEmailVerified: { type: 'boolean' },
-            lastLogin: { type: 'string', format: 'date-time' },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        Patient: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            user: { type: 'string' },
-            nationalId: { type: 'string' },
-            dateOfBirth: { type: 'string', format: 'date' },
-            contactNumber: { type: 'string' },
-            address: { type: 'string' },
-            emergencyContact: {
-              type: 'object',
-              properties: {
-                name: { type: 'string' },
-                relationship: { type: 'string' },
-                phone: { type: 'string' }
-              }
-            },
-            bloodType: { type: 'string', enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
-            allergies: { type: 'array', items: { type: 'string' } },
-            status: { type: 'string', enum: ['active', 'inactive'] },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        Hospital: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            user: { type: 'string' },
-            name: { type: 'string' },
-            address: { type: 'string' },
-            contact: { type: 'string' },
-            licenseNumber: { type: 'string' },
-            adminContact: { type: 'string', format: 'email' },
-            status: { type: 'string', enum: ['active', 'pending', 'inactive'] },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        Error: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean', example: false },
-            message: { type: 'string' },
-            errors: { type: 'object' }
-          }
-        }
-      }
-    },
-    security: [
-      {
-        bearerAuth: []
-      }
-    ]
-  },
-  apis: ['./src/routes/*.ts', './src/controllers/*.ts']
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// Load Swagger specification from JSON file
+const swaggerSpec = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '../swagger.json'), 'utf8')
+);
 
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
@@ -197,6 +91,11 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'PatientPassport API Documentation'
 }));
 
+// Serve raw swagger.json
+app.get('/api-docs/swagger.json', (_req, res) => {
+  res.json(swaggerSpec);
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
@@ -208,7 +107,6 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/access-control', accessControlRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/passport-access', passportAccessRoutes);
-app.use('/api/patient-passport', patientPassportRoutes);
 
 app.get('/', (_req, res) => {
   res.json({

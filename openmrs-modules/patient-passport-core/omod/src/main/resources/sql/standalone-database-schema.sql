@@ -211,3 +211,4 @@ CREATE INDEX idx_medical_records_universal_date ON patient_passport_medical_reco
 
 
 
+

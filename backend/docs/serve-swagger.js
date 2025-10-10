@@ -60,14 +60,15 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`
-📚 PatientPassport API Documentation Server
-📍 Server: http://localhost:${PORT}
-📖 Documentation: http://localhost:${PORT}/api-docs
-📄 YAML File: http://localhost:${PORT}/swagger.yml
-🔧 JSON File: http://localhost:${PORT}/swagger.json
-🏥 Health Check: http://localhost:${PORT}/health
+ PatientPassport API Documentation Server
+ Server: http://localhost:${PORT}
+ Documentation: http://localhost:${PORT}/api-docs
+ YAML File: http://localhost:${PORT}/swagger.yml
+ JSON File: http://localhost:${PORT}/swagger.json
+ Health Check: http://localhost:${PORT}/health
   `);
 });
+
 
 
 

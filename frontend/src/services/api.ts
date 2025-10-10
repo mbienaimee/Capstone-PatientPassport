@@ -7,7 +7,8 @@ interface ApiResponse<T> {
 }
 
 interface User {
-  id: string;
+  _id: string;
+  id?: string; // For compatibility
   name: string;
   email: string;
   role: 'patient' | 'doctor' | 'admin' | 'hospital' | 'receptionist';
@@ -209,7 +210,7 @@ class ApiService {
 
   // Patient endpoints
   async getPatients(): Promise<ApiResponse<Patient[]>> {
-    const response = await this.request('/patients?limit=1000'); // Get all patients
+    const response = await this.request<Patient[]>('/patients?limit=100'); // Changed from 1000 to 100
     return response;
   }
 
@@ -318,6 +319,11 @@ class ApiService {
     return this.request('/dashboard/recent-hospitals');
   }
 
+  // Hospital-specific endpoints
+  async getHospitalPatients(hospitalId: string): Promise<ApiResponse<Patient[]>> {
+    return this.request<Patient[]>(`/hospitals/${hospitalId}/patients`);
+  }
+
   // OTP Methods
   async requestOTP(identifier: string, type: 'email' | 'phone'): Promise<ApiResponse<any>> {
     const response = await fetch(`${this.baseURL}/auth/request-otp`, {
@@ -418,7 +424,7 @@ class ApiService {
   }
 
   async getPatientPassportWithAccess(patientId: string, accessToken: string): Promise<ApiResponse<any>> {
-    return this.request(`/patient-passport/${patientId}`, {
+    return this.request(`/passport-access/patient/${patientId}/passport`, {
       method: 'GET',
       headers: {
         'X-Access-Token': accessToken
@@ -427,7 +433,7 @@ class ApiService {
   }
 
   async updatePatientPassportWithAccess(patientId: string, accessToken: string, updateData: any): Promise<ApiResponse<any>> {
-    return this.request(`/patient-passport/${patientId}`, {
+    return this.request(`/passport-access/patient/${patientId}/passport`, {
       method: 'PUT',
       headers: {
         'X-Access-Token': accessToken
