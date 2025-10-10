@@ -31,12 +31,12 @@ const startServer = async () => {
     
     server.listen(PORT, () => {
       console.log(`
-🚀 PatientPassport API Server is running!
-📍 Server: http://localhost:${PORT}
-📚 Documentation: http://localhost:${PORT}/api-docs
-🏥 Health Check: http://localhost:${PORT}/health
-🔌 WebSocket: ws://localhost:${PORT}
-🌍 Environment: ${process.env['NODE_ENV'] || 'development'}
+ PatientPassport API Server is running!
+ Server: http://localhost:${PORT}
+ Documentation: http://localhost:${PORT}/api-docs
+ Health Check: http://localhost:${PORT}/health
+ WebSocket: ws://localhost:${PORT}
+ Environment: ${process.env['NODE_ENV'] || 'development'}
       `);
     });
   } catch (error) {
