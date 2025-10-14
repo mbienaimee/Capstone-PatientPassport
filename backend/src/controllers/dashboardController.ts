@@ -467,8 +467,276 @@ export const getGeneralStats = asyncHandler(async (req: Request, res: Response, 
   res.json(response);
 });
 
+// @desc    Get all patients for admin dashboard
+// @route   GET /api/dashboard/admin/patients
+// @access  Private (Admin)
+export const getAllPatients = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log('🔄 Fetching all patients for admin dashboard');
+    const patients = await Patient.find()
+      .populate('user', 'name email')
+      .select('nationalId dateOfBirth gender bloodType contactNumber address emergencyContact status createdAt')
+      .sort({ createdAt: -1 });
 
+    console.log('📊 Raw patients from DB:', patients.length, 'patients found');
+    console.log('📊 First patient from DB:', patients[0]);
 
+    const formattedPatients = patients.map(patient => ({
+      id: patient._id,
+      name: patient.user?.name || 'Unknown',
+      email: patient.user?.email || 'No email',
+      nationalId: patient.nationalId,
+      dateOfBirth: patient.dateOfBirth,
+      gender: patient.gender,
+      bloodType: patient.bloodType,
+      contactNumber: patient.contactNumber,
+      address: patient.address,
+      emergencyContact: patient.emergencyContact,
+      status: patient.status,
+      registrationDate: patient.createdAt
+    }));
+
+    console.log('📊 Formatted patients:', formattedPatients.length, 'patients');
+    console.log('📊 First formatted patient:', formattedPatients[0]);
+
+    const response: ApiResponse<any> = {
+      success: true,
+      message: 'Patients data retrieved successfully',
+      data: {
+        patients: formattedPatients,
+        totalCount: formattedPatients.length
+      }
+    };
+
+    console.log('✅ Sending response with', formattedPatients.length, 'patients');
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('❌ Error fetching all patients:', error);
+    throw new CustomError('Failed to fetch patients data', 500);
+  }
+});
+
+// @desc    Get all hospitals for admin dashboard
+// @route   GET /api/dashboard/admin/hospitals
+// @access  Private (Admin)
+export const getAllHospitals = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitals = await Hospital.find()
+      .populate('user', 'name email')
+      .select('name address contact licenseNumber adminContact status createdAt')
+      .sort({ createdAt: -1 });
+
+    const formattedHospitals = hospitals.map(hospital => ({
+      id: hospital._id,
+      name: hospital.name,
+      email: hospital.user?.email || 'No email',
+      address: hospital.address,
+      contact: hospital.contact,
+      licenseNumber: hospital.licenseNumber,
+      adminContact: hospital.adminContact,
+      status: hospital.status,
+      registrationDate: hospital.createdAt
+    }));
+
+    const response: ApiResponse<any> = {
+      success: true,
+      message: 'Hospitals data retrieved successfully',
+      data: {
+        hospitals: formattedHospitals,
+        totalCount: formattedHospitals.length
+      }
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error fetching all hospitals:', error);
+    throw new CustomError('Failed to fetch hospitals data', 500);
+  }
+});
+
+// @desc    Get comprehensive admin dashboard data
+// @route   GET /api/dashboard/admin/overview
+// @access  Private (Admin)
+export const getAdminOverview = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get basic counts
+    const totalPatients = await Patient.countDocuments({ status: 'active' });
+    const totalHospitals = await Hospital.countDocuments();
+    const totalDoctors = await Doctor.countDocuments({ isActive: true });
+    const pendingHospitals = await Hospital.countDocuments({ status: 'pending' });
+
+    // Get new registrations in the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const newRegistrations = await User.countDocuments({
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+
+    // Get recent patients (last 10)
+    const recentPatients = await Patient.find({ status: 'active' })
+      .populate('user', 'name email')
+      .select('nationalId dateOfBirth contactNumber address createdAt')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Get recent hospitals (last 10)
+    const recentHospitals = await Hospital.find()
+      .populate('user', 'name email')
+      .select('name address contact status createdAt')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    const response: ApiResponse<any> = {
+      success: true,
+      message: 'Admin overview data retrieved successfully',
+      data: {
+        stats: {
+          totalPatients,
+          totalHospitals,
+          totalDoctors,
+          pendingHospitals,
+          newRegistrations,
+          systemStatus: 'Online'
+        },
+        recentPatients: recentPatients.map(patient => ({
+          id: patient._id,
+          name: patient.user?.name || 'Unknown',
+          email: patient.user?.email || 'No email',
+          nationalId: patient.nationalId,
+          address: patient.address,
+          registrationDate: patient.createdAt
+        })),
+        recentHospitals: recentHospitals.map(hospital => ({
+          id: hospital._id,
+          name: hospital.name,
+          email: hospital.user?.email || 'No email',
+          address: hospital.address,
+          status: hospital.status,
+          registrationDate: hospital.createdAt
+        }))
+      }
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error fetching admin overview:', error);
+    throw new CustomError('Failed to fetch admin overview data', 500);
+  }
+});
+
+// Update hospital status
+export const updateHospitalStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { hospitalId } = req.params;
+  const { status } = req.body;
+
+  console.log('🔄 Update hospital status request:', { hospitalId, status });
+
+  if (!hospitalId || !status) {
+    throw new CustomError('Hospital ID and status are required', 400);
+  }
+
+  if (!['active', 'inactive', 'pending'].includes(status)) {
+    throw new CustomError('Invalid status. Must be active, inactive, or pending', 400);
+  }
+
+  try {
+    console.log('🔄 Finding hospital with ID:', hospitalId);
+    const hospital = await Hospital.findByIdAndUpdate(
+      hospitalId,
+      { status },
+      { new: true }
+    ).populate('user', 'name email');
+
+    console.log('🏥 Hospital found:', hospital);
+
+    if (!hospital) {
+      throw new CustomError('Hospital not found', 404);
+    }
+
+    const response: ApiResponse<any> = {
+      success: true,
+      message: `Hospital status updated to ${status}`,
+      data: {
+        hospital: {
+          id: hospital._id,
+          name: hospital.name,
+          email: hospital.user?.email,
+          status: hospital.status,
+          address: hospital.address,
+          contact: hospital.contact,
+          licenseNumber: hospital.licenseNumber,
+          adminContact: hospital.adminContact,
+          registrationDate: hospital.createdAt
+        }
+      }
+    };
+
+    console.log('✅ Hospital status update response:', response);
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('❌ Error updating hospital status:', error);
+    throw new CustomError('Failed to update hospital status', 500);
+  }
+});
+
+// Update patient status
+export const updatePatientStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { patientId } = req.params;
+  const { status } = req.body;
+
+  console.log('🔄 Update patient status request:', { patientId, status });
+
+  if (!patientId || !status) {
+    throw new CustomError('Patient ID and status are required', 400);
+  }
+
+  if (!['active', 'inactive'].includes(status)) {
+    throw new CustomError('Invalid status. Must be active or inactive', 400);
+  }
+
+  try {
+    console.log('🔄 Finding patient with ID:', patientId);
+    const patient = await Patient.findByIdAndUpdate(
+      patientId,
+      { status },
+      { new: true }
+    ).populate('user', 'name email');
+
+    console.log('📊 Patient found:', patient);
+
+    if (!patient) {
+      throw new CustomError('Patient not found', 404);
+    }
+
+    const response: ApiResponse<any> = {
+      success: true,
+      message: `Patient status updated to ${status}`,
+      data: {
+        patient: {
+          id: patient._id,
+          name: patient.user?.name,
+          email: patient.user?.email,
+          nationalId: patient.nationalId,
+          dateOfBirth: patient.dateOfBirth,
+          gender: patient.gender,
+          bloodType: patient.bloodType,
+          contactNumber: patient.contactNumber,
+          address: patient.address,
+          emergencyContact: patient.emergencyContact,
+          status: patient.status,
+          registrationDate: patient.createdAt
+        }
+      }
+    };
+
+    console.log('✅ Patient status update response:', response);
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('❌ Error updating patient status:', error);
+    throw new CustomError('Failed to update patient status', 500);
+  }
+});
 
 
 

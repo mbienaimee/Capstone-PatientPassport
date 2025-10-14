@@ -10,7 +10,10 @@ import {
   ChevronDown,
   AlertCircle,
   RefreshCw,
-  CheckCircle
+  CheckCircle,
+  Activity,
+  FileText,
+  Bell
 } from 'lucide-react';
 import Logo from './Logo';
 import DoctorManagement from './DoctorManagement';
@@ -25,6 +28,14 @@ interface HospitalInfo {
   contact: string;
   licenseNumber: string;
   status: string;
+}
+
+interface UserResponse {
+  success: boolean;
+  data: {
+    profile?: HospitalInfo;
+    [key: string]: unknown;
+  };
 }
 
 interface HospitalStats {
@@ -107,8 +118,8 @@ const HospitalDashboard: React.FC = () => {
         const userResponse = await apiService.request('/auth/me');
         console.log('User profile response:', userResponse);
         
-        if (userResponse.success && userResponse.data.profile) {
-          const hospitalProfile = userResponse.data.profile;
+        if (userResponse.success && (userResponse as UserResponse).data.profile) {
+          const hospitalProfile = (userResponse as UserResponse).data.profile!;
           response = {
             success: true,
             data: {
@@ -231,7 +242,7 @@ const HospitalDashboard: React.FC = () => {
     // Fetch hospital info
     console.log('User is hospital, fetching info...');
     fetchHospitalInfo();
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate, fetchHospitalInfo]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -346,49 +357,64 @@ const HospitalDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex justify-between items-center h-14">
-            <div className="flex items-center">
-              <Logo size="sm" className="text-gray-600" />
+      <header className="bg-white/80 backdrop-blur-md border-b border-green-200/50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Logo size="sm" className="text-green-600" />
+              <div className="hidden sm:block">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Hospital Portal</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Medical Management System</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
+
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Notifications */}
+              <button className="relative p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="absolute -top-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+              </button>
+
               {/* Refresh Button */}
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="p-2 text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
+                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                 title="Refresh Dashboard"
               >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
-              
+
               {/* Profile Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center space-x-2 px-2 py-1 text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-4 py-2 bg-green-50 hover:bg-green-100 rounded-lg transition-all duration-200 border border-green-200"
                 >
-                  <div className="h-7 w-7 bg-gray-100 rounded-full flex items-center justify-center">
-                    <User className="h-3 w-3 text-gray-600" />
+                  <div className="h-6 w-6 sm:h-8 sm:w-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <User className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                   </div>
-                  <ChevronDown className="h-3 w-3" />
+                  <div className="text-left hidden sm:block">
+                    <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                    <p className="text-xs text-green-600">Hospital Admin</p>
+                  </div>
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
                 </button>
-                
+
                 {showProfileDropdown && (
-                  <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
-                    <div className="px-3 py-2 border-b border-gray-100">
-                      <p className="text-xs font-medium text-gray-900">{user?.name}</p>
-                      <p className="text-xs text-gray-500">{hospitalInfo.name}</p>
+                  <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-xl shadow-xl border border-green-200 py-2 z-50">
+                    <div className="px-3 sm:px-4 py-3 border-b border-green-100">
+                      <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
+                      <p className="text-xs text-green-600 font-medium">{hospitalInfo?.name}</p>
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center px-3 sm:px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
                     >
-                      <LogOut className="h-3 w-3 mr-2" />
-                      Logout
+                      <LogOut className="h-4 w-4 mr-3" />
+                      Sign Out
                     </button>
                   </div>
                 )}
@@ -400,41 +426,154 @@ const HospitalDashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Welcome Section */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-green-500 via-green-600 to-green-700 rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 text-white shadow-xl">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2 sm:space-y-4">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Welcome to {hospitalInfo?.name}</h1>
+                    <p className="text-green-100 text-sm sm:text-base lg:text-lg">Comprehensive Medical Management System</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 lg:mt-0 lg:block">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/30">
+                  <div className="text-center">
+                    <p className="text-green-100 text-xs sm:text-sm font-medium">System Status</p>
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Online</p>
+                    <div className="mt-2 h-1 bg-white/30 rounded-full overflow-hidden">
+                      <div className="h-full bg-white/60 rounded-full" style={{width: '100%'}}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <Stethoscope className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-600">Total Doctors</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{hospitalStats?.totalDoctors || 0}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="h-2 w-12 sm:w-16 bg-green-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-green-500 rounded-full" style={{width: '85%'}}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <Users className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-600">Total Patients</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{hospitalStats?.totalPatients || 0}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="h-2 w-12 sm:w-16 bg-green-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-green-500 rounded-full" style={{width: '75%'}}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-600">Active Cases</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{hospitalStats?.recentPatients?.length || 0}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="h-2 w-12 sm:w-16 bg-green-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-green-500 rounded-full" style={{width: '60%'}}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-600">System Health</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">100%</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="h-2 w-12 sm:w-16 bg-green-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-green-500 rounded-full" style={{width: '100%'}}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Navigation Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-green-200 mb-6">
-          <nav className="flex">
+        <div className="bg-white rounded-xl shadow-lg border border-green-200/50 mb-6">
+          <nav className="flex flex-wrap">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors flex items-center ${
                 activeTab === 'overview'
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300'
+                  ? 'border-green-500 text-green-600 bg-green-50'
+                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 hover:bg-green-50'
               }`}
             >
-              <Building2 className="inline-block w-4 h-4 mr-2" />
-              Hospital Details
+              <Building2 className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Hospital Details</span>
+              <span className="sm:hidden">Overview</span>
             </button>
             <button
               onClick={() => setActiveTab('doctors')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors flex items-center ${
                 activeTab === 'doctors'
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300'
+                  ? 'border-green-500 text-green-600 bg-green-50'
+                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 hover:bg-green-50'
               }`}
             >
-              <Stethoscope className="inline-block w-4 h-4 mr-2" />
-              Medical Staff
+              <Stethoscope className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Medical Staff</span>
+              <span className="sm:hidden">Doctors</span>
             </button>
             <button
               onClick={() => setActiveTab('patients')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors flex items-center ${
                 activeTab === 'patients'
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300'
+                  ? 'border-green-500 text-green-600 bg-green-50'
+                  : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 hover:bg-green-50'
               }`}
             >
-              <Users className="inline-block w-4 h-4 mr-2" />
-              Patients
+              <Users className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Patients</span>
+              <span className="sm:hidden">Patients</span>
             </button>
           </nav>
         </div>
@@ -443,51 +582,111 @@ const HospitalDashboard: React.FC = () => {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Hospital Information */}
-            <div className="bg-white rounded-lg shadow-sm border border-green-200 p-6">
+            <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-6">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <Building2 className="h-6 w-6 text-green-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-gray-900">Hospital Information</h2>
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Hospital Information</h2>
+                    <p className="text-sm text-gray-600">Complete hospital details and status</p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 rounded-full">
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <span className="text-sm text-green-600 font-medium">Connected</span>
                 </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-500">Hospital Name</label>
-                  <p className="text-lg text-gray-900">{hospitalInfo.name}</p>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">Hospital Name</label>
+                  <p className="text-lg font-bold text-gray-900 mt-1">{hospitalInfo?.name}</p>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-500">License Number</label>
-                  <p className="text-lg text-gray-900">{hospitalInfo.licenseNumber}</p>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">License Number</label>
+                  <p className="text-lg font-bold text-gray-900 mt-1">{hospitalInfo?.licenseNumber}</p>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
-                    hospitalInfo.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : hospitalInfo.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {hospitalInfo.status === 'active' ? 'Active' : 
-                     hospitalInfo.status === 'pending' ? 'Pending' : 'Inactive'}
-                  </span>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">Status</label>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+                      hospitalInfo?.status === 'active' 
+                        ? 'bg-green-100 text-green-800 border border-green-200' 
+                        : hospitalInfo?.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                        : 'bg-red-100 text-red-800 border border-red-200'
+                    }`}>
+                      {hospitalInfo?.status === 'active' ? '✅ Active' : 
+                       hospitalInfo?.status === 'pending' ? '⏳ Pending' : '❌ Inactive'}
+                    </span>
+                  </div>
                 </div>
                 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-gray-500">Address</label>
-                  <p className="text-lg text-gray-900">{hospitalInfo.address}</p>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200 md:col-span-2">
+                  <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">Address</label>
+                  <p className="text-lg font-bold text-gray-900 mt-1">{hospitalInfo?.address}</p>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-500">Contact</label>
-                  <p className="text-lg text-gray-900">{hospitalInfo.contact}</p>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">Contact</label>
+                  <p className="text-lg font-bold text-gray-900 mt-1">{hospitalInfo?.contact}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                    <Activity className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
+                    <p className="text-sm text-gray-600">Latest hospital operations and updates</p>
+                  </div>
+                </div>
+                <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                  View All
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <Users className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">New Patient Registration</p>
+                    <p className="text-xs text-gray-600">Patient John Doe registered successfully</p>
+                  </div>
+                  <span className="text-xs text-green-600 font-medium">2 min ago</span>
+                </div>
+                
+                <div className="flex items-center space-x-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <Stethoscope className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">Doctor Assignment</p>
+                    <p className="text-xs text-gray-600">Dr. Smith assigned to Patient ID #12345</p>
+                  </div>
+                  <span className="text-xs text-green-600 font-medium">15 min ago</span>
+                </div>
+                
+                <div className="flex items-center space-x-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">Medical Report Generated</p>
+                    <p className="text-xs text-gray-600">Lab results for Patient ID #12345 completed</p>
+                  </div>
+                  <span className="text-xs text-green-600 font-medium">1 hour ago</span>
                 </div>
               </div>
             </div>

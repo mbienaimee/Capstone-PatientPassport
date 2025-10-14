@@ -72,6 +72,86 @@ class DataService {
     }
   }
 
+  // Admin dashboard methods
+  async getAdminAllPatients(): Promise<Patient[]> {
+    try {
+      const response = await apiService.getAllPatients();
+      console.log('🔍 API Response for patients:', response);
+      console.log('🔍 Patients data:', response.data?.patients);
+      return response.data?.patients || [];
+    } catch (error) {
+      console.error('Error fetching all patients:', error);
+      return [];
+    }
+  }
+
+  async getAdminAllHospitals(): Promise<Hospital[]> {
+    try {
+      const response = await apiService.getAllHospitals();
+      return response.data?.hospitals || [];
+    } catch (error) {
+      console.error('Error fetching all hospitals:', error);
+      return [];
+    }
+  }
+
+  async getAdminOverview(): Promise<any> {
+    try {
+      const response = await apiService.getAdminOverview();
+      return response.data || {
+        stats: {
+          totalPatients: 0,
+          totalHospitals: 0,
+          totalDoctors: 0,
+          pendingHospitals: 0,
+          newRegistrations: 0,
+          systemStatus: 'Unknown'
+        },
+        recentPatients: [],
+        recentHospitals: []
+      };
+    } catch (error) {
+      console.error('Error fetching admin overview:', error);
+      return {
+        stats: {
+          totalPatients: 0,
+          totalHospitals: 0,
+          totalDoctors: 0,
+          pendingHospitals: 0,
+          newRegistrations: 0,
+          systemStatus: 'Error'
+        },
+        recentPatients: [],
+        recentHospitals: []
+      };
+    }
+  }
+
+  // Admin status update methods
+  async updateHospitalStatus(hospitalId: string, status: 'active' | 'inactive' | 'pending') {
+    try {
+      console.log('🔄 Updating hospital status:', { hospitalId, status });
+      const response = await apiService.updateHospitalStatus(hospitalId, status);
+      console.log('✅ Hospital status update response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating hospital status:', error);
+      throw error;
+    }
+  }
+
+  async updatePatientStatus(patientId: string, status: 'active' | 'inactive') {
+    try {
+      console.log('🔄 Updating patient status:', { patientId, status });
+      const response = await apiService.updatePatientStatus(patientId, status);
+      console.log('✅ Patient status update response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating patient status:', error);
+      throw error;
+    }
+  }
+
   // Patient data
   async getAllPatients(): Promise<Patient[]> {
     try {

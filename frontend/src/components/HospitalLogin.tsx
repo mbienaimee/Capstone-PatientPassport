@@ -96,7 +96,15 @@ const HospitalLogin = () => {
         });
         
         setTimeout(() => {
-          navigate('/hospital-dashboard');
+          // Redirect based on user role
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          if (userData.role === 'admin') {
+            navigate('/admin-dashboard');
+          } else if (userData.role === 'hospital') {
+            navigate('/hospital-dashboard');
+          } else {
+            navigate('/hospital-dashboard'); // fallback
+          }
         }, 1500);
       } else {
         showNotification({

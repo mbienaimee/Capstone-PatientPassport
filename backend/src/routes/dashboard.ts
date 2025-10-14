@@ -4,7 +4,12 @@ import {
   getHospitalDashboard,
   getDoctorDashboard,
   getPatientDashboard,
-  getGeneralStats
+  getGeneralStats,
+  getAllPatients,
+  getAllHospitals,
+  getAdminOverview,
+  updateHospitalStatus,
+  updatePatientStatus
 } from '@/controllers/dashboardController';
 import { authenticate, authorize } from '@/middleware/auth';
 import { generalLimiter } from '@/middleware/rateLimiter';
@@ -35,6 +40,31 @@ router.get('/patient', authenticate, authorize('patient'), generalLimiter, getPa
 // @desc    Get general statistics
 // @access  Private (Admin)
 router.get('/stats', authenticate, authorize('admin'), generalLimiter, getGeneralStats);
+
+// @route   GET /api/dashboard/admin/patients
+// @desc    Get all patients for admin dashboard
+// @access  Private (Admin)
+router.get('/admin/patients', authenticate, authorize('admin'), generalLimiter, getAllPatients);
+
+// @route   GET /api/dashboard/admin/hospitals
+// @desc    Get all hospitals for admin dashboard
+// @access  Private (Admin)
+router.get('/admin/hospitals', authenticate, authorize('admin'), generalLimiter, getAllHospitals);
+
+// @route   GET /api/dashboard/admin/overview
+// @desc    Get comprehensive admin dashboard data
+// @access  Private (Admin)
+router.get('/admin/overview', authenticate, authorize('admin'), generalLimiter, getAdminOverview);
+
+// @route   PUT /api/dashboard/admin/hospitals/:hospitalId/status
+// @desc    Update hospital status
+// @access  Private (Admin)
+router.put('/admin/hospitals/:hospitalId/status', authenticate, authorize('admin'), generalLimiter, updateHospitalStatus);
+
+// @route   PUT /api/dashboard/admin/patients/:patientId/status
+// @desc    Update patient status
+// @access  Private (Admin)
+router.put('/admin/patients/:patientId/status', authenticate, authorize('admin'), generalLimiter, updatePatientStatus);
 
 export default router;
 

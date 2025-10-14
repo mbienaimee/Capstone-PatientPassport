@@ -319,6 +319,34 @@ class ApiService {
     return this.request('/dashboard/recent-hospitals');
   }
 
+  // Admin dashboard endpoints
+  async getAllPatients(): Promise<ApiResponse<any>> {
+    return this.request('/dashboard/admin/patients');
+  }
+
+  async getAllHospitals(): Promise<ApiResponse<any>> {
+    return this.request('/dashboard/admin/hospitals');
+  }
+
+  async getAdminOverview(): Promise<ApiResponse<any>> {
+    return this.request('/dashboard/admin/overview');
+  }
+
+  // Admin status update methods
+  async updateHospitalStatus(hospitalId: string, status: 'active' | 'inactive' | 'pending'): Promise<ApiResponse<any>> {
+    return this.request(`/dashboard/admin/hospitals/${hospitalId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
+  }
+
+  async updatePatientStatus(patientId: string, status: 'active' | 'inactive'): Promise<ApiResponse<any>> {
+    return this.request(`/dashboard/admin/patients/${patientId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
+  }
+
   // Hospital-specific endpoints
   async getHospitalPatients(hospitalId: string): Promise<ApiResponse<Patient[]>> {
     return this.request<Patient[]>(`/hospitals/${hospitalId}/patients`);

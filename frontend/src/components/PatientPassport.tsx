@@ -67,6 +67,7 @@ const PatientPassport: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [expandedCondition, setExpandedCondition] = useState<number | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [medicalData, setMedicalData] = useState<{
     conditions: MedicalCondition[];
     medications: Medication[];
@@ -117,6 +118,11 @@ const PatientPassport: React.FC = () => {
               if (response.success && response.data) {
                 const passportData = response.data;
                 console.log('Passport data:', passportData);
+                console.log('Medical records structure:', passportData.medicalRecords);
+                console.log('Conditions array:', passportData.medicalRecords?.conditions);
+                console.log('Medications array:', passportData.medicalRecords?.medications);
+                console.log('Tests array:', passportData.medicalRecords?.tests);
+                console.log('Visits array:', passportData.medicalRecords?.visits);
                 
                 // Set medical data from the passport response
                 if (passportData.medicalRecords) {
@@ -189,49 +195,217 @@ const PatientPassport: React.FC = () => {
   }
 
   // Transform database records to component format
-  const medicalHistory: MedicalCondition[] = (medicalData.conditions || []).map((record: unknown) => {
-    const r = record as { data?: { name?: string; details?: string; diagnosed?: string; procedure?: string } };
-    return {
-      name: r.data?.name || '',
-      details: r.data?.details || '',
-      diagnosed: r.data?.diagnosed || '',
-      procedure: r.data?.procedure || ''
-    };
+  console.log('Current medicalData state:', medicalData);
+  console.log('Conditions to process:', medicalData.conditions);
+  
+  const medicalHistory: MedicalCondition[] = (medicalData.conditions || []).map((record: unknown, index: number) => {
+    try {
+      console.log(`Processing condition ${index}:`, record);
+      
+      // Handle different possible data structures
+      let conditionData: any = {};
+      
+      if (record && typeof record === 'object') {
+        const r = record as any;
+        // Check if it has a 'data' property (new format)
+        if (r.data && typeof r.data === 'object') {
+          conditionData = r.data;
+        }
+        // Check if it has direct properties (old format)
+        else if (r.condition || r.name) {
+          conditionData = {
+            name: r.condition || r.name || '',
+            details: r.notes || r.details || '',
+            diagnosed: r.diagnosedDate || r.diagnosed || '',
+            procedure: r.diagnosedBy || r.procedure || ''
+          };
+        }
+        // Fallback to direct mapping
+        else {
+          conditionData = r;
+        }
+      }
+      
+      return {
+        name: conditionData.name || '',
+        details: conditionData.details || '',
+        diagnosed: conditionData.diagnosed || '',
+        procedure: conditionData.procedure || ''
+      };
+    } catch (error) {
+      console.error(`Error processing condition ${index}:`, error, record);
+      return {
+        name: '',
+        details: '',
+        diagnosed: '',
+        procedure: ''
+      };
+    }
   });
 
-  const medications: Medication[] = (medicalData.medications || []).map((record: unknown) => {
-    const r = record as { data?: { medicationName?: string; dosage?: string; status?: string } };
-    return {
-      name: r.data?.medicationName || '',
-      dosage: r.data?.dosage || '',
-      status: (r.data?.status || 'Active') as "Active" | "Past"
-    };
+  const medications: Medication[] = (medicalData.medications || []).map((record: unknown, index: number) => {
+    try {
+      console.log(`Processing medication ${index}:`, record);
+      
+      // Handle different possible data structures
+      let medicationData: any = {};
+      
+      if (record && typeof record === 'object') {
+        const r = record as any;
+        // Check if it has a 'data' property (new format)
+        if (r.data && typeof r.data === 'object') {
+          medicationData = r.data;
+        }
+        // Check if it has direct properties (old format)
+        else if (r.name || r.medicationName) {
+          medicationData = {
+            medicationName: r.name || r.medicationName || '',
+            dosage: r.dosage || '',
+            status: r.status || 'Active'
+          };
+        }
+        // Fallback to direct mapping
+        else {
+          medicationData = r;
+        }
+      }
+      
+      return {
+        name: medicationData.medicationName || medicationData.name || '',
+        dosage: medicationData.dosage || '',
+        status: (medicationData.status || 'Active') as "Active" | "Past"
+      };
+    } catch (error) {
+      console.error(`Error processing medication ${index}:`, error, record);
+      return {
+        name: '',
+        dosage: '',
+        status: 'Active' as "Active" | "Past"
+      };
+    }
   });
 
-  const testResults: TestResult[] = (medicalData.tests || []).map((record: unknown) => {
-    const r = record as { data?: { testName?: string; testDate?: string; status?: string } };
-    return {
-      name: r.data?.testName || '',
-      date: r.data?.testDate || '',
-      status: (r.data?.status || 'Normal') as "Normal" | "Critical" | "Normal Sinus Rhythm"
-    };
+  const testResults: TestResult[] = (medicalData.tests || []).map((record: unknown, index: number) => {
+    try {
+      console.log(`Processing test ${index}:`, record);
+      
+      // Handle different possible data structures
+      let testData: any = {};
+      
+      if (record && typeof record === 'object') {
+        const r = record as any;
+        // Check if it has a 'data' property (new format)
+        if (r.data && typeof r.data === 'object') {
+          testData = r.data;
+        }
+        // Check if it has direct properties (old format)
+        else if (r.testType || r.testName) {
+          testData = {
+            testName: r.testType || r.testName || '',
+            testDate: r.testDate || '',
+            status: r.status || 'Normal'
+          };
+        }
+        // Fallback to direct mapping
+        else {
+          testData = r;
+        }
+      }
+      
+      return {
+        name: testData.testName || testData.testType || '',
+        date: testData.testDate || '',
+        status: (testData.status || 'Normal') as "Normal" | "Critical" | "Normal Sinus Rhythm"
+      };
+    } catch (error) {
+      console.error(`Error processing test ${index}:`, error, record);
+      return {
+        name: '',
+        date: '',
+        status: 'Normal' as "Normal" | "Critical" | "Normal Sinus Rhythm"
+      };
+    }
   });
 
-  const hospitalVisits: HospitalVisit[] = (medicalData.visits || []).map((record: unknown) => {
-    const r = record as { data?: { hospital?: string; reason?: string; visitDate?: string } };
-    return {
-      hospital: r.data?.hospital || '',
-      reason: r.data?.reason || '',
-      date: r.data?.visitDate || ''
-    };
+  const hospitalVisits: HospitalVisit[] = (medicalData.visits || []).map((record: unknown, index: number) => {
+    try {
+      console.log(`Processing visit ${index}:`, record);
+      
+      // Handle different possible data structures
+      let visitData: any = {};
+      
+      if (record && typeof record === 'object') {
+        const r = record as any;
+        // Check if it has a 'data' property (new format)
+        if (r.data && typeof r.data === 'object') {
+          visitData = r.data;
+        }
+        // Check if it has direct properties (old format)
+        else if (r.hospital || r.reason) {
+          visitData = {
+            hospital: r.hospital || '',
+            reason: r.reason || '',
+            visitDate: r.visitDate || ''
+          };
+        }
+        // Fallback to direct mapping
+        else {
+          visitData = r;
+        }
+      }
+      
+      return {
+        hospital: visitData.hospital || '',
+        reason: visitData.reason || '',
+        date: visitData.visitDate || ''
+      };
+    } catch (error) {
+      console.error(`Error processing visit ${index}:`, error, record);
+      return {
+        hospital: '',
+        reason: '',
+        date: ''
+      };
+    }
   });
 
-  const medicalImages = (medicalData.images || []).map((record: unknown) => {
-    const r = record as { data?: { imageUrl?: string; description?: string } };
-    return {
-      url: r.data?.imageUrl || '',
-      alt: r.data?.description || 'Medical Image'
-    };
+  const medicalImages = (medicalData.images || []).map((record: unknown, index: number) => {
+    try {
+      console.log(`Processing image ${index}:`, record);
+      
+      // Handle different possible data structures
+      let imageData: any = {};
+      
+      if (record && typeof record === 'object') {
+        const r = record as any;
+        // Check if it has a 'data' property (new format)
+        if (r.data && typeof r.data === 'object') {
+          imageData = r.data;
+        }
+        // Check if it has direct properties (old format)
+        else if (r.imageUrl || r.url) {
+          imageData = {
+            imageUrl: r.imageUrl || r.url || '',
+            description: r.description || ''
+          };
+        }
+        // Fallback to direct mapping
+        else {
+          imageData = r;
+        }
+      }
+      
+      return {
+        url: imageData.imageUrl || imageData.url || '',
+        alt: imageData.description || 'Medical Image'
+      };
+    } catch (error) {
+      console.error(`Error processing image ${index}:`, error, record);
+      return {
+        url: '',
+        alt: 'Medical Image'
+      };
+    }
   });
 
   // Empty state component
@@ -258,12 +432,12 @@ const PatientPassport: React.FC = () => {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <Logo size="md" />
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden sm:flex items-center space-x-4 lg:space-x-6">
             <button 
               onClick={() => navigate('/')}
               className="nav-link"
@@ -284,69 +458,98 @@ const PatientPassport: React.FC = () => {
               Logout
             </button>
           </nav>
-          <div className="flex items-center space-x-3">
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Notifications">
-              <FiBell className="w-5 h-5" />
+          
+          {/* Mobile menu button */}
+          <div className="sm:hidden">
+            <button 
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
-            <div className="flex items-center space-x-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-gray-900">{user?.name || 'Loading...'}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role || 'Patient'}</p>
-              </div>
-              <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'P'}
-              </div>
-            </div>
           </div>
         </div>
+        
+        {/* Mobile menu */}
+        {showMobileMenu && (
+          <div className="sm:hidden bg-white border-t border-gray-200">
+            <div className="px-4 py-2 space-y-1">
+              <button 
+                onClick={() => {
+                  navigate('/');
+                  setShowMobileMenu(false);
+                }}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+              >
+                Home
+              </button>
+              <button className="block w-full text-left px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-md">
+                My Passport
+              </button>
+              <button 
+                onClick={async () => {
+                  await logout();
+                  navigate('/');
+                  setShowMobileMenu(false);
+                }}
+                className="flex w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md items-center gap-2"
+              >
+                <FiLogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
-      <main className="dashboard-content">
-        <div className="dashboard-card-header">
-          <h1 className="heading-lg text-gray-900">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Patient Passport Overview
           </h1>
-          <p className="body-sm text-gray-600 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             Complete medical history and health information
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
           {/* Patient Information */}
-          <div className="dashboard-card">
-            <div className="dashboard-card-header">
-              <h2 className="dashboard-card-title text-green-600">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <div className="mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold text-green-600">
                 Patient Information
               </h2>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-3 py-2">
-                <FiUser className="w-4 h-4 text-gray-400" />
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-gray-500">Name</span>
-                  <p className="text-sm font-semibold text-gray-900">{user?.name || 'Loading...'}</p>
+                <FiUser className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs sm:text-sm font-medium text-gray-500">Name</span>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 truncate">{user?.name || 'Loading...'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2">
-                <FiShield className="w-4 h-4 text-gray-400" />
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-gray-500">Patient ID</span>
-                  <p className="text-sm font-semibold text-gray-900 font-mono">{patientProfile?._id || 'N/A'}</p>
+                <FiShield className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs sm:text-sm font-medium text-gray-500">Patient ID</span>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 font-mono truncate">{patientProfile?._id || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2">
-                <FiMail className="w-4 h-4 text-gray-400" />
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-gray-500">Email</span>
-                  <p className="text-sm font-semibold text-gray-900">{user?.email || 'Loading...'}</p>
+                <FiMail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs sm:text-sm font-medium text-gray-500">Email</span>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{user?.email || 'Loading...'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2">
-                <FiShield className="w-4 h-4 text-gray-400" />
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-gray-500">Role</span>
-                  <p className="text-sm font-semibold text-gray-900 capitalize">{user?.role || 'Loading...'}</p>
+                <FiShield className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs sm:text-sm font-medium text-gray-500">Role</span>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 capitalize">{user?.role || 'Loading...'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2">
