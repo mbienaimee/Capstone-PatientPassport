@@ -31,7 +31,7 @@ const patientSchema = new Schema({
     required: [true, 'National ID is required'],
     unique: true,
     trim: true,
-    match: [/^\d{11,16}$/, 'National ID must be between 11 and 16 digits']
+    match: [/^\d{10,16}$/, 'National ID must be between 10 and 16 digits']
   },
   dateOfBirth: {
     type: Date,
@@ -97,6 +97,22 @@ const patientSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Doctor'
   }],
+  
+  // Temporary OTP fields for passport access
+  tempOTP: {
+    type: String,
+    default: null
+  },
+  tempOTPExpiry: {
+    type: Date,
+    default: null
+  },
+  tempOTPDoctor: {
+    type: Schema.Types.ObjectId,
+    ref: 'Doctor',
+    default: null
+  },
+  
   status: {
     type: String,
     enum: ['active', 'inactive'],
@@ -108,9 +124,7 @@ const patientSchema = new Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
-patientSchema.index({ nationalId: 1 });
-patientSchema.index({ user: 1 });
+// Indexes (removed duplicates - nationalId and user already have unique: true)
 patientSchema.index({ status: 1 });
 patientSchema.index({ assignedDoctors: 1 });
 
@@ -155,10 +169,10 @@ patientSchema.methods.getSummary = function() {
     status: this.status,
     allergies: this.allergies,
     currentMedications: this.currentMedications,
-    medicalHistoryCount: this.medicalHistory.length,
-    medicationsCount: this.medications.length,
-    testResultsCount: this.testResults.length,
-    hospitalVisitsCount: this.hospitalVisits.length
+    medicalHistoryCount: this.medicalHistory ? this.medicalHistory.length : 0,
+    medicationsCount: this.medications ? this.medications.length : 0,
+    testResultsCount: this.testResults ? this.testResults.length : 0,
+    hospitalVisitsCount: this.hospitalVisits ? this.hospitalVisits.length : 0
   };
 };
 

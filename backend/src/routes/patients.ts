@@ -11,7 +11,8 @@ import {
   getPatientTestResults,
   getPatientHospitalVisits,
   getPatientSummary,
-  searchPatients
+  searchPatients,
+  getPatientPassport
 } from '@/controllers/patientController';
 import { authenticate, authorize } from '@/middleware/auth';
 import { generalLimiter, searchLimiter } from '@/middleware/rateLimiter';
@@ -77,6 +78,11 @@ router.get('/:id/test-results', authenticate, validateObjectId('id'), getPatient
 // @desc    Get patient hospital visits
 // @access  Private (Admin, Doctor, Patient)
 router.get('/:id/hospital-visits', authenticate, validateObjectId('id'), getPatientHospitalVisits);
+
+// @route   GET /api/patients/passport/:patientId
+// @desc    Get complete patient passport data
+// @access  Private (Patient, Doctor, Admin)
+router.get('/passport/:patientId', authenticate, validateObjectId('patientId'), getPatientPassport);
 
 // @route   GET /api/patients/:id/summary
 // @desc    Get patient summary

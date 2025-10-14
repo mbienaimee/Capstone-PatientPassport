@@ -11,6 +11,8 @@ declare global {
 }
 
 // Base User Interface
+import mongoose from 'mongoose';
+
 export interface IUser extends Document {
   _id: string;
   name: string;
@@ -32,7 +34,7 @@ export interface IUser extends Document {
 // Patient Interface
 export interface IPatient extends Document {
   _id: string;
-  user: any; // Reference to User (ObjectId)
+  user: any;
   nationalId: string;
   universalId?: string; // Universal patient ID for federated access
   insuranceNumber?: string; // Insurance number for identification
@@ -52,8 +54,14 @@ export interface IPatient extends Document {
   medications: string[]; // References to Medication
   testResults: string[]; // References to TestResult
   hospitalVisits: string[]; // References to HospitalVisit
-  medicalImages?: string[]; // References to medical images/files
-  assignedDoctors: string[]; // References to Doctor
+  medicalImages?: string[]; 
+  assignedDoctors: string[];
+  
+  // Temporary OTP fields for passport access
+  tempOTP?: string;
+  tempOTPExpiry?: Date;
+  tempOTPDoctor?: any; // Reference to Doctor (ObjectId)
+  
   status: 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
@@ -112,6 +120,123 @@ export interface IReceptionist extends Document {
   createdAt: Date;
   updatedAt: Date;
   getSummary(): any;
+}
+
+// Patient Passport Interface
+export interface IPatientPassport extends Document {
+  _id: string;
+  patient: any; // Reference to Patient (ObjectId)
+  
+  // Personal Information
+  personalInfo: {
+    fullName: string;
+    nationalId: string;
+    dateOfBirth: Date;
+    gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+    contactNumber: string;
+    email?: string;
+    address: string;
+    emergencyContact: {
+      name: string;
+      relationship: string;
+      phone: string;
+    };
+  };
+
+  // Medical Information
+  medicalInfo: {
+    allergies?: string[];
+    currentMedications?: Array<{
+      name: string;
+      dosage: string;
+      frequency: string;
+      prescribedBy: string;
+      startDate: Date;
+    }>;
+    medicalConditions?: Array<{
+      condition: string;
+      diagnosedDate: Date;
+      diagnosedBy: string;
+      status: 'active' | 'resolved' | 'chronic';
+      notes?: string;
+    }>;
+    immunizations?: Array<{
+      vaccine: string;
+      date: Date;
+      administeredBy: string;
+      batchNumber?: string;
+    }>;
+    surgeries?: Array<{
+      procedure: string;
+      date: Date;
+      surgeon: string;
+      hospital: string;
+      notes?: string;
+    }>;
+  };
+
+  // Test Results
+  testResults?: Array<{
+    testType: string;
+    testDate: Date;
+    results: string;
+    normalRange?: string;
+    status: 'normal' | 'abnormal' | 'critical';
+    labTechnician?: string;
+    notes?: string;
+  }>;
+
+  // Hospital Visits
+  hospitalVisits?: Array<{
+    visitDate: Date;
+    hospital: string;
+    doctor: string;
+    reason: string;
+    diagnosis?: string;
+    treatment?: string;
+    followUpRequired?: boolean;
+    followUpDate?: Date;
+    notes?: string;
+  }>;
+
+  // Insurance Information
+  insurance?: {
+    provider?: string;
+    policyNumber?: string;
+    groupNumber?: string;
+    effectiveDate?: Date;
+    expiryDate?: Date;
+    coverageType?: string;
+  };
+
+  // Access Control
+  accessHistory: Array<{
+    doctor: any; // Reference to Doctor (ObjectId)
+    accessDate: Date;
+    accessType: 'view' | 'update';
+    reason?: string;
+    otpVerified: boolean;
+  }>;
+
+  // Metadata
+  lastUpdated: Date;
+  lastUpdatedBy?: any; // Reference to Doctor (ObjectId)
+  version: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Methods
+  addAccessRecord(doctorId: string, accessType: string, reason: string, otpVerified?: boolean): Promise<IPatientPassport>;
+  updatePassport(updateData: any, updatedBy: string): Promise<IPatientPassport>;
+  getSummary(): any;
+}
+
+export interface IPatientPassportModel extends mongoose.Model<IPatientPassport> {
+  findByPatientId(patientId: string): Promise<IPatientPassport | null>;
+  findByNationalId(nationalId: string): Promise<IPatientPassport | null>;
+  getRecentAccess(doctorId: string, limit?: number): Promise<IPatientPassport[]>;
 }
 
 // Medical Condition Interface

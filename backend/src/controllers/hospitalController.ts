@@ -384,15 +384,12 @@ export const addDoctorToHospital = asyncHandler(async (req: Request, res: Respon
     throw new CustomError('Doctor with this license number already exists', 400);
   }
 
-  // Create user for doctor
-  const bcrypt = require('bcryptjs');
-  const hashedPassword = await bcrypt.hash(password, 12);
-
+  // Create user for doctor (password will be automatically hashed by User model pre-save middleware)
   const User = require('@/models/User').default;
   const user = await User.create({
     name,
     email,
-    password: hashedPassword,
+    password, // Let the User model handle password hashing
     role: 'doctor',
     isActive: true,
     isEmailVerified: true

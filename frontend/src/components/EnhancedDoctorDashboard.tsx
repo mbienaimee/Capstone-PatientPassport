@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import PassportAccessOTP from './PassportAccessOTP';
@@ -63,6 +64,7 @@ interface DashboardStats {
 const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   const { user, logout, isLoading } = useAuth();
   const { showNotification } = useNotification();
+  const navigate = useNavigate();
   
   // State management
   const [patients, setPatients] = useState<DoctorPatient[]>([]);
@@ -71,7 +73,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
   const [selectedPatient, setSelectedPatient] = useState<DoctorPatient | null>(null);
   const [showPassportView, setShowPassportView] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [accessToken, setAccessToken] = useState<string>('');
+  const [passportData, setPassportData] = useState<any>(null);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     recentRequests: 0,
@@ -86,6 +88,50 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
   const [patientsPerPage] = useState(10);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Role-based access control
+  useEffect(() => {
+    console.log('=== DOCTOR DASHBOARD EFFECT ===');
+    console.log('User:', user);
+    console.log('IsLoading:', isLoading);
+    
+    // Wait for auth to complete
+    if (isLoading) {
+      console.log('Auth still loading, waiting...');
+      return;
+    }
+
+    // Check if user is a doctor
+    if (user && user.role !== 'doctor') {
+      console.log('User is not a doctor, redirecting...');
+      showNotification({
+        type: 'error',
+        title: 'Access Denied',
+        message: 'You do not have permission to access the doctor dashboard.'
+      });
+      
+      // Redirect based on user role
+      if (user.role === 'patient') {
+        navigate('/patient-passport');
+      } else if (user.role === 'hospital') {
+        navigate('/hospital-dashboard');
+      } else {
+        navigate('/');
+      }
+      return;
+    }
+
+    // If no user, redirect to login
+    if (!user) {
+      console.log('No user found, redirecting to login...');
+      navigate('/doctor-login');
+      return;
+    }
+
+    // User is doctor, initialize dashboard
+    console.log('User is doctor, initializing dashboard...');
+    initializeDashboard();
+  }, [user, isLoading, navigate]);
 
   // Initialize dashboard
   useEffect(() => {
@@ -207,22 +253,23 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
     setShowOTPModal(true);
   };
 
-  const handleOTPSuccess = (token: string) => {
+  const handleOTPSuccess = (receivedPassportData: any) => {
     console.log('OTP verification successful, granting access to:', selectedPatient?.user?.name);
-    setAccessToken(token);
+    console.log('Received passport data:', receivedPassportData);
+    setPassportData(receivedPassportData);
     setShowOTPModal(false);
     setShowPassportView(true);
     
     showNotification({
       type: 'success',
       title: 'Access Granted!',
-      message: `You now have access to ${selectedPatient?.user?.name}'s Patient Passport for 1 hour.`
+      message: `You now have access to ${selectedPatient?.user?.name}'s Patient Passport.`
     });
   };
 
   const handleClosePassportView = () => {
     setShowPassportView(false);
-    setAccessToken('');
+    setPassportData(null);
     setSelectedPatient(null);
     
     showNotification({
@@ -232,9 +279,26 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
     });
   };
 
+  const handlePassportUpdate = (updatedPassport: any) => {
+    console.log('Passport updated:', updatedPassport);
+    setPassportData(updatedPassport); // Update the passport data
+    showNotification({
+      type: 'success',
+      title: 'Passport Updated',
+      message: 'Patient passport has been updated successfully.'
+    });
+  };
+
   const handleCancelOTP = () => {
+    console.log('OTP request cancelled');
     setShowOTPModal(false);
     setSelectedPatient(null);
+    
+    showNotification({
+      type: 'info',
+      title: 'Access Request Cancelled',
+      message: 'Patient passport access request has been cancelled.'
+    });
   };
 
   // Search and filter functions
@@ -306,17 +370,16 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
     );
   }
 
-  // Authentication check
+  // Don't render if user is not a doctor
   if (!user || user.role !== 'doctor') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You need to be logged in as a doctor to access this page.</p>
-          <p className="text-sm text-gray-500 mb-4">Redirecting to home page...</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You do not have permission to access the doctor dashboard.</p>
         </div>
       </div>
     );
@@ -333,6 +396,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
               <div className="hidden md:block">
                 <h1 className="text-xl font-bold text-gray-900">Doctor Portal</h1>
                 <p className="text-sm text-gray-600">Patient Passport Management System</p>
+                <p className="text-xs text-green-600 mt-1">👥 View your assigned patients below</p>
               </div>
             </div>
             <div className="relative">
@@ -747,12 +811,12 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
       )}
 
       {/* Patient Passport View */}
-      {showPassportView && selectedPatient && accessToken && (
+      {showPassportView && selectedPatient && passportData && (
         <PatientPassportView
+          passportData={passportData}
           patientId={selectedPatient._id}
-          patientName={selectedPatient.user?.name || 'Unknown Patient'}
-          accessToken={accessToken}
           onClose={handleClosePassportView}
+          onUpdate={handlePassportUpdate}
         />
       )}
     </div>
@@ -760,6 +824,18 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
 };
 
 export default EnhancedDoctorDashboard;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

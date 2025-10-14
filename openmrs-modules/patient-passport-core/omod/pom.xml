@@ -7,7 +7,7 @@
     <groupId>org.openmrs.module</groupId>
     <artifactId>patientpassportcore</artifactId>
     <version>1.0.0</version>
-    <packaging>omod</packaging>
+    <packaging>jar</packaging>
 
     <name>Patient Passport Core Module</name>
     <description>Core functionality for Patient Passport integration with OpenMRS</description>
@@ -16,8 +16,7 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <openmrs.version>2.5.0</openmrs.version>
-        <fhir.version>2.0.0</fhir.version>
+        <openmrs.version>2.7.6</openmrs.version>
     </properties>
 
     <dependencies>
@@ -36,54 +35,6 @@
             <version>${openmrs.version}</version>
             <scope>provided</scope>
         </dependency>
-
-        <!-- FHIR Module -->
-        <dependency>
-            <groupId>org.openmrs.module</groupId>
-            <artifactId>fhir2-api</artifactId>
-            <version>${fhir.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- REST Web Services -->
-        <dependency>
-            <groupId>org.openmrs.module</groupId>
-            <artifactId>webservices.rest</artifactId>
-            <version>2.30.0</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- HAPI FHIR -->
-        <dependency>
-            <groupId>ca.uhn.hapi.fhir</groupId>
-            <artifactId>hapi-fhir-structures-r4</artifactId>
-            <version>5.7.0</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Spring Framework -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-webmvc</artifactId>
-            <version>5.3.21</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Jackson for JSON processing -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.13.3</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- HTTP Client -->
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -99,18 +50,6 @@
                 </configuration>
             </plugin>
 
-            <!-- OpenMRS Module Plugin -->
-            <plugin>
-                <groupId>org.openmrs.maven.plugins</groupId>
-                <artifactId>openmrs-maven-plugin</artifactId>
-                <version>1.0.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>openmrs-releases</serverId>
-                    <repositoryId>openmrs-releases</repositoryId>
-                </configuration>
-            </plugin>
-
             <!-- Maven Resources Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -120,44 +59,42 @@
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
+
+            <!-- Maven Assembly Plugin for creating OMOD -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
     <repositories>
         <repository>
-            <id>openmrs-releases</id>
-            <name>OpenMRS Releases Repository</name>
-            <url>https://mavenrepo.openmrs.org/nexus/content/repositories/releases</url>
-        </repository>
-        <repository>
-            <id>openmrs-snapshots</id>
-            <name>OpenMRS Snapshots Repository</name>
-            <url>https://mavenrepo.openmrs.org/nexus/content/repositories/snapshots</url>
+            <id>openmrs-repo</id>
+            <name>OpenMRS Repository</name>
+            <url>https://mavenrepo.openmrs.org/public</url>
         </repository>
     </repositories>
 
 </project>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

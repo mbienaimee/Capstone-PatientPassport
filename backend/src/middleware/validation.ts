@@ -69,8 +69,8 @@ export const validateUserLogin = [
 // Patient validation
 export const validatePatient = [
   body('nationalId')
-    .isLength({ min: 11, max: 16 })
-    .withMessage('National ID must be between 11 and 16 digits')
+    .isLength({ min: 10, max: 16 })
+    .withMessage('National ID must be between 10 and 16 digits')
     .isNumeric()
     .withMessage('National ID must contain only numbers'),
   

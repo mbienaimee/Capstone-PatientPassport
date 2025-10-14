@@ -1,9 +1,0 @@
-﻿Manifest-Version: 1.0
-OpenMRS-Module-Name: patientpassportcore
-OpenMRS-Module-Version: 1.0.0
-OpenMRS-Module-Description: Patient Passport Core Module for OpenMRS Integration
-OpenMRS-Module-Author: Patient Passport Team
-OpenMRS-Module-Requires: webservices.rest, fhir2
-OpenMRS-Module-Maintainer: Patient Passport Development Team
-OpenMRS-Module-Requires-OpenMRS-Version: 2.0.0
-OpenMRS-Module-Requires-Java-Version: 1.8

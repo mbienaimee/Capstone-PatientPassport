@@ -10,8 +10,7 @@ const HospitalSchema = new Schema<IHospital>({
   name: {
     type: String,
     required: [true, 'Hospital name is required'],
-    trim: true,
-    index: true
+    trim: true
   },
   address: {
     type: String,
@@ -32,7 +31,7 @@ const HospitalSchema = new Schema<IHospital>({
   },
   adminContact: {
     type: String,
-    required: [true, 'Admin contact is required'],
+    required: false,
     trim: true
   },
   hospitalId: {
@@ -68,20 +67,17 @@ const HospitalSchema = new Schema<IHospital>({
   toObject: { virtuals: true }
 });
 
-// Indexes
-HospitalSchema.index({ licenseNumber: 1 });
-HospitalSchema.index({ user: 1 });
+// Indexes (removed duplicates - user, licenseNumber, and hospitalId already have unique: true)
 HospitalSchema.index({ status: 1 });
-HospitalSchema.index({ hospitalId: 1 });
 
 // Virtual for doctor count
 HospitalSchema.virtual('doctorCount').get(function() {
-  return this.doctors.length;
+  return this.doctors ? this.doctors.length : 0;
 });
 
 // Virtual for patient count
 HospitalSchema.virtual('patientCount').get(function() {
-  return this.patients.length;
+  return this.patients ? this.patients.length : 0;
 });
 
 // Virtual for full profile

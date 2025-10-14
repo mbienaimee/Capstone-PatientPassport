@@ -1,16 +1,20 @@
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
 
-// General API rate limiter
+// General API rate limiter (disabled for development)
 export const generalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '10000'), // Very high limit for development
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting in development
+    return process.env.NODE_ENV === 'development';
+  },
   handler: (req: Request, res: Response) => {
     res.status(429).json({
       success: false,
@@ -20,10 +24,10 @@ export const generalLimiter = rateLimit({
   }
 });
 
-// Strict rate limiter for authentication endpoints
+// Strict rate limiter for authentication endpoints (disabled for development)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  max: 100, // Increased limit for development
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later.'
@@ -31,6 +35,10 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
+  skip: (req) => {
+    // Skip rate limiting in development
+    return process.env.NODE_ENV === 'development';
+  },
   handler: (req: Request, res: Response) => {
     res.status(429).json({
       success: false,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
-import { UserPlus, UserMinus, Edit, Eye, Trash2, Key, LogIn, X, Stethoscope, Users, Mail, Shield } from 'lucide-react';
+import { UserPlus, UserMinus, Edit, Eye, Trash2, Key, LogIn, X, Stethoscope, Users, Mail, Shield, User } from 'lucide-react';
 import DoctorLogin from './DoctorLogin';
 import DoctorPatientList from './DoctorPatientList';
 
@@ -87,10 +87,30 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
       console.log('Doctors response:', response);
       if (response.success) {
         setDoctors((response.data as any) || []);
+      } else {
+        console.error('Failed to fetch doctors:', response.message);
+        setDoctors([]);
       }
     } catch (error) {
       console.error('Error fetching doctors:', error);
       console.error('Hospital ID used:', hospitalId);
+      
+      // Show user-friendly error message
+      if (error instanceof Error) {
+        if (error.message.includes('user no longer exists')) {
+          alert('Your session has expired. Please login again.');
+          localStorage.clear();
+          window.location.href = '/hospital-login';
+        } else if (error.message.includes('Hospital not found')) {
+          alert('Hospital not found. Please contact support.');
+        } else {
+          alert(`Error loading doctors: ${error.message}`);
+        }
+      } else {
+        alert('An unexpected error occurred while loading doctors.');
+      }
+      
+      setDoctors([]);
     } finally {
       setLoading(false);
     }
@@ -244,6 +264,7 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Medical Staff Management</h2>
               <p className="text-sm text-gray-500">Manage doctors and medical professionals in your hospital</p>
+              <p className="text-xs text-green-600 mt-1">💡 Click "Login" next to any doctor to access their patient dashboard</p>
             </div>
           </div>
           <button
@@ -427,9 +448,10 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => handleDoctorLogin(doctor)}
-                        className="bg-green-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-green-700 transition-colors"
+                        className="bg-green-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-green-700 transition-colors flex items-center"
                       >
-                        Login
+                        <User className="h-4 w-4 mr-1" />
+                        Login as Doctor
                       </button>
                       <button
                         onClick={() => handleChangePassword(doctor)}

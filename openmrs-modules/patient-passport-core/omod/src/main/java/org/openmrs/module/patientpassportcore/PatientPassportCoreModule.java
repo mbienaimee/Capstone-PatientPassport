@@ -8,7 +8,7 @@ import org.openmrs.module.ModuleException;
 /**
  * This class contains the logic that is run every time this module is either started or stopped.
  */
-public class PatientPassportCoreModuleActivator extends BaseModuleActivator {
+public class PatientPassportCoreModule extends BaseModuleActivator {
 	
 	protected Log log = LogFactory.getLog(getClass());
 	

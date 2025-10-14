@@ -22,7 +22,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (formData: LoginFormData) => Promise<boolean>;
+  login: (formData: LoginFormData) => Promise<{ success: boolean; requiresOTP?: boolean; email?: string }>;
+  verifyOTP: (email: string, otpCode: string, type: 'registration' | 'login') => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -79,7 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (formData: LoginFormData): Promise<boolean> => {
+  const login = async (formData: LoginFormData): Promise<{ success: boolean; requiresOTP?: boolean; email?: string }> => {
     setIsLoading(true);
     
     try {
@@ -91,6 +92,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Response data:', response.data);
       
       if (response.success && response.data) {
+        // Check if OTP verification is required
+        if (response.data.requiresOTPVerification) {
+          console.log('OTP verification required');
+          console.log('=== AUTH CONTEXT LOGIN REQUIRES OTP ===');
+          return {
+            success: true,
+            requiresOTP: true,
+            email: response.data.email
+          };
+        }
+        
+        // Complete login without OTP
         const { user: userData, token } = response.data;
         console.log('Login successful, user data:', userData);
         console.log('Token received:', token ? 'Present' : 'Missing');
@@ -108,17 +121,75 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('User stored in localStorage:', localStorage.getItem('user') ? 'Yes' : 'No');
         
         console.log('=== AUTH CONTEXT LOGIN SUCCESS ===');
-        return true;
+        return { success: true };
       }
       console.log('Login failed - no success or data:', response);
       console.log('=== AUTH CONTEXT LOGIN FAILED ===');
-      return false;
+      return { success: false };
     } catch (error) {
       console.error('Login error:', error);
       if (error instanceof ApiError) {
         console.error('API Error:', error.message, error.status);
       }
       console.log('=== AUTH CONTEXT LOGIN ERROR ===');
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyOTP = async (email: string, otpCode: string, type: 'registration' | 'login'): Promise<boolean> => {
+    setIsLoading(true);
+    
+    try {
+      console.log('=== AUTH CONTEXT OTP VERIFICATION START ===');
+      console.log('Verifying OTP for:', email, 'Type:', type);
+      
+      let response;
+      
+      if (type === 'registration') {
+        response = await apiService.request('/auth/verify-registration-otp', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: email,
+            otpCode: otpCode
+          })
+        });
+      } else {
+        response = await apiService.request('/auth/verify-otp-login', {
+          method: 'POST',
+          body: JSON.stringify({
+            identifier: email,
+            otpCode: otpCode,
+            type: 'email'
+          })
+        });
+      }
+      
+      console.log('OTP verification response:', response);
+      
+      if (response.success && response.data) {
+        const { user: userData, token } = response.data;
+        console.log('OTP verification successful, user data:', userData);
+        console.log('Token received:', token ? 'Present' : 'Missing');
+        
+        console.log('Setting user in context...');
+        setUser(userData);
+        
+        console.log('Storing in localStorage...');
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', token);
+        
+        console.log('=== AUTH CONTEXT OTP VERIFICATION SUCCESS ===');
+        return true;
+      }
+      
+      console.log('OTP verification failed');
+      console.log('=== AUTH CONTEXT OTP VERIFICATION FAILED ===');
+      return false;
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      console.log('=== AUTH CONTEXT OTP VERIFICATION ERROR ===');
       return false;
     } finally {
       setIsLoading(false);
@@ -150,6 +221,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     isLoading,
     login,
+    verifyOTP,
     logout,
     updateUser,
   };

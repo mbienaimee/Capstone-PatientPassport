@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, Search, Users, FileText, Menu } from 'lucide-react';
 import Logo from './Logo';
+import { apiService } from '../services/api';
 
 interface Patient {
   id: number;
@@ -13,13 +14,40 @@ interface Patient {
 const SearchPatient: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [patients] = useState<Patient[]>([
-    { id: 1, name: 'Alice Smith', nationalId: '12345678901', status: 'Active' },
-    { id: 2, name: 'Bob Johnson', nationalId: '09876543210', status: 'Deactivated' },
-    { id: 3, name: 'Charlie Brown', nationalId: '11223344556', status: 'Active' },
-    { id: 4, name: 'Diana Prince', nationalId: '66778899001', status: 'Active' },
-    { id: 5, name: 'Eve Adams', nationalId: '99887766554', status: 'Deactivated' },
-  ]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch patients from API
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        setLoading(true);
+        const response = await apiService.getPatients();
+        
+        if (response.success && response.data) {
+          // Transform API data to match our interface
+          const patientsData: Patient[] = response.data.map((patient: any, index: number) => ({
+            id: index + 1,
+            name: patient.user?.name || patient.name || 'Unknown',
+            nationalId: patient.nationalId || 'N/A',
+            status: patient.status === 'active' ? 'Active' : 'Deactivated'
+          }));
+          
+          setPatients(patientsData);
+        } else {
+          setError('Failed to fetch patients');
+        }
+      } catch (err) {
+        console.error('Error fetching patients:', err);
+        setError('Error loading patients');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, []);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -174,41 +202,70 @@ const SearchPatient: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {patients.map((patient) => (
-                    <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 lg:px-8 py-4 text-gray-900 font-medium">
-                        {patient.name}
-                      </td>
-                      <td className="px-6 lg:px-8 py-4 text-gray-600">
-                        {patient.nationalId}
-                      </td>
-                      <td className="px-6 lg:px-8 py-4">
-                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                          patient.status === 'Active' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {patient.status}
-                        </span>
-                      </td>
-                      <td className="px-6 lg:px-8 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => navigate('/patient-passport')}
-                            className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-transparent hover:border-green-200"
-                          >
-                            View Passport
-                          </button>
-                          <button 
-                            onClick={() => navigate('/update-passport')}
-                            className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-green-600 hover:border-green-700"
-                          >
-                            Update Passport
-                          </button>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 lg:px-8 py-8 text-center">
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+                          <span className="text-gray-600">Loading patients...</span>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 lg:px-8 py-8 text-center">
+                        <div className="text-red-600">
+                          <p className="font-medium">Error loading patients</p>
+                          <p className="text-sm text-gray-500 mt-1">{error}</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : patients.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 lg:px-8 py-8 text-center">
+                        <div className="text-gray-600">
+                          <p className="font-medium">No patients found</p>
+                          <p className="text-sm text-gray-500 mt-1">Try adjusting your search criteria</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    patients.map((patient) => (
+                      <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 lg:px-8 py-4 text-gray-900 font-medium">
+                          {patient.name}
+                        </td>
+                        <td className="px-6 lg:px-8 py-4 text-gray-600">
+                          {patient.nationalId}
+                        </td>
+                        <td className="px-6 lg:px-8 py-4">
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                            patient.status === 'Active' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {patient.status}
+                          </span>
+                        </td>
+                        <td className="px-6 lg:px-8 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => navigate('/patient-passport')}
+                              className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-transparent hover:border-green-200"
+                            >
+                              View Passport
+                            </button>
+                            <button 
+                              onClick={() => navigate('/update-passport')}
+                              className="px-4 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg font-medium transition-colors border border-green-600 hover:border-green-700"
+                            >
+                              Update Passport
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

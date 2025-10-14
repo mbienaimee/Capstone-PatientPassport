@@ -96,7 +96,7 @@ const PatientPassport: React.FC = () => {
       if (isAuthenticated && user?.id) {
         try {
           setDataLoading(true);
-          console.log('Fetching patient profile and medical records...');
+          console.log('Fetching complete patient passport data...');
           
           // Get the patient profile including emergency contact information
           const patientResponse = await apiService.getCurrentUser();
@@ -109,15 +109,47 @@ const PatientPassport: React.FC = () => {
             console.log('Emergency contact:', profile?.emergencyContact);
             setPatientProfile(profile);
             
-            // Fetch medical records
-            const response = await apiService.getPatientMedicalRecords(user.id);
-            console.log('Medical records response:', response);
-            
-            if (response.success) {
-              setMedicalData(response.data as typeof medicalData);
+            // Fetch complete passport data using the new endpoint
+            if (profile?._id) {
+              const response = await apiService.getPatientPassport(profile._id);
+              console.log('Complete passport response:', response);
+              
+              if (response.success && response.data) {
+                const passportData = response.data;
+                console.log('Passport data:', passportData);
+                
+                // Set medical data from the passport response
+                if (passportData.medicalRecords) {
+                  setMedicalData(passportData.medicalRecords);
+                }
+                
+                // Update patient profile with complete data if available
+                if (passportData.patient) {
+                  setPatientProfile(passportData.patient);
+                }
+              }
+            } else {
+              console.warn('No patient profile ID found');
+              // Set empty data if no profile ID
+              setMedicalData({
+                conditions: [],
+                medications: [],
+                tests: [],
+                visits: [],
+                images: []
+              });
             }
           } else {
             console.warn('Failed to fetch patient profile:', patientResponse.message);
+            // Set empty data on error
+            setMedicalData({
+              conditions: [],
+              medications: [],
+              tests: [],
+              visits: [],
+              images: []
+            });
+            setPatientProfile(null);
           }
         } catch (error) {
           console.error('Error fetching medical records:', error);
@@ -157,48 +189,48 @@ const PatientPassport: React.FC = () => {
   }
 
   // Transform database records to component format
-  const medicalHistory: MedicalCondition[] = medicalData.conditions.map((record: unknown) => {
-    const r = record as { data: { name?: string; details?: string; diagnosed?: string; procedure?: string } };
+  const medicalHistory: MedicalCondition[] = (medicalData.conditions || []).map((record: unknown) => {
+    const r = record as { data?: { name?: string; details?: string; diagnosed?: string; procedure?: string } };
     return {
-      name: r.data.name || '',
-      details: r.data.details || '',
-      diagnosed: r.data.diagnosed || '',
-      procedure: r.data.procedure || ''
+      name: r.data?.name || '',
+      details: r.data?.details || '',
+      diagnosed: r.data?.diagnosed || '',
+      procedure: r.data?.procedure || ''
     };
   });
 
-  const medications: Medication[] = medicalData.medications.map((record: unknown) => {
-    const r = record as { data: { medicationName?: string; dosage?: string; status?: string } };
+  const medications: Medication[] = (medicalData.medications || []).map((record: unknown) => {
+    const r = record as { data?: { medicationName?: string; dosage?: string; status?: string } };
     return {
-      name: r.data.medicationName || '',
-      dosage: r.data.dosage || '',
-      status: (r.data.status || 'Active') as "Active" | "Past"
+      name: r.data?.medicationName || '',
+      dosage: r.data?.dosage || '',
+      status: (r.data?.status || 'Active') as "Active" | "Past"
     };
   });
 
-  const testResults: TestResult[] = medicalData.tests.map((record: unknown) => {
-    const r = record as { data: { testName?: string; testDate?: string; status?: string } };
+  const testResults: TestResult[] = (medicalData.tests || []).map((record: unknown) => {
+    const r = record as { data?: { testName?: string; testDate?: string; status?: string } };
     return {
-      name: r.data.testName || '',
-      date: r.data.testDate || '',
-      status: (r.data.status || 'Normal') as "Normal" | "Critical" | "Normal Sinus Rhythm"
+      name: r.data?.testName || '',
+      date: r.data?.testDate || '',
+      status: (r.data?.status || 'Normal') as "Normal" | "Critical" | "Normal Sinus Rhythm"
     };
   });
 
-  const hospitalVisits: HospitalVisit[] = medicalData.visits.map((record: unknown) => {
-    const r = record as { data: { hospital?: string; reason?: string; visitDate?: string } };
+  const hospitalVisits: HospitalVisit[] = (medicalData.visits || []).map((record: unknown) => {
+    const r = record as { data?: { hospital?: string; reason?: string; visitDate?: string } };
     return {
-      hospital: r.data.hospital || '',
-      reason: r.data.reason || '',
-      date: r.data.visitDate || ''
+      hospital: r.data?.hospital || '',
+      reason: r.data?.reason || '',
+      date: r.data?.visitDate || ''
     };
   });
 
-  const medicalImages = medicalData.images.map((record: unknown) => {
-    const r = record as { data: { imageUrl?: string; description?: string } };
+  const medicalImages = (medicalData.images || []).map((record: unknown) => {
+    const r = record as { data?: { imageUrl?: string; description?: string } };
     return {
-      url: r.data.imageUrl || '',
-      alt: r.data.description || 'Medical Image'
+      url: r.data?.imageUrl || '',
+      alt: r.data?.description || 'Medical Image'
     };
   });
 
@@ -297,6 +329,13 @@ const PatientPassport: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2">
+                <FiShield className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Patient ID</span>
+                  <p className="text-sm font-semibold text-gray-900 font-mono">{patientProfile?._id || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 py-2">
                 <FiMail className="w-4 h-4 text-gray-400" />
                 <div className="flex-1">
                   <span className="text-sm font-medium text-gray-500">Email</span>
@@ -311,12 +350,51 @@ const PatientPassport: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2">
-                <FiCalendar className="w-4 h-4 text-gray-400" />
+                <FiShield className="w-4 h-4 text-gray-400" />
                 <div className="flex-1">
-                  <span className="text-sm font-medium text-gray-500">Member Since</span>
-                  <p className="text-sm font-semibold text-gray-900">{new Date().toLocaleDateString()}</p>
+                  <span className="text-sm font-medium text-gray-500">National ID</span>
+                  <p className="text-sm font-semibold text-gray-900">{patientProfile?.nationalId || 'N/A'}</p>
                 </div>
               </div>
+              <div className="flex items-center gap-3 py-2">
+                <FiCalendar className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Date of Birth</span>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {patientProfile?.dateOfBirth ? new Date(patientProfile.dateOfBirth).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 py-2">
+                <FiUser className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Gender</span>
+                  <p className="text-sm font-semibold text-gray-900 capitalize">{patientProfile?.gender || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 py-2">
+                <FiPhone className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Contact Number</span>
+                  <p className="text-sm font-semibold text-gray-900">{patientProfile?.contactNumber || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 py-2">
+                <FiHome className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-500">Address</span>
+                  <p className="text-sm font-semibold text-gray-900">{patientProfile?.address || 'N/A'}</p>
+                </div>
+              </div>
+              {patientProfile?.bloodType && (
+                <div className="flex items-center gap-3 py-2">
+                  <FiHeart className="w-4 h-4 text-gray-400" />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-500">Blood Type</span>
+                    <p className="text-sm font-semibold text-gray-900">{patientProfile.bloodType}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

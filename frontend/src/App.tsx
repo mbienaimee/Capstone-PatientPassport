@@ -11,6 +11,7 @@ import PatientPassport from './components/PatientPassport';
 import UpdatePatientPassport from './components/UpdatePatientPassport';
 import EmailVerification from './components/EmailVerification';
 import OTPVerification from './components/OTPVerification';
+import OTPVerificationPage from './components/OTPVerificationPage';
 import HospitalDashboard from './components/HospitalDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import DoctorDashboard from './components/DoctorDashboard';
@@ -65,7 +66,7 @@ export default function App() {
               <Route path="/hospital-login" element={<HospitalLogin />} />
               <Route path="/hospital-register" element={<HospitalRegistration />} />
               <Route path="/verify-email" element={<EmailVerification />} />
-              <Route path="/otp-verification" element={<OTPVerificationWrapper />} />
+              <Route path="/otp-verification" element={<OTPVerificationPage />} />
               
               {/* Patient Routes */}
               <Route path="/patient-passport" element={<PatientPassport />} />

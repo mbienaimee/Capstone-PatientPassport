@@ -59,22 +59,37 @@ const PatientPassportLogin: React.FC = () => {
     }
 
     try {
-      const success = await login(formData);
+      const result = await login(formData);
       
-      if (success) {
-        // Get user data from auth context to show personalized message
+      if (result && typeof result === 'object' && result.requiresOTP) {
+        // OTP verification required
+        showNotification({
+          type: 'info',
+          title: 'OTP Verification Required',
+          message: 'Please check your email for OTP code to complete login.'
+        });
+        
+        // Redirect to OTP verification page
+        navigate('/otp-login', { 
+          state: { 
+            email: result.email,
+            userType: 'patient',
+            loginData: formData
+          } 
+        });
+      } else if (result) {
+        // Login successful without OTP - go directly to passport
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         const userName = userData.name || 'Patient';
         
         showNotification({
           type: 'success',
-          title: 'Login Successful',
-          message: `Welcome back, ${userName}! Redirecting to your patient passport...`
+          title: 'Login Successful!',
+          message: `Welcome back, ${userName}!`
         });
         
-        setTimeout(() => {
-          navigate('/patient-passport');
-        }, 1500);
+        // Redirect immediately to patient passport
+        navigate('/patient-passport');
       } else {
         showNotification({
           type: 'error',

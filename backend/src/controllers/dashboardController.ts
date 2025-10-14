@@ -223,15 +223,17 @@ export const getDoctorDashboard = asyncHandler(async (req: Request, res: Respons
     throw new CustomError('Doctor ID is required', 400);
   }
 
-  // Get doctor-specific counts
-  const totalPatients = await Patient.countDocuments({ assignedDoctors: { $in: [doctorId] } });
+  // Get doctor-specific counts - show ALL patients, not just assigned ones
+  const totalPatients = await Patient.countDocuments({ status: 'active' }); // All active patients
   const totalMedicalConditions = await MedicalCondition.countDocuments({ doctor: doctorId });
   const totalMedications = await Medication.countDocuments({ doctor: doctorId });
   const totalTestResults = await TestResult.countDocuments({ doctor: doctorId });
 
-  // Get all patients (for now, showing all patients instead of only assigned ones)
+  // Get all patients from the database
   const recentPatients = await Patient.find({ status: 'active' })
     .populate('user', 'name email')
+    .populate('assignedDoctors', 'specialization')
+    .populate('assignedDoctors.user', 'name')
     .sort({ createdAt: -1 });
 
   // Get recent medical records

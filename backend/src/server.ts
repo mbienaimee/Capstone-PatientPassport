@@ -23,6 +23,7 @@ import passportAccessRoutes from './routes/passportAccess';
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { generalLimiter } from './middleware/rateLimiter';
+import { performanceMonitor } from './middleware/performanceMonitor';
 
 // Load environment variables
 dotenv.config();
@@ -67,9 +68,22 @@ if (process.env['NODE_ENV'] === 'development') {
   app.use(morgan('combined'));
 }
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware with optimizations
+app.use(express.json({ 
+  limit: '10mb',
+  // Performance optimizations
+  strict: false,
+  type: 'application/json'
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb',
+  // Performance optimizations
+  parameterLimit: 1000
+}));
+
+// Performance monitoring
+app.use(performanceMonitor);
 
 // Rate limiting
 app.use(generalLimiter);
@@ -83,6 +97,29 @@ app.get('/health', (_req, res) => {
     environment: process.env['NODE_ENV'] || 'development',
     version: '1.0.0'
   });
+});
+
+// Performance metrics endpoint
+app.get('/performance', (_req, res) => {
+  try {
+    const { performanceMetrics, logMemoryUsage } = require('./middleware/performanceMonitor');
+    const memoryUsage = logMemoryUsage();
+    
+    res.status(200).json({
+      success: true,
+      metrics: performanceMetrics.getMetrics(),
+      memory: memoryUsage,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(200).json({
+      success: true,
+      message: 'Performance monitoring not available',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API Documentation

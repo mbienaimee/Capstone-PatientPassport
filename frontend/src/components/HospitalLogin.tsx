@@ -63,13 +63,29 @@ const HospitalLogin = () => {
     }
 
     try {
-      const success = await login({
+      const result = await login({
         email: formData.email,
         password: formData.password
       });
       
-      if (success) {
-        // Get user data to show personalized message
+      if (result && typeof result === 'object' && result.requiresOTP) {
+        // OTP verification required
+        showNotification({
+          type: 'info',
+          title: 'OTP Verification Required',
+          message: 'Please check your email for OTP code to complete login.'
+        });
+        
+        // Redirect to OTP verification page
+        navigate('/otp-login', { 
+          state: { 
+            email: result.email,
+            userType: 'hospital',
+            loginData: formData
+          } 
+        });
+      } else if (result) {
+        // Login successful without OTP
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         const userName = userData.name || 'Hospital Admin';
         

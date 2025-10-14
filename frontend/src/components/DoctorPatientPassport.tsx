@@ -53,53 +53,31 @@ const DoctorPatientPassport: React.FC = () => {
 
     setLoading(true);
     try {
-      // In a real app, this would validate the doctor and fetch patients
-      // For now, we'll simulate fetching patients
-      const mockPatients: Patient[] = [
-        {
-          _id: '1',
+      // Fetch real patients from the database
+      const response = await apiService.getPatients();
+      
+      if (response.success && response.data) {
+        // Transform the API response to match our Patient interface
+        const patientsData: Patient[] = response.data.map((patient: any) => ({
+          _id: patient._id || patient.id,
           user: {
-            _id: '1',
-            name: 'John Doe',
-            email: 'john.doe@email.com'
+            _id: patient.user?._id || patient.user?.id || patient._id,
+            name: patient.user?.name || patient.name,
+            email: patient.user?.email || patient.email
           },
-          nationalId: '1234567890',
-          dateOfBirth: '1990-01-01',
-          contactNumber: '+1234567890',
-          address: '123 Main St, City',
-          status: 'active'
-        },
-        {
-          _id: '2',
-          user: {
-            _id: '2',
-            name: 'Jane Smith',
-            email: 'jane.smith@email.com'
-          },
-          nationalId: '0987654321',
-          dateOfBirth: '1985-05-15',
-          contactNumber: '+0987654321',
-          address: '456 Oak Ave, City',
-          status: 'active'
-        },
-        {
-          _id: '3',
-          user: {
-            _id: '3',
-            name: 'Bob Johnson',
-            email: 'bob.johnson@email.com'
-          },
-          nationalId: '1122334455',
-          dateOfBirth: '1992-12-10',
-          contactNumber: '+1122334455',
-          address: '789 Pine St, City',
-          status: 'active'
-        }
-      ];
+          nationalId: patient.nationalId,
+          dateOfBirth: patient.dateOfBirth,
+          contactNumber: patient.contactNumber,
+          address: patient.address,
+          status: patient.status || 'active'
+        }));
 
-      setPatients(mockPatients);
-      setFilteredPatients(mockPatients);
-      setShowDoctorForm(false);
+        setPatients(patientsData);
+        setFilteredPatients(patientsData);
+        setShowDoctorForm(false);
+      } else {
+        throw new Error(response.message || 'Failed to fetch patients');
+      }
     } catch (error) {
       console.error('Error fetching patients:', error);
       alert('Error fetching patients. Please try again.');

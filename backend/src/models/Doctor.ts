@@ -67,16 +67,14 @@ const doctorSchema = new Schema<IDoctor>({
   toObject: { virtuals: true }
 });
 
-// Indexes
-doctorSchema.index({ licenseNumber: 1 });
-doctorSchema.index({ user: 1 });
+// Indexes (removed duplicates - user and licenseNumber already have unique: true)
 doctorSchema.index({ hospital: 1 });
 doctorSchema.index({ specialization: 1 });
 doctorSchema.index({ isActive: 1 });
 
 // Virtual for patient count
 doctorSchema.virtual('patientCount').get(function() {
-  return this.patients.length;
+  return this.patients ? this.patients.length : 0;
 });
 
 // Virtual for full profile

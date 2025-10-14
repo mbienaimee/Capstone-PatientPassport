@@ -441,6 +441,18 @@ class ApiService {
       body: JSON.stringify(updateData)
     });
   }
+
+  // Patient Passport Methods
+  async getPatientPassport(patientId: string): Promise<ApiResponse<any>> {
+    return this.request(`/patients/passport/${patientId}`);
+  }
+
+  async updatePatientPassport(patientId: string, updateData: any): Promise<ApiResponse<any>> {
+    return this.request(`/passport-access/${patientId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+  }
 }
 
 export const apiService = new ApiService();

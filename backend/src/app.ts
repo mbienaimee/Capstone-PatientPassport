@@ -7,10 +7,18 @@ import SocketService from './services/socketService';
 const PORT = process.env['PORT'] || 5000;
 const MONGODB_URI = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/patient-passport';
 
-// Connect to MongoDB
+// Connect to MongoDB with optimizations
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(MONGODB_URI);
+    const conn = await mongoose.connect(MONGODB_URI, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000,
+      compressors: ['zlib'],
+      readPreference: 'secondaryPreferred'
+    });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('Database connection error:', error);
@@ -45,13 +53,13 @@ const startServer = async () => {
   }
 };
 
-// Handle unhandled promise rejections
+
 process.on('unhandledRejection', (err: Error) => {
   console.error('Unhandled Promise Rejection:', err);
   process.exit(1);
 });
 
-// Handle uncaught exceptions
+
 process.on('uncaughtException', (err: Error) => {
   console.error('Uncaught Exception:', err);
   process.exit(1);

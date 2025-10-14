@@ -60,8 +60,7 @@ const userSchema = new Schema<IUser>({
   toObject: { virtuals: true }
 });
 
-// Indexes
-userSchema.index({ email: 1 });
+// Indexes (removed email duplicate - already has unique: true)
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 

@@ -78,18 +78,18 @@ router.patch('/:id/reject', authenticate, authorize('admin'), validateObjectId('
 
 // @route   GET /api/hospitals/:id/doctors
 // @desc    Get hospital doctors
-// @access  Private (Admin, Hospital)
-router.get('/:id/doctors', authenticate, authorize('admin', 'hospital'), validateObjectId('id'), getHospitalDoctors);
+// @access  Private (Admin, Hospital, Doctor)
+router.get('/:id/doctors', authenticate, authorize('admin', 'hospital', 'doctor'), validateObjectId('id'), getHospitalDoctors);
 
 // @route   GET /api/hospitals/:id/patients
 // @desc    Get hospital patients
-// @access  Private (Admin, Hospital)
-router.get('/:id/patients', authenticate, authorize('admin', 'hospital'), validateObjectId('id'), getHospitalPatients);
+// @access  Private (Admin, Hospital, Doctor)
+router.get('/:id/patients', authenticate, authorize('admin', 'hospital', 'doctor'), validateObjectId('id'), getHospitalPatients);
 
 // @route   GET /api/hospitals/:id/summary
 // @desc    Get hospital summary
-// @access  Private (Admin, Hospital)
-router.get('/:id/summary', authenticate, authorize('admin', 'hospital'), validateObjectId('id'), getHospitalSummary);
+// @access  Private (Admin, Hospital, Doctor)
+router.get('/:id/summary', authenticate, authorize('admin', 'hospital', 'doctor'), validateObjectId('id'), getHospitalSummary);
 
 // @route   POST /api/hospitals/:id/doctors
 // @desc    Add doctor to hospital

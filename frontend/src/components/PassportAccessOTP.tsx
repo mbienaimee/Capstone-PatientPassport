@@ -7,7 +7,7 @@ interface PassportAccessOTPProps {
   patientId: string;
   patientName: string;
   patientEmail: string;
-  onSuccess: (accessToken: string) => void;
+  onSuccess: (passportData: any) => void;
   onCancel: () => void;
 }
 
@@ -50,12 +50,14 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
   };
 
   const handleRequestOTP = async () => {
-    if (countdown > 0) return;
+    // Prevent multiple simultaneous requests
+    if (countdown > 0 || isRequestingOTP) return;
     
     setIsRequestingOTP(true);
     setError('');
     
     try {
+      console.log(`📧 Requesting OTP for patient: ${patientName} (${patientEmail})`);
       const response = await apiService.requestPassportAccessOTP(patientId);
       
       if (response.success) {
@@ -64,10 +66,11 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
           title: 'OTP Sent!',
           message: `OTP has been sent to ${patientName}'s email. Please ask them to share the code with you.`
         });
-        setCountdown(10); // 10 seconds countdown
+        setCountdown(30); // 30 seconds countdown to prevent spam
+        console.log('✅ OTP request successful');
       }
     } catch (error) {
-      console.error('Request OTP error:', error);
+      console.error('❌ Request OTP error:', error);
       if (error instanceof ApiError) {
         setError(error.message || 'Failed to send OTP');
         showNotification({
@@ -114,8 +117,8 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
           message: `You now have access to ${patientName}'s Patient Passport for 1 hour.`
         });
         
-        // Call success callback with access token
-        onSuccess(response.data.accessToken);
+        // Call success callback with passport data
+        onSuccess(response.data.passport);
       }
     } catch (error) {
       console.error('OTP verification error:', error);
@@ -176,13 +179,19 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
 
           {/* Instructions */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-blue-900 mb-2">📋 Instructions</h4>
-            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-              <li>An OTP has been sent to the patient's email</li>
-              <li>Ask the patient to share the 6-digit code with you</li>
-              <li>Enter the code below to access their passport</li>
-              <li>Access will be valid for 1 hour</li>
+            <h4 className="font-semibold text-blue-900 mb-2">📋 How to Access Patient Passport</h4>
+            <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+              <li><strong>OTP Sent:</strong> A 6-digit code has been sent to <strong>{patientEmail}</strong></li>
+              <li><strong>Get Code:</strong> Ask the patient to check their email and share the code with you</li>
+              <li><strong>Enter Code:</strong> Type the 6-digit code in the field below</li>
+              <li><strong>Access Granted:</strong> You'll be able to view and update their passport</li>
             </ol>
+            <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs text-yellow-800">
+              ⚠️ <strong>Important:</strong> The OTP expires in 10 minutes. Ask the patient to share it quickly!
+            </div>
+            <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
+              💡 <strong>For Testing:</strong> If email delivery fails, check the console logs for the OTP code
+            </div>
           </div>
 
           {/* OTP Form */}
@@ -207,6 +216,8 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
                   placeholder="123456"
                   maxLength={6}
                   disabled={isLoading}
+                  autoComplete="one-time-code"
+                  autoFocus
                   className={`w-full pl-10 pr-12 py-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-2xl tracking-widest font-mono ${
                     error 
                       ? 'border-red-300 focus:ring-red-500' 

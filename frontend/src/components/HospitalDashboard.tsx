@@ -40,7 +40,7 @@ const HospitalDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'patients'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'patients'>('doctors');
   const [hospitalId, setHospitalId] = useState<string>('');
   const [hospitalInfo, setHospitalInfo] = useState<HospitalInfo | null>(null);
   const [hospitalStats, setHospitalStats] = useState<HospitalStats | null>(null);
@@ -73,10 +73,67 @@ const HospitalDashboard: React.FC = () => {
         throw new Error('User is not a hospital');
       }
 
+      // Add caching to prevent excessive API calls
+      const cacheKey = `hospital-info-${user._id}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      const cacheTime = 30000; // 30 seconds cache
+      
+      if (!isRetry && cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          if (Date.now() - parsed.timestamp < cacheTime) {
+            console.log('Using cached hospital data');
+            setHospitalId(parsed.data.hospital._id);
+            setHospitalInfo(parsed.data.hospital);
+            setHospitalStats(parsed.data.stats || null);
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing cached data:', error);
+        }
+      }
+
       // Try to get hospital dashboard data
       console.log('Calling hospital dashboard API...');
-      const response = await apiService.request('/dashboard/hospital');
-      console.log('Hospital dashboard response:', response);
+      let response;
+      try {
+        response = await apiService.request('/dashboard/hospital');
+        console.log('Hospital dashboard response:', response);
+      } catch (dashboardError) {
+        console.error('Dashboard endpoint failed, trying fallback method:', dashboardError);
+        
+        // Fallback: Get hospital info directly from user profile
+        console.log('Trying fallback method to get hospital info...');
+        const userResponse = await apiService.request('/auth/me');
+        console.log('User profile response:', userResponse);
+        
+        if (userResponse.success && userResponse.data.profile) {
+          const hospitalProfile = userResponse.data.profile;
+          response = {
+            success: true,
+            data: {
+              hospital: {
+                _id: hospitalProfile._id,
+                name: hospitalProfile.name,
+                address: hospitalProfile.address || '',
+                contact: hospitalProfile.contact || '',
+                licenseNumber: hospitalProfile.licenseNumber || '',
+                status: hospitalProfile.status || 'active'
+              },
+              stats: {
+                totalDoctors: 0,
+                totalPatients: 0,
+                recentPatients: [],
+                recentMedicalConditions: [],
+                recentTestResults: []
+              }
+            }
+          };
+          console.log('Fallback hospital data:', response);
+        } else {
+          throw dashboardError; // Re-throw original error if fallback fails
+        }
+      }
       
       if (response.success && response.data) {
         const data = response.data as { 
@@ -91,6 +148,12 @@ const HospitalDashboard: React.FC = () => {
           setHospitalInfo(data.hospital);
           setHospitalStats(data.stats || null);
           console.log('Hospital info loaded successfully:', data.hospital);
+          
+          // Cache the data
+          localStorage.setItem(cacheKey, JSON.stringify({
+            data: data,
+            timestamp: Date.now()
+          }));
           
           showNotification({
             type: 'success',
@@ -168,7 +231,7 @@ const HospitalDashboard: React.FC = () => {
     // Fetch hospital info
     console.log('User is hospital, fetching info...');
     fetchHospitalInfo();
-  }, [user, isLoading, navigate, fetchHospitalInfo]);
+  }, [user, isLoading, navigate]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -60,10 +60,18 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   });
 
   // Create role-specific profile
-  console.log('Registration data:', { role, nationalId, dateOfBirth, contactNumber, address });
+  console.log('Registration data:', { role, nationalId, dateOfBirth, gender, contactNumber, address });
+  console.log('Full request body:', req.body);
   
   if (role === 'patient' && nationalId && dateOfBirth && gender && contactNumber && address) {
     console.log('Creating patient record...');
+    
+    // Validate emergency contact fields
+    const emergencyContact = req.body.emergencyContact;
+    if (!emergencyContact || !emergencyContact.name || !emergencyContact.relationship || !emergencyContact.phone) {
+      throw new CustomError('Emergency contact information is required (name, relationship, and phone)', 400);
+    }
+    
     try {
       const patient = await Patient.create({
         user: user._id,
@@ -73,9 +81,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
         contactNumber,
         address,
         emergencyContact: {
-          name: req.body.emergencyContact?.name || '',
-          relationship: req.body.emergencyContact?.relationship || '',
-          phone: req.body.emergencyContact?.phone || ''
+          name: emergencyContact.name,
+          relationship: emergencyContact.relationship,
+          phone: emergencyContact.phone
         }
       });
       console.log('Patient created successfully:', patient._id);
@@ -85,65 +93,110 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     }
   } else {
     console.log('Patient creation skipped - missing required fields');
+    console.log('Missing fields check:', {
+      role: role === 'patient',
+      nationalId: !!nationalId,
+      dateOfBirth: !!dateOfBirth,
+      gender: !!gender,
+      contactNumber: !!contactNumber,
+      address: !!address
+    });
   }
   
-  if (role === 'hospital' && hospitalName && adminContact && licenseNumber) {
-    await Hospital.create({
-      user: user._id,
-      name: hospitalName,
-      address: req.body.address || '',
-      contact: req.body.contact || '',
-      licenseNumber,
-      adminContact
-    });
+  if (role === 'hospital' && hospitalName && licenseNumber) {
+    console.log('Creating hospital record...');
+    try {
+      const hospital = await Hospital.create({
+        user: user._id,
+        name: hospitalName,
+        address: req.body.address || '',
+        contact: req.body.contact || '',
+        licenseNumber,
+        adminContact: adminContact || ''
+      });
+      console.log('Hospital created successfully:', hospital._id);
+    } catch (error) {
+      console.error('Error creating hospital:', error);
+      throw error;
+    }
   } else if (role === 'doctor' && licenseNumber && specialization) {
+    console.log('Creating doctor record...');
     // Doctor registration requires hospital assignment
     if (!req.body.hospital) {
       throw new CustomError('Hospital assignment is required for doctor registration', 400);
     }
     
-    await Doctor.create({
-      user: user._id,
-      licenseNumber,
-      specialization,
-      hospital: req.body.hospital
-    });
+    try {
+      const doctor = await Doctor.create({
+        user: user._id,
+        licenseNumber,
+        specialization,
+        hospital: req.body.hospital
+      });
+      console.log('Doctor created successfully:', doctor._id);
+      
+      // Automatically verify email for doctors
+      user.isEmailVerified = true;
+      await user.save();
+      console.log('Doctor email automatically verified');
+    } catch (error) {
+      console.error('Error creating doctor:', error);
+      throw error;
+    }
   } else if (role === 'receptionist' && employeeId && department && shift) {
+    console.log('Creating receptionist record...');
     // Receptionist registration requires hospital assignment
     if (!req.body.hospital) {
       throw new CustomError('Hospital assignment is required for receptionist registration', 400);
     }
     
-    await Receptionist.create({
-      user: user._id,
-      employeeId,
-      hospital: req.body.hospital,
-      department,
-      shift,
-      permissions: {
-        canAssignDoctors: true,
-        canViewPatientRecords: true,
-        canScheduleAppointments: true,
-        canAccessEmergencyOverride: false
-      }
-    });
+    try {
+      const receptionist = await Receptionist.create({
+        user: user._id,
+        employeeId,
+        hospital: req.body.hospital,
+        department,
+        shift,
+        permissions: {
+          canAssignDoctors: true,
+          canViewPatientRecords: true,
+          canScheduleAppointments: true,
+          canAccessEmergencyOverride: false
+        }
+      });
+      console.log('Receptionist created successfully:', receptionist._id);
+    } catch (error) {
+      console.error('Error creating receptionist:', error);
+      throw error;
+    }
+  } else {
+    console.log('No role-specific profile created for role:', role);
+    console.log('Role-specific profile creation conditions:');
+    console.log('- Patient:', role === 'patient' && 'nationalId, dateOfBirth, gender, contactNumber, address');
+    console.log('- Hospital:', role === 'hospital' && 'hospitalName, licenseNumber');
+    console.log('- Doctor:', role === 'doctor' && 'licenseNumber, specialization, hospital');
+    console.log('- Receptionist:', role === 'receptionist' && 'employeeId, department, shift, hospital');
   }
 
-  // Send OTP for email verification
-  try {
-    await generateAndSendOTP(email, 'email');
-    console.log('OTP sent successfully for email verification');
-  } catch (error) {
-    console.error('Error sending OTP:', error);
-    // Don't fail registration if OTP sending fails
+  // Send OTP for email verification (skip for doctors)
+  if (role !== 'doctor') {
+    try {
+      await generateAndSendOTP(email, 'email');
+      console.log('OTP sent successfully for email verification');
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      // Don't fail registration if OTP sending fails
+    }
   }
 
   const response: ApiResponse = {
     success: true,
-    message: 'User registered successfully. Please check your email for OTP to complete verification.',
+    message: role === 'doctor' 
+      ? 'Doctor registered successfully. You can now log in.'
+      : 'User registered successfully. Please check your email for OTP to complete verification.',
     data: {
       user: user.getPublicProfile(),
-      requiresOTPVerification: true
+      requiresOTPVerification: role !== 'doctor'
     }
   };
 
@@ -195,8 +248,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new CustomError('Account has been deactivated', 401);
   }
 
-  // Check if email is verified
-  if (!user.isEmailVerified) {
+  // Check if email is verified (skip for doctors)
+  if (!user.isEmailVerified && user.role !== 'doctor') {
     throw new CustomError('Please verify your email address before logging in. Check your email for verification instructions.', 401);
   }
 
@@ -209,25 +262,49 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new CustomError('Invalid credentials', 401);
   }
 
-  // Update last login
-  user.lastLogin = new Date();
-  await user.save();
+  // For patients, hospitals, and doctors, skip OTP and login directly
+  if (user.role === 'patient' || user.role === 'hospital' || user.role === 'doctor') {
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
 
-  // Generate tokens
-  const token = generateToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
+    // Generate tokens
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
-  const response: AuthResponse = {
+    const response: AuthResponse = {
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: user.getPublicProfile(),
+        token,
+        refreshToken
+      }
+    };
+
+    return res.json(response);
+  }
+
+  // For other roles, send OTP for login verification
+  try {
+    await generateAndSendOTP(user.email, 'email');
+    console.log('OTP sent successfully for login verification');
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    throw new CustomError('Failed to send OTP. Please try again.', 500);
+  }
+
+  const response: ApiResponse = {
     success: true,
-    message: 'Login successful',
+    message: 'Password verified. Please check your email for OTP to complete login.',
     data: {
       user: user.getPublicProfile(),
-      token,
-      refreshToken
+      requiresOTPVerification: true,
+      email: user.email
     }
   };
 
-  res.json(response);
+  return res.json(response);
 });
 
 // @desc    Refresh token
@@ -277,11 +354,17 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user;
 
-  // Get role-specific profile
+  // Get role-specific profile with complete data
   let profile = null;
   
   if (user.role === 'patient') {
-    profile = await Patient.findOne({ user: user._id });
+    profile = await Patient.findOne({ user: user._id })
+      .populate('medicalHistory')
+      .populate('medications')
+      .populate('testResults')
+      .populate('hospitalVisits')
+      .populate('assignedDoctors', 'specialization')
+      .populate('assignedDoctors.user', 'name email');
   } else if (user.role === 'doctor') {
     profile = await Doctor.findOne({ user: user._id }).populate('hospital');
   } else if (user.role === 'hospital') {
@@ -522,26 +605,26 @@ export const verifyOTPLogin = asyncHandler(async (req: Request, res: Response) =
     throw new CustomError('Account has been deactivated', 401);
   }
 
-  // Check if email is verified
-  if (!user.isEmailVerified) {
+  // Check if email is verified (skip for doctors)
+  if (!user.isEmailVerified && user.role !== 'doctor') {
     throw new CustomError('Please verify your email address before logging in. Check your email for verification instructions.', 401);
   }
 
-  // Generate token
+  // Update last login
+  user.lastLogin = new Date();
+  await user.save();
+
+  // Generate tokens
   const token = generateToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
 
   const response: AuthResponse = {
     success: true,
     message: 'Login successful',
     data: {
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
+      user: user.getPublicProfile(),
       token,
-      refreshToken: token // Using same token for refresh for now
+      refreshToken
     }
   };
 

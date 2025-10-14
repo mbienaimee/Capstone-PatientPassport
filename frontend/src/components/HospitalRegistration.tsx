@@ -12,7 +12,7 @@ const HospitalRegistration: React.FC = () => {
   
   const [formData, setFormData] = useState({
     hospitalName: '',
-    adminContact: '',
+    email: '',
     address: '',
     contact: '',
     password: '',
@@ -21,7 +21,7 @@ const HospitalRegistration: React.FC = () => {
 
   const [errors, setErrors] = useState({
     hospitalName: '',
-    adminContact: '',
+    email: '',
     address: '',
     contact: '',
     password: '',
@@ -50,7 +50,6 @@ const HospitalRegistration: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors = {
       hospitalName: '',
-      adminContact: '',
       address: '',
       contact: '',
       password: '',
@@ -63,10 +62,10 @@ const HospitalRegistration: React.FC = () => {
       newErrors.hospitalName = 'Hospital name must be at least 3 characters';
     }
 
-    if (!formData.adminContact.trim()) {
-      newErrors.adminContact = 'Admin contact is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.adminContact)) {
-      newErrors.adminContact = 'Please enter a valid email address';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
     if (!formData.address.trim()) {
@@ -117,12 +116,11 @@ const HospitalRegistration: React.FC = () => {
     try {
       const registrationData = {
         name: formData.hospitalName,
-        email: formData.adminContact,
+        email: formData.email,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         role: 'hospital',
         hospitalName: formData.hospitalName,
-        adminContact: formData.adminContact,
         address: formData.address,
         contact: formData.contact,
         licenseNumber: `HOSP-${Date.now()}` // Generate a temporary license number
@@ -143,7 +141,7 @@ const HospitalRegistration: React.FC = () => {
         // Redirect to OTP verification
         navigate('/otp-verification', { 
           state: { 
-            email: formData.adminContact, 
+            email: registrationData.email, 
             userType: 'hospital' 
           } 
         });
@@ -228,13 +226,13 @@ const HospitalRegistration: React.FC = () => {
               )}
             </div>
 
-            {/* Admin Contact */}
+            {/* Email */}
             <div className="space-y-2">
               <label 
-                htmlFor="adminContact" 
+                htmlFor="email" 
                 className="block text-sm font-semibold text-gray-700"
               >
-                Admin Contact Email
+                Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -242,23 +240,23 @@ const HospitalRegistration: React.FC = () => {
                 </div>
                 <input
                   type="email"
-                  id="adminContact"
-                  name="adminContact"
-                  value={formData.adminContact}
+                  id="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
-                  placeholder="admin@hospital.com"
+                  placeholder="hospital@example.com"
                   disabled={isLoading}
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all ${
-                    errors.adminContact 
+                    errors.email 
                       ? 'border-red-300 focus:ring-red-500' 
                       : 'border-gray-300 hover:border-gray-400'
                   } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
               </div>
-              {errors.adminContact && (
+              {errors.email && (
                 <p className="text-sm text-red-600 flex items-center gap-1">
                   <span className="w-1 h-1 bg-red-500 rounded-full"></span>
-                  {errors.adminContact}
+                  {errors.email}
                 </p>
               )}
             </div>

@@ -107,7 +107,7 @@ testResultSchema.methods.getSummary = function() {
     status: this.status,
     date: this.date,
     isCritical: this.isCritical(),
-    hasAttachments: this.attachments.length > 0
+    hasAttachments: this.attachments ? this.attachments.length > 0 : false
   };
 };
 

@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Mail, Phone, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import Logo from './Logo';
 import { useNotification } from '../contexts/NotificationContext';
 import { apiService } from '../services/api';
+
+interface LocationState {
+  email: string;
+  userType: 'patient' | 'hospital' | 'doctor';
+  loginData?: any;
+}
 
 interface OTPFormData {
   identifier: string;
@@ -13,16 +19,33 @@ interface OTPFormData {
 
 const OTPLogin: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showNotification } = useNotification();
+  
+  const { email, userType, loginData } = (location.state as LocationState) || { 
+    email: '', 
+    userType: 'patient',
+    loginData: null 
+  };
+  
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [isRequestingOTP, setIsRequestingOTP] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [formData, setFormData] = useState<OTPFormData>({
-    identifier: '',
-    type: 'email',
-    otpCode: ''
-  });
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [otpCode, setOtpCode] = useState('');
+  const [showOTP, setShowOTP] = useState(false);
+  const [error, setError] = useState('');
+
+  // Redirect if no email provided
+  useEffect(() => {
+    if (!email) {
+      showNotification({
+        type: 'error',
+        title: 'Invalid Access',
+        message: 'Please login first to access OTP verification.'
+      });
+      navigate('/patient-login');
+    }
+  }, [email, navigate, showNotification]);
 
   // Countdown timer
   useEffect(() => {
@@ -33,155 +56,117 @@ const OTPLogin: React.FC = () => {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+  // Automatically request OTP when component mounts
+  useEffect(() => {
+    if (email) {
+      handleRequestOTP();
+    }
+  }, [email]);
+
+  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+    if (value.length <= 6) {
+      setOtpCode(value);
+      setError('');
     }
   };
 
-  const validateRequestForm = (): boolean => {
-    const newErrors: { [key: string]: string } = {};
-
-    if (!formData.identifier.trim()) {
-      newErrors.identifier = 'Email or phone number is required';
-    } else if (formData.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.identifier)) {
-      newErrors.identifier = 'Please enter a valid email address';
-    } else if (formData.type === 'phone' && !/^\+?[\d\s-()]+$/.test(formData.identifier)) {
-      newErrors.identifier = 'Please enter a valid phone number';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const validateOTPForm = (): boolean => {
-    const newErrors: { [key: string]: string } = {};
-
-    if (!formData.otpCode.trim()) {
-      newErrors.otpCode = 'OTP code is required';
-    } else if (!/^\d{6}$/.test(formData.otpCode)) {
-      newErrors.otpCode = 'OTP code must be 6 digits';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleRequestOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRequestOTP = async () => {
+    if (countdown > 0) return;
     
-    if (!validateRequestForm()) return;
-
-    setIsLoading(true);
+    setIsRequestingOTP(true);
+    setError('');
+    
     try {
-      const response = await apiService.requestOTP(formData.identifier, formData.type);
+      const response = await apiService.request('/auth/request-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          identifier: email,
+          type: 'email'
+        })
+      });
       
       if (response.success) {
         showNotification({
           type: 'success',
           title: 'OTP Sent!',
-          message: `OTP sent to your ${formData.type}`
+          message: `OTP has been sent to ${email}. Please check your email.`
         });
-        
-        setStep('verify');
-        setCountdown(60); // 60 seconds countdown
+        setCountdown(30); // 30 seconds countdown
       }
-    } catch (error: any) {
-      console.error('OTP request error:', error);
+    } catch (error) {
+      console.error('Request OTP error:', error);
       showNotification({
         type: 'error',
         title: 'Failed to Send OTP',
-        message: error.message || 'Please try again'
+        message: 'Failed to send OTP. Please try again.'
       });
     } finally {
-      setIsLoading(false);
+      setIsRequestingOTP(false);
     }
   };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateOTPForm()) return;
+    if (!otpCode.trim()) {
+      setError('Please enter the OTP code');
+      return;
+    }
+    
+    if (otpCode.length !== 6) {
+      setError('OTP code must be 6 digits');
+      return;
+    }
 
     setIsLoading(true);
+    setError('');
+    
     try {
-      const response = await apiService.verifyOTPLogin(
-        formData.identifier, 
-        formData.otpCode, 
-        formData.type
-      );
+      const response = await apiService.request('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          identifier: email,
+          otpCode: otpCode,
+          type: 'email'
+        })
+      });
       
       if (response.success) {
         showNotification({
           type: 'success',
           title: 'Login Successful!',
-          message: 'Welcome back! Redirecting to your passport...'
+          message: 'Welcome back! Redirecting to your dashboard...'
         });
         
-        // Store user data and token
-        const { user: userData, token } = response.data!;
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', token);
+        // Store the token and user data
+        localStorage.setItem('token', (response.data as any).token);
+        localStorage.setItem('user', JSON.stringify((response.data as any).user));
         
-        // Redirect based on user role
+        // Redirect based on user type
         setTimeout(() => {
-          if (userData.role === 'patient') {
-            navigate('/patient-passport');
-          } else if (userData.role === 'hospital') {
-            navigate('/hospital-dashboard');
-          } else if (userData.role === 'doctor') {
-            navigate('/doctor-dashboard');
-          } else if (userData.role === 'receptionist') {
-            navigate('/receptionist-dashboard');
-          } else if (userData.role === 'admin') {
-            navigate('/admin-dashboard');
-          } else {
-            navigate('/patient-passport'); // Default fallback
+          switch (userType) {
+            case 'patient':
+              navigate('/patient-passport');
+              break;
+            case 'hospital':
+              navigate('/hospital-dashboard');
+              break;
+            case 'doctor':
+              navigate('/doctor-dashboard');
+              break;
+            default:
+              navigate('/');
           }
-        }, 1500);
+        }, 1000);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('OTP verification error:', error);
+      setError('Invalid OTP code. Please try again.');
       showNotification({
         type: 'error',
         title: 'Verification Failed',
-        message: error.message || 'Invalid OTP. Please try again'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    if (countdown > 0) return;
-    
-    setIsLoading(true);
-    try {
-      const response = await apiService.requestOTP(formData.identifier, formData.type);
-      
-      if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'OTP Resent!',
-          message: `New OTP sent to your ${formData.type}`
-        });
-        setCountdown(60);
-      }
-    } catch (error: any) {
-      console.error('Resend OTP error:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to Resend OTP',
-        message: error.message || 'Please try again'
+        message: 'Invalid OTP code. Please try again.'
       });
     } finally {
       setIsLoading(false);
@@ -189,29 +174,49 @@ const OTPLogin: React.FC = () => {
   };
 
   const goBack = () => {
-    if (step === 'verify') {
-      setStep('request');
-      setFormData(prev => ({ ...prev, otpCode: '' }));
-      setErrors({});
-    } else {
-      navigate('/patient-login');
+    switch (userType) {
+      case 'patient':
+        navigate('/patient-login');
+        break;
+      case 'hospital':
+        navigate('/hospital-login');
+        break;
+      case 'doctor':
+        navigate('/doctor-login');
+        break;
+      default:
+        navigate('/');
     }
   };
 
+  if (!email) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Access</h1>
+          <p className="text-gray-600 mb-6">Please login first to access OTP verification.</p>
+          <button 
+            onClick={() => navigate('/patient-login')}
+            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <Logo />
-          <h1 className="text-2xl font-bold text-gray-900 mt-4">
-            {step === 'request' ? 'OTP Login' : 'Verify OTP'}
+          <Logo size="lg" className="justify-center mb-4" />
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Complete Login
           </h1>
-          <p className="text-gray-600 mt-2">
-            {step === 'request' 
-              ? 'Enter your email or phone number to receive OTP' 
-              : 'Enter the 6-digit code sent to your ' + formData.type
-            }
+          <p className="text-gray-600">
+            Enter OTP code to complete your {userType} login
           </p>
         </div>
 
@@ -221,151 +226,134 @@ const OTPLogin: React.FC = () => {
           className="flex items-center text-gray-600 hover:text-gray-800 mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          Back to Login
         </button>
 
-        {/* Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {step === 'request' ? (
-            <form onSubmit={handleRequestOTP} className="space-y-6">
-              {/* Type Selection */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Login Method
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, type: 'email' }))}
-                    className={`flex items-center justify-center p-3 rounded-xl border-2 transition-all ${
-                      formData.type === 'email'
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <Mail className="w-5 h-5 mr-2" />
-                    Email
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, type: 'phone' }))}
-                    className={`flex items-center justify-center p-3 rounded-xl border-2 transition-all ${
-                      formData.type === 'phone'
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <Phone className="w-5 h-5 mr-2" />
-                    Phone
-                  </button>
-                </div>
-              </div>
+        {/* OTP Verification Card */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          {/* User Info */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-gray-900 mb-2">Account Information</h3>
+            <div className="flex items-center space-x-2">
+              <Mail className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">{email}</span>
+            </div>
+            <div className="flex items-center space-x-2 mt-1">
+              <span className="text-xs text-gray-500 capitalize">{userType}</span>
+            </div>
+          </div>
 
-              {/* Identifier Input */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {formData.type === 'email' ? 'Email Address' : 'Phone Number'} *
-                </label>
-                <input
-                  type={formData.type === 'email' ? 'email' : 'tel'}
-                  name="identifier"
-                  value={formData.identifier}
-                  onChange={handleInputChange}
-                  placeholder={formData.type === 'email' ? 'john@example.com' : '+1234567890'}
-                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 ${
-                    errors.identifier 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                      : 'border-gray-200 focus:border-green-500 focus:ring-green-200'
-                  }`}
-                />
-                {errors.identifier && (
-                  <p className="text-xs text-red-500 mt-1">{errors.identifier}</p>
-                )}
-              </div>
+          {/* Instructions */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h4 className="font-semibold text-blue-900 mb-2">📋 Instructions</h4>
+            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+              <li>An OTP code has been sent to your email</li>
+              <li>Check your email inbox (and spam folder)</li>
+              <li>Enter the 6-digit code below</li>
+              <li>Code expires in 10 minutes</li>
+            </ol>
+          </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`w-full py-4 rounded-xl font-bold shadow-lg transition-all duration-300 ${
-                  isLoading
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:shadow-xl transform hover:-translate-y-1'
-                }`}
+          {/* OTP Form */}
+          <form onSubmit={handleVerifyOTP} className="space-y-6">
+            {/* OTP Input */}
+            <div className="space-y-2">
+              <label 
+                htmlFor="otpCode" 
+                className="block text-sm font-semibold text-gray-700"
               >
-                {isLoading ? 'Sending OTP...' : 'Send OTP'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOTP} className="space-y-6">
-              {/* OTP Input */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Enter 6-digit OTP Code *
-                </label>
+                Enter OTP Code
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
-                  type="text"
-                  name="otpCode"
-                  value={formData.otpCode}
-                  onChange={handleInputChange}
+                  type={showOTP ? "text" : "password"}
+                  id="otpCode"
+                  value={otpCode}
+                  onChange={handleOtpChange}
                   placeholder="123456"
                   maxLength={6}
-                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 text-center text-2xl tracking-widest ${
-                    errors.otpCode 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                      : 'border-gray-200 focus:border-green-500 focus:ring-green-200'
-                  }`}
+                  disabled={isLoading}
+                  className={`w-full pl-10 pr-12 py-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-2xl tracking-widest font-mono ${
+                    error 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
-                {errors.otpCode && (
-                  <p className="text-xs text-red-500 mt-1">{errors.otpCode}</p>
-                )}
-              </div>
-
-              {/* Resend OTP */}
-              <div className="text-center">
                 <button
                   type="button"
-                  onClick={handleResendOTP}
-                  disabled={countdown > 0 || isLoading}
-                  className={`text-sm ${
-                    countdown > 0 || isLoading
-                      ? 'text-gray-400 cursor-not-allowed'
-                      : 'text-green-600 hover:text-green-700 font-medium'
-                  }`}
+                  onClick={() => setShowOTP(!showOTP)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                 >
-                  {countdown > 0 
-                    ? `Resend OTP in ${countdown}s` 
-                    : 'Resend OTP'
-                  }
+                  {showOTP ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {error && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                  {error}
+                </p>
+              )}
+            </div>
 
-              {/* Submit Button */}
+            {/* Resend OTP */}
+            <div className="text-center">
               <button
-                type="submit"
-                disabled={isLoading}
-                className={`w-full py-4 rounded-xl font-bold shadow-lg transition-all duration-300 ${
-                  isLoading
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:shadow-xl transform hover:-translate-y-1'
+                type="button"
+                onClick={handleRequestOTP}
+                disabled={countdown > 0 || isRequestingOTP}
+                className={`text-sm flex items-center justify-center gap-2 mx-auto ${
+                  countdown > 0 || isRequestingOTP
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : 'text-green-600 hover:text-green-700 font-medium'
                 }`}
               >
-                {isLoading ? 'Verifying...' : 'Verify & Login'}
+                <RefreshCw className={`w-4 h-4 ${isRequestingOTP ? 'animate-spin' : ''}`} />
+                {countdown > 0 
+                  ? `Resend code in ${countdown}s` 
+                  : isRequestingOTP 
+                    ? 'Sending...' 
+                    : 'Resend OTP'
+                }
               </button>
-            </form>
-          )}
+            </div>
 
-          {/* Alternative Login */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Prefer password login?{' '}
-              <button
-                onClick={() => navigate('/patient-login')}
-                className="text-green-600 hover:text-green-700 font-medium"
-              >
-                Use Password Instead
-              </button>
-            </p>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading || otpCode.length !== 6}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <Mail className="h-5 w-5" />
+                  <span>Complete Login</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Footer */}
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Didn't receive the code? Check your spam folder or{' '}
+                <button
+                  onClick={handleRequestOTP}
+                  disabled={countdown > 0 || isRequestingOTP}
+                  className="text-green-600 hover:text-green-700 font-semibold transition-colors hover:underline"
+                >
+                  resend OTP
+                </button>
+              </p>
+            </div>
           </div>
         </div>
       </div>

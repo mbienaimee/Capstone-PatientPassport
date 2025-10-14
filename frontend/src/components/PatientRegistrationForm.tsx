@@ -13,6 +13,7 @@ interface RegistrationFormData {
   password: string;
   confirmPassword: string;
   dateOfBirth: string;
+  gender: string;
   contactNumber: string;
   address: string;
   emergencyContactName: string;
@@ -35,6 +36,7 @@ const PatientRegistrationForm: React.FC = () => {
     password: "",
     confirmPassword: "",
     dateOfBirth: "",
+    gender: "",
     contactNumber: "",
     address: "",
     emergencyContactName: "",
@@ -97,8 +99,8 @@ const PatientRegistrationForm: React.FC = () => {
 
     if (!formData.nationalId.trim()) {
       newErrors.nationalId = 'National ID is required';
-    } else if (!/^\d{11,16}$/.test(formData.nationalId)) {
-      newErrors.nationalId = 'National ID must be between 11 and 16 digits';
+    } else if (!/^\d{10,16}$/.test(formData.nationalId)) {
+      newErrors.nationalId = 'National ID must be between 10 and 16 digits';
     }
 
     if (!formData.email.trim()) {
@@ -149,6 +151,10 @@ const PatientRegistrationForm: React.FC = () => {
       newErrors.dateOfBirth = 'Date of birth is required';
     }
 
+    if (!formData.gender) {
+      newErrors.gender = 'Gender is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -174,6 +180,7 @@ const PatientRegistrationForm: React.FC = () => {
         role: 'patient',
         nationalId: formData.nationalId,
         dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
         contactNumber: formData.contactNumber,
         address: formData.address,
         emergencyContact: {
@@ -418,6 +425,32 @@ const PatientRegistrationForm: React.FC = () => {
                 </div>
                 {errors.dateOfBirth && (
                   <p className="text-xs text-red-500 mt-1">{errors.dateOfBirth}</p>
+                )}
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Gender
+                </label>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleSelectChange}
+                  className={`w-full px-4 py-3 rounded-xl border focus:ring-2 outline-none transition-all ${
+                    errors.gender 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
+                      : 'border-gray-200 focus:border-green-500 focus:ring-green-200'
+                  }`}
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+                {errors.gender && (
+                  <p className="text-xs text-red-500 mt-1">{errors.gender}</p>
                 )}
               </div>
 
