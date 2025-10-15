@@ -1,236 +1,341 @@
-# PatientPassport Backend API
+# Patient Passport Backend API
 
-A comprehensive backend API for managing patient medical records and hospital operations built with Express.js, TypeScript, and MongoDB.
+A robust, scalable backend API built with Node.js, TypeScript, and Express.js for the Patient Passport healthcare management system.
 
-## 🚀 Features
+## Overview
 
+The Patient Passport Backend API provides secure, RESTful endpoints for managing patient medical records, doctor-patient interactions, hospital workflows, and real-time communication features. Built with enterprise-grade security and performance optimizations.
+
+## Features
+
+### Core Functionality
 - **Authentication & Authorization**: JWT-based authentication with role-based access control
-- **Patient Management**: Complete patient profile and medical record management
-- **Hospital Management**: Hospital registration, approval, and management system
-- **Medical Records**: Medical conditions, medications, test results, and hospital visits
-- **Dashboard Analytics**: Comprehensive dashboards for different user roles
-- **Security**: Rate limiting, input validation, CORS, and security headers
-- **Documentation**: Swagger/OpenAPI documentation
-- **Email Notifications**: Automated email notifications for various events
-- **Logging**: Comprehensive logging system with file and console output
+- **Patient Management**: Complete CRUD operations for patient profiles and medical records
+- **Doctor Management**: Doctor registration, authentication, and patient assignment
+- **Hospital Management**: Multi-hospital support with administrative controls
+- **Medical Records**: Secure storage and retrieval of medical information
+- **Access Control**: Granular permissions for medical record access
+- **Real-time Communication**: WebSocket support for live updates
+- **Email Services**: OTP verification and notification system
+- **Audit Logging**: Comprehensive activity tracking
 
-## 🛠️ Tech Stack
+### Security Features
+- **JWT Authentication**: Secure token-based authentication
+- **Password Hashing**: bcrypt with configurable rounds
+- **Input Validation**: Joi schema validation
+- **Rate Limiting**: Configurable request rate limiting
+- **CORS Protection**: Cross-origin resource sharing controls
+- **Helmet Security**: Security headers middleware
+- **Data Encryption**: Sensitive data encryption
+- **Audit Trail**: Complete activity logging
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
+## Technology Stack
+
+- **Runtime**: Node.js (v18+)
 - **Language**: TypeScript
+- **Framework**: Express.js
 - **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JWT (JSON Web Tokens)
-- **Validation**: Express Validator
-- **Documentation**: Swagger/OpenAPI
-- **Security**: Helmet, CORS, Rate Limiting
+- **Authentication**: JWT (jsonwebtoken)
 - **Email**: Nodemailer
-- **Logging**: Custom logger with file output
+- **Real-time**: Socket.io
+- **Validation**: Joi
+- **Security**: Helmet, bcryptjs
+- **Documentation**: Swagger/OpenAPI
+- **Testing**: Jest
+- **Linting**: ESLint
 
-## 📋 Prerequisites
-
-- Node.js (v18 or higher)
-- MongoDB (v5 or higher)
-- npm or yarn
-
-## 🔧 Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd backend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup**
-   ```bash
-   cp env.example .env
-   ```
-   
-   Update the `.env` file with your configuration:
-   ```env
-   NODE_ENV=development
-   PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/patient-passport
-   JWT_SECRET=your-super-secret-jwt-key
-   JWT_EXPIRE=7d
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_PORT=587
-   EMAIL_USER=your-email@gmail.com
-   EMAIL_PASS=your-app-password
-   CORS_ORIGIN=http://localhost:3000
-   ```
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 backend/
 ├── src/
-│   ├── controllers/          # Route controllers
+│   ├── controllers/        # Request handlers
 │   │   ├── authController.ts
 │   │   ├── patientController.ts
+│   │   ├── doctorController.ts
 │   │   ├── hospitalController.ts
-│   │   ├── medicalController.ts
-│   │   └── dashboardController.ts
-│   ├── middleware/           # Custom middleware
+│   │   └── ...
+│   ├── middleware/         # Custom middleware
 │   │   ├── auth.ts
-│   │   ├── errorHandler.ts
 │   │   ├── validation.ts
-│   │   └── rateLimiter.ts
-│   ├── models/              # Database models
-│   │   ├── User.ts
+│   │   ├── rateLimiter.ts
+│   │   └── ...
+│   ├── models/            # Database models
 │   │   ├── Patient.ts
 │   │   ├── Doctor.ts
 │   │   ├── Hospital.ts
-│   │   ├── MedicalCondition.ts
-│   │   ├── Medication.ts
-│   │   ├── TestResult.ts
-│   │   └── HospitalVisit.ts
-│   ├── routes/              # API routes
+│   │   └── ...
+│   ├── routes/            # API routes
 │   │   ├── auth.ts
 │   │   ├── patients.ts
-│   │   ├── hospitals.ts
-│   │   ├── medical.ts
-│   │   └── dashboard.ts
-│   ├── types/               # TypeScript type definitions
-│   │   └── index.ts
-│   ├── utils/               # Utility functions
+│   │   ├── doctors.ts
+│   │   └── ...
+│   ├── services/          # Business logic
+│   │   ├── emailService.ts
+│   │   ├── authService.ts
+│   │   └── ...
+│   ├── utils/             # Utility functions
 │   │   ├── email.ts
+│   │   ├── otp.ts
 │   │   └── logger.ts
-│   ├── app.ts              # Application entry point
-│   └── server.ts           # Server configuration
-├── logs/                   # Log files
-├── dist/                   # Compiled JavaScript
-├── package.json
-├── tsconfig.json
-└── README.md
+│   ├── types/             # TypeScript definitions
+│   ├── app.ts             # Application entry point
+│   └── server.ts          # Server configuration
+├── docs/                  # API documentation
+├── scripts/               # Utility scripts
+├── package.json           # Dependencies
+└── tsconfig.json          # TypeScript configuration
 ```
 
-## 🔐 API Endpoints
+## Installation & Setup
 
-### Authentication
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/refresh` - Refresh access token
-- `GET /api/auth/me` - Get current user
-- `PUT /api/auth/profile` - Update user profile
-- `PUT /api/auth/change-password` - Change password
-- `POST /api/auth/logout` - Logout user
-- `DELETE /api/auth/account` - Delete account
+### Prerequisites
+- Node.js (v18 or higher)
+- MongoDB Atlas account
+- Email service account (Gmail/SendGrid)
 
-### Patients
+### Quick Start
+
+1. **Clone and Install**
+   ```bash
+   git clone <repository-url>
+   cd backend
+   npm install
+   ```
+
+2. **Environment Configuration**
+   ```bash
+   cp env.example .env
+   ```
+   
+   Configure your `.env` file:
+   ```env
+   # Server Configuration
+   NODE_ENV=development
+   PORT=5000
+   
+   # Database
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+   
+   # JWT Secrets
+   JWT_SECRET=your-super-secret-jwt-key
+   JWT_REFRESH_SECRET=your-refresh-secret
+   
+   # Email Configuration
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASS=your-app-password
+   ```
+
+3. **Start Development Server**
+   ```bash
+   npm run dev
+   ```
+
+## API Documentation
+
+### Base URL
+```
+http://localhost:5000/api
+```
+
+### Authentication Endpoints
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/refresh` - Refresh JWT token
+- `POST /api/auth/logout` - User logout
+- `POST /api/auth/verify-email` - Email verification
+
+### Patient Endpoints
 - `GET /api/patients` - Get all patients
-- `GET /api/patients/search` - Search patients
-- `GET /api/patients/:id` - Get patient by ID
 - `POST /api/patients` - Create new patient
+- `GET /api/patients/:id` - Get patient by ID
 - `PUT /api/patients/:id` - Update patient
 - `DELETE /api/patients/:id` - Delete patient
-- `GET /api/patients/:id/medical-history` - Get medical history
-- `GET /api/patients/:id/medications` - Get medications
-- `GET /api/patients/:id/test-results` - Get test results
-- `GET /api/patients/:id/hospital-visits` - Get hospital visits
-- `GET /api/patients/:id/summary` - Get patient summary
+- `GET /api/patients/:id/medical-records` - Get patient medical records
 
-### Hospitals
+### Doctor Endpoints
+- `GET /api/doctors` - Get all doctors
+- `POST /api/doctors` - Create new doctor
+- `GET /api/doctors/:id` - Get doctor by ID
+- `PUT /api/doctors/:id` - Update doctor
+- `GET /api/doctors/:id/patients` - Get doctor's patients
+
+### Hospital Endpoints
 - `GET /api/hospitals` - Get all hospitals
-- `GET /api/hospitals/pending` - Get pending hospitals
-- `GET /api/hospitals/search` - Search hospitals
-- `GET /api/hospitals/:id` - Get hospital by ID
 - `POST /api/hospitals` - Create new hospital
+- `GET /api/hospitals/:id` - Get hospital by ID
 - `PUT /api/hospitals/:id` - Update hospital
-- `DELETE /api/hospitals/:id` - Delete hospital
-- `PATCH /api/hospitals/:id/approve` - Approve hospital
-- `PATCH /api/hospitals/:id/reject` - Reject hospital
-- `GET /api/hospitals/:id/doctors` - Get hospital doctors
-- `GET /api/hospitals/:id/patients` - Get hospital patients
-- `GET /api/hospitals/:id/summary` - Get hospital summary
 
-### Medical Records
-- `GET /api/medical/conditions` - Get medical conditions
-- `POST /api/medical/conditions` - Create medical condition
-- `PUT /api/medical/conditions/:id` - Update medical condition
-- `DELETE /api/medical/conditions/:id` - Delete medical condition
-- `GET /api/medical/medications` - Get medications
-- `POST /api/medical/medications` - Create medication
-- `PUT /api/medical/medications/:id` - Update medication
-- `DELETE /api/medical/medications/:id` - Delete medication
-- `GET /api/medical/test-results` - Get test results
-- `POST /api/medical/test-results` - Create test result
-- `PUT /api/medical/test-results/:id` - Update test result
-- `DELETE /api/medical/test-results/:id` - Delete test result
-- `GET /api/medical/hospital-visits` - Get hospital visits
-- `POST /api/medical/hospital-visits` - Create hospital visit
-- `PUT /api/medical/hospital-visits/:id` - Update hospital visit
-- `DELETE /api/medical/hospital-visits/:id` - Delete hospital visit
+### Access Control Endpoints
+- `POST /api/access-requests` - Request patient access
+- `GET /api/access-requests` - Get access requests
+- `PUT /api/access-requests/:id` - Update access request
+- `POST /api/access-requests/:id/approve` - Approve access request
 
-### Dashboard
-- `GET /api/dashboard/admin` - Admin dashboard
-- `GET /api/dashboard/hospital` - Hospital dashboard
-- `GET /api/dashboard/doctor` - Doctor dashboard
-- `GET /api/dashboard/patient` - Patient dashboard
-- `GET /api/dashboard/stats` - General statistics
+## Database Models
 
-## 🔒 Authentication & Authorization
-
-The API uses JWT-based authentication with role-based access control:
-
-- **Patient**: Can access their own medical records and dashboard
-- **Doctor**: Can access assigned patients' records and medical management
-- **Hospital**: Can access hospital-specific data and patients
-- **Admin**: Full access to all resources and management functions
-
-## 📊 Database Schema
-
-### Core Models
-- **User**: Base user information and authentication
-- **Patient**: Patient-specific medical information
-- **Doctor**: Doctor credentials and specializations
-- **Hospital**: Hospital information and management
-
-### Medical Models
-- **MedicalCondition**: Patient medical conditions and diagnoses
-- **Medication**: Patient medications and prescriptions
-- **TestResult**: Laboratory and diagnostic test results
-- **HospitalVisit**: Patient hospital visits and consultations
-
-## 🛡️ Security Features
-
-- **Rate Limiting**: Prevents abuse and DDoS attacks
-- **Input Validation**: Comprehensive validation for all inputs
-- **CORS**: Cross-origin resource sharing configuration
-- **Helmet**: Security headers and protection
-- **Password Hashing**: bcrypt for secure password storage
-- **JWT Security**: Secure token-based authentication
-
-## 📝 API Documentation
-
-Interactive API documentation is available at:
-- Development: `http://localhost:5000/api-docs`
-- Production: `https://api.patientpassport.com/api-docs`
-
-## 🧪 Testing
-
-```bash
-# Run tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
+### User Model
+```typescript
+interface User {
+  _id: string;
+  email: string;
+  password: string;
+  role: 'patient' | 'doctor' | 'hospital' | 'admin';
+  isVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 ```
 
-## 🚀 Deployment
+### Patient Model
+```typescript
+interface Patient {
+  _id: string;
+  user: User;
+  nationalId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: Date;
+  contactNumber: string;
+  address: string;
+  emergencyContact: EmergencyContact;
+  medicalConditions: MedicalCondition[];
+  medications: Medication[];
+  status: 'active' | 'inactive';
+}
+```
+
+### Doctor Model
+```typescript
+interface Doctor {
+  _id: string;
+  user: User;
+  licenseNumber: string;
+  specialization: string;
+  hospital: Hospital;
+  patients: Patient[];
+  isActive: boolean;
+}
+```
+
+## Security Implementation
+
+### Authentication Flow
+1. User registers with email and password
+2. System sends OTP for email verification
+3. User verifies email and receives JWT tokens
+4. Access tokens expire in 7 days
+5. Refresh tokens expire in 30 days
+
+### Authorization Levels
+- **Patient**: Access to own medical records
+- **Doctor**: Access to assigned patients' records
+- **Hospital**: Access to hospital data and doctors
+- **Admin**: Full system access
+
+### Data Protection
+- All passwords hashed with bcrypt (12 rounds)
+- Sensitive data encrypted at rest
+- Input validation on all endpoints
+- Rate limiting to prevent abuse
+- CORS protection enabled
+
+## Development Scripts
+
+```bash
+# Development
+npm run dev          # Start development server with hot reload
+npm run dev:mock     # Start with mock data
+
+# Production
+npm run build        # Build TypeScript to JavaScript
+npm start           # Start production server
+
+# Testing
+npm test            # Run test suite
+npm run test:watch  # Run tests in watch mode
+
+# Code Quality
+npm run lint        # Run ESLint
+npm run lint:fix    # Fix ESLint issues
+
+# Documentation
+npm run docs        # Serve API documentation
+npm run docs:dev    # Serve docs with hot reload
+```
+
+## Environment Variables
+
+### Required Variables
+```env
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=your-jwt-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+EMAIL_HOST=smtp.gmail.com
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+```
+
+### Optional Variables
+```env
+CORS_ORIGIN=http://localhost:3000
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+BCRYPT_ROUNDS=12
+LOG_LEVEL=info
+```
+
+## API Response Format
+
+### Success Response
+```json
+{
+  "success": true,
+  "data": {
+    // Response data
+  },
+  "message": "Operation successful"
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": {
+      "field": "email",
+      "message": "Email is required"
+    }
+  }
+}
+```
+
+## Testing
+
+### Unit Tests
+```bash
+npm test
+```
+
+### API Testing
+Use the Swagger documentation at `http://localhost:5000/api-docs` for interactive API testing.
+
+### Load Testing
+```bash
+# Install artillery for load testing
+npm install -g artillery
+
+# Run load tests
+artillery run load-test.yml
+```
+
+## Deployment
 
 ### Production Build
 ```bash
@@ -238,88 +343,54 @@ npm run build
 npm start
 ```
 
-### Environment Variables
-Ensure all required environment variables are set in production:
-- Database connection strings
-- JWT secrets
-- Email configuration
-- CORS origins
-- Security settings
+### Docker Deployment
+```bash
+# Build Docker image
+docker build -t patient-passport-api .
 
-## 📈 Monitoring & Logging
+# Run container
+docker run -p 5000:5000 patient-passport-api
+```
 
-- **Application Logs**: Stored in `logs/app.log`
-- **Error Logs**: Stored in `logs/error.log`
-- **Health Check**: Available at `/health`
-- **Metrics**: Built-in performance monitoring
+### Environment Setup
+1. Set production environment variables
+2. Configure MongoDB Atlas cluster
+3. Set up email service (SendGrid recommended)
+4. Configure reverse proxy (Nginx)
+5. Set up SSL certificates
+6. Configure monitoring and logging
 
-## 🤝 Contributing
+## Monitoring & Logging
+
+### Health Check
+```bash
+GET /health
+```
+
+### Metrics Endpoint
+```bash
+GET /metrics
+```
+
+### Log Levels
+- `error`: Error conditions
+- `warn`: Warning conditions
+- `info`: Informational messages
+- `debug`: Debug-level messages
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests for new functionality
-5. Submit a pull request
+5. Ensure all tests pass
+6. Submit a pull request
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
-## 🆘 Support
+---
 
-For support and questions:
-- Email: support@patientpassport.com
-- Documentation: `/api-docs`
-- Issues: GitHub Issues
-
-## 🔄 Version History
-
-- **v1.0.0**: Initial release with core functionality
-  - User authentication and authorization
-  - Patient and hospital management
-  - Medical records management
-  - Dashboard analytics
-  - API documentation
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+**Patient Passport Backend API** - Secure, scalable healthcare data management.

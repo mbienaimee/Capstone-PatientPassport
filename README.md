@@ -1,264 +1,286 @@
-# Patient Passport - Healthcare Management System
+# Patient Passport System
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org/)
-[![OpenMRS](https://img.shields.io/badge/OpenMRS-2.5.0-orange.svg)](https://openmrs.org/)
+A comprehensive digital healthcare platform that enables secure management of patient medical records, doctor-patient interactions, and hospital workflows with advanced access control and real-time communication.
 
-A comprehensive healthcare management system that provides unified patient record management across different healthcare facilities with OpenMRS integration.
+## Overview
 
-## 🏗️ Project Structure
+The Patient Passport System is a modern, secure, and scalable healthcare management platform built with cutting-edge technologies. It provides a unified interface for patients, doctors, hospitals, and administrators to manage medical records, appointments, and healthcare workflows efficiently.
+
+## Key Features
+
+### Patient Management
+- **Digital Patient Profiles**: Comprehensive patient information management
+- **Medical Records**: Secure storage and retrieval of medical history
+- **Passport Access Control**: Granular permissions for medical record access
+- **OTP Verification**: Multi-factor authentication for enhanced security
+- **Real-time Notifications**: Instant updates on medical record access
+
+### Doctor Dashboard
+- **Patient List Management**: View and manage assigned patients
+- **Medical Record Access**: Secure access to patient medical histories
+- **Passport Request System**: Request access to patient records with OTP verification
+- **Real-time Updates**: Live notifications and status updates
+- **Responsive Interface**: Optimized for desktop and mobile devices
+
+### Hospital Management
+- **Multi-hospital Support**: Manage multiple hospital locations
+- **Doctor Management**: Add, edit, and manage doctor profiles
+- **Patient Registration**: Streamlined patient onboarding process
+- **Access Control**: Comprehensive permission management system
+- **Analytics Dashboard**: Real-time insights and reporting
+
+### Security Features
+- **JWT Authentication**: Secure token-based authentication
+- **Role-based Access Control**: Granular permissions for different user types
+- **OTP Verification**: Two-factor authentication for sensitive operations
+- **Audit Logging**: Comprehensive logging of all system activities
+- **Data Encryption**: End-to-end encryption for sensitive medical data
+
+## Technology Stack
+
+### Backend
+- **Node.js**: Runtime environment
+- **TypeScript**: Type-safe development
+- **Express.js**: Web application framework
+- **MongoDB**: NoSQL database with Mongoose ODM
+- **JWT**: JSON Web Tokens for authentication
+- **Socket.io**: Real-time communication
+- **Nodemailer**: Email service integration
+- **Swagger**: API documentation
+
+### Frontend
+- **React**: User interface library
+- **TypeScript**: Type-safe development
+- **Vite**: Build tool and development server
+- **Tailwind CSS**: Utility-first CSS framework
+- **Lucide React**: Icon library
+- **Socket.io Client**: Real-time communication
+- **Axios**: HTTP client for API requests
+
+### Development Tools
+- **ESLint**: Code linting and formatting
+- **Prettier**: Code formatting
+- **Jest**: Testing framework
+- **Docker**: Containerization
+- **Git**: Version control
+
+## Project Structure
 
 ```
-Capstone-PatientPassport/
-├── backend/                 # Node.js backend API
-│   ├── src/                # TypeScript source code
+PatientPassport/
+├── backend/                 # Backend API server
+│   ├── src/
+│   │   ├── controllers/    # Request handlers
+│   │   ├── middleware/     # Custom middleware
+│   │   ├── models/         # Database models
+│   │   ├── routes/         # API routes
+│   │   ├── services/       # Business logic
+│   │   ├── utils/          # Utility functions
+│   │   └── types/          # TypeScript type definitions
 │   ├── docs/               # API documentation
-│   ├── package.json        # Backend dependencies
-│   └── README.md           # Backend documentation
+│   ├── scripts/            # Utility scripts
+│   └── package.json        # Backend dependencies
 ├── frontend/               # React frontend application
-│   ├── src/                # React components and pages
-│   ├── package.json        # Frontend dependencies
-│   └── README.md           # Frontend documentation
-├── openmrs-modules/        # OpenMRS integration modules
-│   ├── patient-passport-core/
-│   │   └── omod/
-│   │       └── patientpassportcore-1.0.0.omod  # Ready-to-import module
-│   └── patient-passport-interoperability/
-└── README.md               # This file
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── contexts/       # React contexts
+│   │   ├── services/       # API services
+│   │   └── types/          # TypeScript type definitions
+│   └── package.json        # Frontend dependencies
+└── openmrs-modules/        # OpenMRS integration modules
 ```
 
-## 🚀 Quick Start
+## Installation & Setup
 
 ### Prerequisites
-- **Node.js** 18.x or higher
-- **MongoDB** (local or cloud instance)
-- **Git**
+- Node.js (v18 or higher)
+- MongoDB Atlas account
+- Git
 
-### Installation
+### Backend Setup
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mbienaimee/Capstone-PatientPassport.git
-   cd Capstone-PatientPassport
+   git clone <repository-url>
+   cd PatientPassport/backend
    ```
 
 2. **Install dependencies**
    ```bash
-   # Install backend dependencies
-   cd backend
    npm install
+   ```
+
+3. **Environment Configuration**
+   ```bash
+   cp env.example .env
+   ```
    
-   # Install frontend dependencies
+   Update the `.env` file with your configuration:
+   ```env
+   # Database Configuration
+   MONGODB_URI=your-mongodb-connection-string
+   
+   # JWT Configuration
+   JWT_SECRET=your-jwt-secret
+   JWT_REFRESH_SECRET=your-refresh-secret
+   
+   # Email Configuration
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASS=your-app-password
+   ```
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+### Frontend Setup
+
+1. **Navigate to frontend directory**
+   ```bash
    cd ../frontend
+   ```
+
+2. **Install dependencies**
+   ```bash
    npm install
    ```
 
-3. **Environment Setup**
-
-   **Backend Environment** (`backend/.env`):
-   ```env
-   NODE_ENV=development
-   PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/patient-passport
-   JWT_SECRET=your-super-secret-jwt-key-here
-   JWT_EXPIRE=7d
-   CORS_ORIGIN=http://localhost:3000
-   ```
-
-   **Frontend Environment** (`frontend/.env`):
-   ```env
-   VITE_API_BASE_URL=http://localhost:5000/api
-   VITE_APP_NAME=PatientPassport
-   ```
-
-4. **Start the application**
+3. **Start the development server**
    ```bash
-   # Terminal 1 - Backend
-   cd backend
-   npm run dev
-   
-   # Terminal 2 - Frontend
-   cd frontend
    npm run dev
    ```
 
-## 🌐 Access Points
+## API Documentation
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000/api
-- **API Documentation**: http://localhost:5000/api-docs
+The API documentation is available at `http://localhost:5000/api-docs` when the backend server is running. The documentation includes:
 
-## 🔑 Default Login Credentials
+- Authentication endpoints
+- Patient management APIs
+- Doctor management APIs
+- Hospital management APIs
+- Medical record APIs
+- Access control APIs
 
-- **Email**: admin@example.com
-- **Password**: password123
+## User Roles & Permissions
 
-## ✨ Key Features
+### Patient
+- View personal medical records
+- Grant/revoke access to doctors
+- Receive notifications about record access
+- Update personal information
 
-### **Patient Management**
-- Complete patient registration and authentication
-- Personal medical dashboard with health overview
-- Medical history tracking with detailed conditions
-- Medication management (active and past medications)
-- Test results with status indicators
-- Hospital visit history and tracking
-- Medical image storage and management
+### Doctor
+- View assigned patients
+- Request access to patient records
+- Update patient medical information
+- Receive real-time notifications
 
-### **Hospital Management**
-- Hospital registration and authentication
-- Patient search and management capabilities
-- Medical record updates and management
-- Statistics and analytics dashboard
-- Administrative functions and controls
+### Hospital Admin
+- Manage hospital information
+- Add/edit doctor profiles
+- View hospital analytics
+- Manage patient registrations
 
-### **Security & Compliance**
-- JWT-based authentication with role-based access control
-- Data encryption at rest and in transit
-- Rate limiting and DDoS protection
-- Complete audit trails for all actions
+### System Admin
+- Full system access
+- User management
+- System configuration
+- Audit log access
+
+## Security Features
+
+### Authentication & Authorization
+- JWT-based authentication
+- Role-based access control (RBAC)
+- OTP verification for sensitive operations
+- Session management with secure cookies
+
+### Data Protection
+- End-to-end encryption for sensitive data
+- Secure password hashing with bcrypt
 - Input validation and sanitization
+- Rate limiting to prevent abuse
 
-## 🛠️ Tech Stack
+### Audit & Compliance
+- Comprehensive audit logging
+- Data access tracking
+- Compliance with healthcare data standards
+- Regular security updates
 
-### Frontend
-- **React 19** with TypeScript
-- **Vite** for build tooling
-- **Tailwind CSS** for styling
-- **React Router** for navigation
-- **Recharts** for data visualization
+## Deployment
 
-### Backend
-- **Node.js** with Express
-- **TypeScript**
-- **MongoDB** with Mongoose
-- **JWT** for authentication
-- **Swagger** for API documentation
-- **Helmet** for security
+### Production Deployment
 
-## 📱 OpenMRS Integration
+1. **Environment Setup**
+   - Configure production environment variables
+   - Set up MongoDB Atlas cluster
+   - Configure email service (SendGrid recommended)
 
-### Import Patient Passport Module
-
-1. **Download OpenMRS Standalone**
-   - Go to https://openmrs.org/download/
-   - Download OpenMRS Standalone (latest version)
-
-2. **Start OpenMRS**
+2. **Backend Deployment**
    ```bash
-   java -jar openmrs-standalone.jar
+   npm run build
+   npm start
    ```
 
-3. **Access OpenMRS**
-   - URL: http://localhost:8081/openmrs-standalone/
-   - Login: admin / Admin123
+3. **Frontend Deployment**
+   ```bash
+   npm run build
+   # Deploy dist/ folder to your hosting service
+   ```
 
-4. **Import Module**
-   - Go to Administration → Manage Modules
-   - Upload `openmrs-modules/patient-passport-core/omod/patientpassportcore-1.0.0.omod`
-   - Install and start the module
+### Docker Deployment
 
-### Module Features
-- Universal patient ID generation
-- Patient data synchronization
-- Emergency access override
-- FHIR R4 compliance
-- REST API endpoints
-
-## 🔧 Available Scripts
-
-### Backend
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run test         # Run tests
-npm run lint         # Lint code
+# Build and run with Docker Compose
+docker-compose up -d
 ```
 
-### Frontend
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run test         # Run tests
-npm run lint         # Lint code
-```
-
-## 📚 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get current user
-
-### Patients
-- `GET /api/patients` - Get all patients
-- `POST /api/patients` - Create new patient
-- `GET /api/patients/:id` - Get patient by ID
-
-### Medical Records
-- `GET /api/medical/conditions/:patientId` - Get medical conditions
-- `POST /api/medical/conditions` - Create medical condition
-- `GET /api/medical/test-results/:patientId` - Get test results
-
-## 🚀 Deployment
-
-### Frontend (Netlify)
-```bash
-cd frontend
-npm run build
-# Deploy dist/ folder to Netlify
-```
-
-### Backend (Docker)
-```bash
-cd backend
-docker build -t patient-passport-api .
-docker run -d -p 5000:5000 patient-passport-api
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**Port Already in Use**
-```bash
-# Find process using port
-netstat -ano | findstr :5000
-# Kill process
-taskkill /PID <process_id> /F
-```
-
-**Database Connection Issues**
-- Ensure MongoDB is running
-- Check connection string in `.env` file
-- Verify database permissions
-
-## 📖 Documentation
-
-- **Backend API**: http://localhost:5000/api-docs
-- **Frontend Components**: See `frontend/src/components/`
-- **OpenMRS Module**: See `openmrs-modules/`
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📄 License
+## Development Guidelines
+
+### Code Style
+- Use TypeScript for type safety
+- Follow ESLint configuration
+- Write meaningful commit messages
+- Add JSDoc comments for functions
+- Use meaningful variable and function names
+
+### Testing
+- Write unit tests for business logic
+- Test API endpoints
+- Test React components
+- Maintain test coverage above 80%
+
+### Security
+- Never commit sensitive information
+- Use environment variables for configuration
+- Implement proper input validation
+- Follow OWASP security guidelines
+
+## Support & Documentation
+
+- **API Documentation**: Available at `/api-docs` endpoint
+- **Component Documentation**: Inline JSDoc comments
+- **Database Schema**: MongoDB models in `backend/src/models/`
+- **Type Definitions**: TypeScript interfaces in `types/` directories
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## Contact
 
-- **GitHub**: https://github.com/mbienaimee/Capstone-PatientPassport
-- **Figma Design**: https://www.figma.com/design/ahkyDa0vNjqqGVXt7QQRs0/Capstone--Patient-passport
-- **Demo Video**: https://www.youtube.com/watch?v=rFiWLIaFlUE
+For questions, support, or contributions, please contact the development team or create an issue in the repository.
 
 ---
 
-**Made with ❤️ for better healthcare management**
+**Patient Passport System** - Empowering healthcare through secure, efficient, and user-friendly digital solutions.

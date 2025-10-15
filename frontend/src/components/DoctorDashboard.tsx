@@ -543,7 +543,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <span className="text-lg font-semibold text-gray-900">
-                    📋 Showing {currentPatients.length} of {filteredPatients.length} patients
+                    Showing {currentPatients.length} of {filteredPatients.length} patients
                   </span>
                   {searchTerm && (
                     <span className="text-sm text-green-700 bg-green-200 px-3 py-1 rounded-full font-medium">
@@ -578,7 +578,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                     <Users className="h-12 w-12 text-gray-400" />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                    {searchTerm || filterStatus !== 'all' ? '🔍 No patients found' : '📋 No patients registered'}
+                    {searchTerm || filterStatus !== 'all' ? 'No patients found' : 'No patients registered'}
                   </h3>
                   <p className="text-lg text-gray-600 mb-8 max-w-md">
                     {searchTerm || filterStatus !== 'all' 
@@ -620,7 +620,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
                             ? 'bg-green-100 text-green-800 border border-green-200' 
                             : 'bg-gray-100 text-gray-800 border border-gray-200'
                         }`}>
-                          {patient.status === 'active' ? '✅ Active' : '❌ Inactive'}
+                          {patient.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                         <button
                           onClick={() => handleViewPatient(patient)}

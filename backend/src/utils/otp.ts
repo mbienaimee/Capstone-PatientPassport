@@ -19,7 +19,7 @@ export async function sendOTP(
   patientName?: string
 ): Promise<void> {
   try {
-    console.log(`📧 Sending OTP Email:`);
+    console.log(`Sending OTP Email:`);
     console.log(`   To: ${email}`);
     console.log(`   Type: ${type}`);
     console.log(`   OTP: ${otp}`);
@@ -36,7 +36,7 @@ export async function sendOTP(
       await sendOTPEmail(email, otp);
     }
     
-    console.log(`✅ OTP email sent successfully to ${email}`);
+    console.log(`OTP email sent successfully to ${email}`);
     
   } catch (error) {
     console.error('Error sending OTP email:', error);
@@ -51,7 +51,7 @@ export async function sendOTP(
 export async function sendOTPSMS(phoneNumber: string, otp: string, type: 'email-verification' | 'passport-access' | 'password-reset'): Promise<void> {
   try {
     // Mock SMS sending - in production, replace with actual SMS service
-    console.log(`📱 OTP SMS Sent:`);
+    console.log(`OTP SMS Sent:`);
     console.log(`   To: ${phoneNumber}`);
     console.log(`   Type: ${type}`);
     console.log(`   OTP: ${otp}`);

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module configVersion="1.2">
+    <id>patientpassport</id>
+    <name>Patient Passport Connector</name>
+    <version>1.0.0</version>
+    <package>org.openmrs.module.patientpassport</package>
+    <activator>org.openmrs.module.patientpassport.PatientPassportActivator</activator>
+    <author>Patient Passport Team</author>
+    <description>
+        This module integrates OpenMRS with the external MERN-based Patient Passport system.
+        It provides seamless access to patient medical records through a modern web interface
+        while maintaining security and data integrity.
+    </description>
+    <updateURL>https://modules.openmrs.org/modules/patientpassport/</updateURL>
+    <require_version>2.7.0</require_version>
+    
+    <!-- Services -->
+    <service>
+        <name>org.openmrs.module.patientpassport.service.PatientPassportService</name>
+        <class>org.openmrs.module.patientpassport.service.impl.PatientPassportServiceImpl</class>
+    </service>
+    
+    <!-- Extension points -->
+    <extension file="apps/patientpassport_patient_dashboard.json" />
+    
+    <!-- Administration link -->
+    <extension point="org.openmrs.referenceapplication.administrationApp">
+        <link id="patientpassport-admin" label="Patient Passport Settings" url="module/patientpassport/admin.page" icon="icon-cogs" order="100" />
+    </extension>
+    
+    <!-- Privileges -->
+    <privilege>
+        <id>View Patient Passport</id>
+        <description>Allows viewing the Patient Passport interface</description>
+    </privilege>
+    
+    <privilege>
+        <id>Access Patient Passport</id>
+        <description>Allows access to Patient Passport functionality</description>
+    </privilege>
+    
+    <!-- Global Properties -->
+    <globalProperty>
+        <property>patientpassport.frontend.url</property>
+        <defaultValue>https://jade-pothos-e432d0.netlify.app</defaultValue>
+        <description>URL of the deployed Patient Passport frontend application</description>
+    </globalProperty>
+    
+    <globalProperty>
+        <property>patientpassport.backend.url</property>
+        <defaultValue>https://capstone-patientpassport.onrender.com/api</defaultValue>
+        <description>URL of the Patient Passport backend API</description>
+    </globalProperty>
+    
+    <globalProperty>
+        <property>patientpassport.enable_patient_context</property>
+        <defaultValue>true</defaultValue>
+        <description>Enable passing patient context to the Patient Passport application</description>
+    </globalProperty>
+    
+    <globalProperty>
+        <property>patientpassport.iframe_height</property>
+        <defaultValue>90vh</defaultValue>
+        <description>Height of the iframe containing the Patient Passport application</description>
+    </globalProperty>
+</module>

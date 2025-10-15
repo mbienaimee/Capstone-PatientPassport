@@ -148,12 +148,12 @@ const AdminDashboard: React.FC = () => {
     try {
       console.log('🔄 Loading patients...');
       const patientsData = await dataService.getAdminAllPatients();
-      console.log('📊 Patients data received:', patientsData);
-      console.log('📊 First patient structure:', patientsData[0]);
+      console.log('Patients data received:', patientsData);
+      console.log('First patient structure:', patientsData[0]);
       setPatients(patientsData as unknown as Patient[]);
-      console.log('✅ Patients state updated');
+      console.log('Patients state updated');
     } catch (error) {
-      console.error('❌ Error loading patients:', error);
+      console.error('Error loading patients:', error);
     }
   };
 
@@ -161,11 +161,11 @@ const AdminDashboard: React.FC = () => {
     try {
       console.log('🔄 Loading hospitals...');
       const hospitalsData = await dataService.getAdminAllHospitals();
-      console.log('🏥 Hospitals data received:', hospitalsData);
+      console.log('Hospitals data received:', hospitalsData);
       setHospitals(hospitalsData as unknown as Hospital[]);
-      console.log('✅ Hospitals state updated');
+      console.log('Hospitals state updated');
     } catch (error) {
-      console.error('❌ Error loading hospitals:', error);
+      console.error('Error loading hospitals:', error);
     }
   };
 
@@ -214,13 +214,13 @@ const AdminDashboard: React.FC = () => {
           : hospital
       ));
       
-      console.log('✅ Hospital status updated locally');
+      console.log('Hospital status updated locally');
       
       // Refresh dashboard data
       await handleRefresh();
-      console.log('✅ Dashboard refreshed');
+      console.log('Dashboard refreshed');
     } catch (error) {
-      console.error('❌ Error updating hospital status:', error);
+      console.error('Error updating hospital status:', error);
     } finally {
       // Remove from updating set
       setUpdatingHospitals(prev => {
@@ -237,7 +237,7 @@ const AdminDashboard: React.FC = () => {
       
       // Find the patient to see its full structure
       const patient = patients.find(p => p.id === patientId);
-      console.log('📊 Full patient object:', patient);
+      console.log('Full patient object:', patient);
       
       // Add to updating set
       setUpdatingPatients(prev => new Set(prev).add(patientId));
@@ -256,13 +256,13 @@ const AdminDashboard: React.FC = () => {
           : patient
       ));
       
-      console.log('✅ Patient status updated locally');
+      console.log('Patient status updated locally');
       
       // Refresh dashboard data
       await handleRefresh();
-      console.log('✅ Dashboard refreshed');
+      console.log('Dashboard refreshed');
     } catch (error) {
-      console.error('❌ Error updating patient status:', error);
+      console.error('Error updating patient status:', error);
     } finally {
       // Remove from updating set
       setUpdatingPatients(prev => {
@@ -754,7 +754,7 @@ const AdminDashboard: React.FC = () => {
                                   ? 'bg-green-100 text-green-800' 
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {(patient.status || 'active') === 'active' ? '✅ Active' : '❌ Inactive'}
+                                {(patient.status || 'active') === 'active' ? 'Active' : 'Inactive'}
                               </span>
                               <button
                                 onClick={() => handleTogglePatientStatus(patient.id, patient.status || 'active')}
@@ -900,8 +900,8 @@ const AdminDashboard: React.FC = () => {
                                   ? 'bg-yellow-100 text-yellow-800'
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {hospital.status === 'active' ? '✅ Active' : 
-                                 hospital.status === 'pending' ? '⏳ Pending' : '❌ Inactive'}
+                                {hospital.status === 'active' ? 'Active' : 
+                                 hospital.status === 'pending' ? 'Pending' : 'Inactive'}
                               </span>
                               {hospital.status !== 'pending' && (
                                 <button

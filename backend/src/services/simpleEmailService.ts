@@ -15,28 +15,28 @@ class RenderCompatibleEmailService {
   }
 
   private async initializeTransporter() {
-    console.log('🔧 Initializing email service for deployment...');
-    console.log('📧 Environment check:');
-    console.log('   EMAIL_HOST:', process.env.EMAIL_HOST || '❌ not set');
-    console.log('   EMAIL_USER:', process.env.EMAIL_USER ? '✅ set' : '❌ not set');
-    console.log('   EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ set' : '❌ not set');
-    console.log('   EMAIL_FROM:', process.env.EMAIL_FROM || '❌ not set');
+    console.log('Initializing email service for deployment...');
+    console.log('Environment check:');
+    console.log('   EMAIL_HOST:', process.env.EMAIL_HOST || 'not set');
+    console.log('   EMAIL_USER:', process.env.EMAIL_USER ? 'set' : 'not set');
+    console.log('   EMAIL_PASS:', process.env.EMAIL_PASS ? 'set' : 'not set');
+    console.log('   EMAIL_FROM:', process.env.EMAIL_FROM || 'not set');
     
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.log('⚠️  Email configuration incomplete!');
-      console.log('📋 To enable email delivery, set these environment variables:');
+      console.log('Email configuration incomplete!');
+      console.log('To enable email delivery, set these environment variables:');
       console.log('   EMAIL_HOST=smtp.gmail.com (or smtp.sendgrid.net)');
       console.log('   EMAIL_PORT=587');
       console.log('   EMAIL_USER=your-email@gmail.com (or apikey for SendGrid)');
       console.log('   EMAIL_PASS=your-app-password (or SendGrid API key)');
       console.log('   EMAIL_FROM=PatientPassport <your-email@gmail.com>');
-      console.log('💡 See OTP_EMAIL_SETUP.md for detailed instructions');
+      console.log('See OTP_EMAIL_SETUP.md for detailed instructions');
     }
     
     // Try SendGrid first (recommended for production)
     if (process.env.EMAIL_USER === 'apikey' && process.env.EMAIL_PASS) {
       try {
-        console.log('📧 Attempting SendGrid connection...');
+        console.log('Attempting SendGrid connection...');
         
         const transporter = nodemailer.createTransport({
           host: process.env.EMAIL_HOST || 'smtp.sendgrid.net',

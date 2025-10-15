@@ -1,0 +1,21 @@
+[
+  {
+    "id": "patientpassport.home",
+    "extensionPointId": "org.openmrs.referenceapplication.homepageLink",
+    "type": "link",
+    "label": "Patient Passport",
+    "url": "module/patientpassport/patientpassport.page",
+    "icon": "icon-user",
+    "order": 100
+  },
+  {
+    "id": "patientpassport.admin",
+    "extensionPointId": "org.openmrs.referenceapplication.administrationApp",
+    "type": "link",
+    "label": "Patient Passport Settings",
+    "url": "module/patientpassport/admin.page",
+    "icon": "icon-cogs",
+    "order": 100
+  }
+]
+
