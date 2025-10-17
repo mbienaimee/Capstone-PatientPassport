@@ -31,9 +31,24 @@ dotenv.config();
 const app = express();
 
 // Load Swagger specification from JSON file
-const swaggerSpec = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../swagger.json'), 'utf8')
-);
+let swaggerSpec;
+try {
+  swaggerSpec = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../swagger.json'), 'utf8')
+  );
+} catch (error) {
+  console.error('Error loading swagger.json:', error);
+  // Fallback swagger spec
+  swaggerSpec = {
+    openapi: '3.0.0',
+    info: {
+      title: 'PatientPassport API',
+      version: '1.0.0',
+      description: 'API documentation not available'
+    },
+    paths: {}
+  };
+}
 
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
@@ -44,8 +59,10 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"]
+      scriptSrc: ["'self'", "'unsafe-inline'", "blob:"],
+      workerSrc: ["'self'", "blob:"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"]
     }
   }
 }));
@@ -125,12 +142,37 @@ app.get('/performance', (_req, res) => {
 // API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'PatientPassport API Documentation'
+  customSiteTitle: 'PatientPassport API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    docExpansion: 'none',
+    filter: true,
+    showExtensions: true,
+    showCommonExtensions: true
+  },
+  customfavIcon: '/favicon.ico',
+  customCssUrl: null,
+  swaggerUrl: null
 }));
 
 // Serve raw swagger.json
 app.get('/api-docs/swagger.json', (_req, res) => {
-  res.json(swaggerSpec);
+  try {
+    res.json(swaggerSpec);
+  } catch (error) {
+    console.error('Error serving swagger.json:', error);
+    res.status(500).json({ error: 'Failed to load API documentation' });
+  }
+});
+
+// Handle Swagger UI static files with error handling
+app.use('/api-docs', (req, res, next) => {
+  // Add error handling for static files
+  res.on('error', (err) => {
+    console.error('Error serving Swagger static file:', err);
+  });
+  next();
 });
 
 // API Routes
