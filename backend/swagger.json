@@ -19,8 +19,8 @@
       "description": "Development server"
     },
     {
-      "url": "https://api.patientpassport.com",
-      "description": "Production server"
+      "url": "https://patientpassport-api.azurewebsites.net",
+      "description": "Azure Production server"
     }
   ],
   "components": {

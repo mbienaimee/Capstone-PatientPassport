@@ -105,7 +105,7 @@ class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://capstone-patientpassport.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://patientpassport-api.azurewebsites.net/api';
 
 class ApiService {
   private baseURL = API_BASE_URL;

@@ -15,10 +15,10 @@ export default defineConfig(({ mode }) => {
     define: {
       // Define environment variables for production build
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
-        env.VITE_API_BASE_URL || 'https://capstone-patientpassport.onrender.com/api'
+        env.VITE_API_BASE_URL || 'https://patientpassport-api.azurewebsites.net/api'
       ),
       'import.meta.env.VITE_SOCKET_URL': JSON.stringify(
-        env.VITE_SOCKET_URL || 'https://capstone-patientpassport.onrender.com'
+        env.VITE_SOCKET_URL || 'https://patientpassport-api.azurewebsites.net'
       ),
     },
     build: {
@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       proxy: {
         '/api': {
-          target: 'https://capstone-patientpassport.onrender.com',
+          target: 'https://patientpassport-api.azurewebsites.net',
           changeOrigin: true,
           secure: true,
         },

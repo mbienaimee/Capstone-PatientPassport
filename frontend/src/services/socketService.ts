@@ -7,7 +7,7 @@ class SocketService {
   connect(token: string) {
     this.token = token;
     
-    this.socket = io(import.meta.env.VITE_SOCKET_URL || 'https://capstone-patientpassport.onrender.com', {
+    this.socket = io(import.meta.env.VITE_SOCKET_URL || 'https://patientpassport-api.azurewebsites.net', {
       auth: {
         token: token
       }
