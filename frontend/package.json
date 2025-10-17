@@ -12,6 +12,7 @@
     "build:netlify": "vite build",
     "deploy:preview": "npm run build:prod && npm run preview",
     "test:integration": "node integration-test.js",
+    "rebuild:azure": "node rebuild-azure.js",
     "start": "npm run dev"
   },
   "dependencies": {
