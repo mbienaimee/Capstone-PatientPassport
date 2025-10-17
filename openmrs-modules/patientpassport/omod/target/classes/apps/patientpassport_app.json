@@ -4,9 +4,10 @@
     "extensionPointId": "org.openmrs.referenceapplication.homepageLink",
     "type": "link",
     "label": "Patient Passport",
-    "url": "module/patientpassport/patientpassport.page",
+    "url": "module/patientpassport/patientPassport.page",
     "icon": "icon-user",
-    "order": 100
+    "order": 100,
+    "requiredPrivilege": "View Patient Passport"
   },
   {
     "id": "patientpassport.admin",
@@ -15,7 +16,8 @@
     "label": "Patient Passport Settings",
     "url": "module/patientpassport/admin.page",
     "icon": "icon-cogs",
-    "order": 100
+    "order": 100,
+    "requiredPrivilege": "Access Patient Passport"
   }
 ]
 

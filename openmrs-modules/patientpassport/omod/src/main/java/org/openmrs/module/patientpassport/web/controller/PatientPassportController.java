@@ -13,13 +13,12 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Controller for Patient Passport module pages
- * This controller handles the main Patient Passport page routing
  */
 @Controller
-public class PatientPassportPageController {
-
-    @RequestMapping("/module/patientpassport/patientPassport.page")
-    public String showPatientPassport(ModelMap model, HttpServletRequest request) {
+public class PatientPassportController {
+    
+    @RequestMapping(value = "/module/patientpassport/patientPassport")
+    public void patientPassport(ModelMap model, HttpServletRequest request) {
         AdministrationService adminService = Context.getAdministrationService();
         
         // Get configuration from global properties
@@ -48,12 +47,10 @@ public class PatientPassportPageController {
         
         model.addAttribute("passportUrl", passportUrl);
         model.addAttribute("iframeHeight", iframeHeight);
-        
-        return "module/patientpassport/patientPassport";
     }
     
-    @RequestMapping("/module/patientpassport/admin.page")
-    public String showAdmin(ModelMap model) {
+    @RequestMapping(value = "/module/patientpassport/admin")
+    public void admin(ModelMap model) {
         AdministrationService adminService = Context.getAdministrationService();
         
         // Get configuration from global properties
@@ -68,7 +65,6 @@ public class PatientPassportPageController {
         model.addAttribute("backendUrl", backendUrl);
         model.addAttribute("enablePatientContext", enablePatientContext);
         model.addAttribute("iframeHeight", iframeHeight);
-        
-        return "module/patientpassport/admin";
     }
 }
+

@@ -378,6 +378,11 @@ export const addDoctorToHospital = asyncHandler(async (req: Request, res: Respon
     throw new CustomError('Hospital not found', 404);
   }
 
+  // Additional authorization check: Only the hospital owner or admin can add doctors
+  if (req.user.role === 'hospital' && hospital.user.toString() !== req.user._id.toString()) {
+    throw new CustomError('Access denied. You can only add doctors to your own hospital.', 403);
+  }
+
   // Check if doctor with license number already exists
   const existingDoctor = await Doctor.findByLicenseNumber(licenseNumber);
   if (existingDoctor) {
@@ -431,6 +436,11 @@ export const removeDoctorFromHospital = asyncHandler(async (req: Request, res: R
   const hospital = await Hospital.findById(hospitalId);
   if (!hospital) {
     throw new CustomError('Hospital not found', 404);
+  }
+
+  // Additional authorization check: Only the hospital owner or admin can remove doctors
+  if (req.user.role === 'hospital' && hospital.user.toString() !== req.user._id.toString()) {
+    throw new CustomError('Access denied. You can only remove doctors from your own hospital.', 403);
   }
 
   // Check if doctor exists

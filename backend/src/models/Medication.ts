@@ -66,6 +66,26 @@ const medicationSchema = new Schema<IMedication>({
       message: 'End date must be after start date'
     }
   },
+  startTime: {
+    type: String,
+    validate: {
+      validator: function(value: string) {
+        if (!value) return true; // Optional field
+        return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value);
+      },
+      message: 'Start time must be in HH:MM format (24-hour)'
+    }
+  },
+  endTime: {
+    type: String,
+    validate: {
+      validator: function(value: string) {
+        if (!value) return true; // Optional field
+        return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value);
+      },
+      message: 'End time must be in HH:MM format (24-hour)'
+    }
+  },
   status: {
     type: String,
     enum: ['active', 'completed', 'discontinued'],
@@ -120,9 +140,30 @@ medicationSchema.virtual('duration').get(function() {
 // Method to check if medication is active
 medicationSchema.methods.isActive = function() {
   const now = new Date();
-  return this.status === 'active' && 
-         this.startDate <= now && 
-         (!this.endDate || this.endDate >= now);
+  const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes for easier comparison
+  
+  // Check if medication is active based on status and dates
+  if (this.status !== 'active') return false;
+  if (this.startDate > now) return false;
+  if (this.endDate && this.endDate < now) return false;
+  
+  // If no time constraints, medication is active
+  if (!this.startTime && !this.endTime) return true;
+  
+  // Check time constraints
+  if (this.startTime) {
+    const [startHour, startMinute] = this.startTime.split(':').map(Number);
+    const startTimeMinutes = startHour * 60 + startMinute;
+    if (currentTime < startTimeMinutes) return false;
+  }
+  
+  if (this.endTime) {
+    const [endHour, endMinute] = this.endTime.split(':').map(Number);
+    const endTimeMinutes = endHour * 60 + endMinute;
+    if (currentTime > endTimeMinutes) return false;
+  }
+  
+  return true;
 };
 
 // Method to get summary
@@ -134,7 +175,9 @@ medicationSchema.methods.getSummary = function() {
     frequency: this.frequency,
     status: this.status,
     isActive: this.isActive(),
-    duration: this.duration
+    duration: this.duration,
+    startTime: this.startTime,
+    endTime: this.endTime
   };
 };
 

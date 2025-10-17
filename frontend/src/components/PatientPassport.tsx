@@ -409,6 +409,44 @@ const PatientPassport: React.FC = () => {
   });
 
   // Empty state component
+  const isMedicationCurrentlyActive = (medication: any) => {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    // Check if medication is active based on status and dates
+    if (medication.status !== 'active' && medication.status !== 'Active') return false;
+    
+    // Check start date
+    if (medication.startDate) {
+      const startDate = new Date(medication.startDate);
+      if (startDate > now) return false;
+    }
+    
+    // Check end date
+    if (medication.endDate) {
+      const endDate = new Date(medication.endDate);
+      if (endDate < now) return false;
+    }
+    
+    // If no time constraints, medication is active
+    if (!medication.startTime && !medication.endTime) return true;
+    
+    // Check time constraints
+    if (medication.startTime) {
+      const [startHour, startMinute] = medication.startTime.split(':').map(Number);
+      const startTimeMinutes = startHour * 60 + startMinute;
+      if (currentTime < startTimeMinutes) return false;
+    }
+    
+    if (medication.endTime) {
+      const [endHour, endMinute] = medication.endTime.split(':').map(Number);
+      const endTimeMinutes = endHour * 60 + endMinute;
+      if (currentTime > endTimeMinutes) return false;
+    }
+    
+    return true;
+  };
+
   const EmptyState = ({ title, description, icon: Icon }: { title: string; description: string; icon: React.ComponentType<{ className?: string }> }) => (
     <div className="text-center py-6">
       <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
@@ -738,26 +776,34 @@ const PatientPassport: React.FC = () => {
                 icon={FiActivity}
               />
             ) : (
-              medications.map((med, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {med.name}
-                  </p>
-                  <p className="text-xs text-gray-600">{med.dosage}</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span
-                    className={med.status === "Active" ? "badge-success" : "badge-gray"}
+              medications.map((med, idx) => {
+                const isActive = isMedicationCurrentlyActive(med);
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    {med.status === "Past" ? "Past (Completed)" : med.status}
-                  </span>
-                </div>
-              </div>
-            ))
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {med.name}
+                      </p>
+                      <p className="text-xs text-gray-600">{med.dosage}</p>
+                      {(med.startTime || med.endTime) && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          Active: {med.startTime || '00:00'} - {med.endTime || '23:59'}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span
+                        className={isActive ? "badge-success" : "badge-gray"}
+                      >
+                        {isActive ? "Active Now" : "Inactive"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

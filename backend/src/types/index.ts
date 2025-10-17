@@ -264,6 +264,8 @@ export interface IMedication extends Document {
   frequency: string;
   startDate: Date;
   endDate?: Date;
+  startTime?: string; // Time in HH:MM format (24-hour)
+  endTime?: string; // Time in HH:MM format (24-hour)
   status: 'active' | 'completed' | 'discontinued';
   notes?: string;
   createdAt: Date;

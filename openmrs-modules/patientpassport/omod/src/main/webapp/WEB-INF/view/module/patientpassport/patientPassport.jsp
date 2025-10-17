@@ -2,23 +2,25 @@
 <%@ page import="org.openmrs.api.AdministrationService" %>
 
 <%
-    def adminService = Context.getAdministrationService()
-    def frontendUrl = adminService.getGlobalProperty("patientpassport.frontend.url", "https://jade-pothos-e432d0.netlify.app")
-    def iframeHeight = adminService.getGlobalProperty("patientpassport.iframe_height", "90vh")
-    def enablePatientContext = adminService.getGlobalProperty("patientpassport.enable_patient_context", "true").toBoolean()
+    AdministrationService adminService = Context.getAdministrationService();
+    String frontendUrl = adminService.getGlobalProperty("patientpassport.frontend.url", "https://jade-pothos-e432d0.netlify.app");
+    String iframeHeight = adminService.getGlobalProperty("patientpassport.iframe_height", "90vh");
+    Boolean enablePatientContext = Boolean.parseBoolean(
+        adminService.getGlobalProperty("patientpassport.enable_patient_context", "true"));
     
-    def patientId = request.getParameter("patientId")
-    def passportUrl = frontendUrl
+    String patientId = request.getParameter("patientId");
+    String passportUrl = frontendUrl;
     
-    if (enablePatientContext && patientId) {
+    if (enablePatientContext && patientId != null) {
         try {
-            def patientService = Context.getPatientService()
-            def patient = patientService.getPatientByUuid(patientId)
-            if (patient) {
-                passportUrl = "${frontendUrl}/patient/${patientId}"
+            org.openmrs.api.PatientService patientService = Context.getPatientService();
+            org.openmrs.Patient patient = patientService.getPatientByUuid(patientId);
+            if (patient != null) {
+                passportUrl = frontendUrl + "/patient/" + patientId;
             }
         } catch (Exception e) {
-            log.error("Error getting patient context: " + e.getMessage())
+            // Log error but continue with default URL
+            System.err.println("Error getting patient context: " + e.getMessage());
         }
     }
 %>
@@ -93,14 +95,15 @@
                 <i class="icon-user"></i>
                 Patient Passport
             </h2>
-            <a href="${passportUrl}" target="_blank" class="btn btn-primary">
+            <a href="<%= passportUrl %>" target="_blank" class="btn btn-primary">
                 <i class="icon-external-link"></i> Open in New Tab
             </a>
         </div>
         
         <iframe 
-            src="${passportUrl}" 
+            src="<%= passportUrl %>" 
             class="passport-iframe"
+            style="height: <%= iframeHeight %>;"
             frameborder="0"
             allowfullscreen
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation">

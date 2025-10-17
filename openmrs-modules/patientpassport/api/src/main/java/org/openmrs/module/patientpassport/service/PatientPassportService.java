@@ -1,21 +1,18 @@
 package org.openmrs.module.patientpassport.service;
 
-import org.openmrs.api.OpenmrsService;
-import org.openmrs.module.patientpassport.PatientPassportConfig;
-
 /**
  * Service interface for Patient Passport module
  */
-public interface PatientPassportService extends OpenmrsService {
+public interface PatientPassportService {
     
     /**
-     * Get the frontend URL from global properties
+     * Get the frontend URL for the Patient Passport application
      * @return the frontend URL
      */
     String getFrontendUrl();
     
     /**
-     * Get the backend URL from global properties
+     * Get the backend URL for the Patient Passport API
      * @return the backend URL
      */
     String getBackendUrl();
@@ -31,24 +28,4 @@ public interface PatientPassportService extends OpenmrsService {
      * @return the iframe height
      */
     String getIframeHeight();
-    
-    /**
-     * Get the complete configuration
-     * @return PatientPassportConfig object
-     */
-    PatientPassportConfig getConfig();
-    
-    /**
-     * Test connection to frontend
-     * @return true if connection is successful
-     */
-    boolean testFrontendConnection();
-    
-    /**
-     * Test connection to backend
-     * @return true if connection is successful
-     */
-    boolean testBackendConnection();
 }
-
-

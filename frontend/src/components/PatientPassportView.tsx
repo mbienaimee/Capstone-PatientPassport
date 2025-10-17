@@ -115,7 +115,8 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
       dosage: '',
       frequency: '',
       prescribedBy: '',
-      startDate: new Date()
+      startDate: new Date().toISOString().split('T')[0],
+      status: 'active' as const
     };
     
     setEditedData({
@@ -128,6 +129,44 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
         ]
       }
     });
+  };
+
+  const isMedicationActive = (medication: any) => {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    // Check if medication is active based on status and dates
+    if (medication.status !== 'active') return false;
+    
+    // Check start date
+    if (medication.startDate) {
+      const startDate = new Date(medication.startDate);
+      if (startDate > now) return false;
+    }
+    
+    // Check end date
+    if (medication.endDate) {
+      const endDate = new Date(medication.endDate);
+      if (endDate < now) return false;
+    }
+    
+    // If no time constraints, medication is active
+    if (!medication.startTime && !medication.endTime) return true;
+    
+    // Check time constraints
+    if (medication.startTime) {
+      const [startHour, startMinute] = medication.startTime.split(':').map(Number);
+      const startTimeMinutes = startHour * 60 + startMinute;
+      if (currentTime < startTimeMinutes) return false;
+    }
+    
+    if (medication.endTime) {
+      const [endHour, endMinute] = medication.endTime.split(':').map(Number);
+      const endTimeMinutes = endHour * 60 + endMinute;
+      if (currentTime > endTimeMinutes) return false;
+    }
+    
+    return true;
   };
 
   const removeMedication = (index: number) => {
@@ -580,7 +619,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                               <Trash2 className="h-3 w-3" />
                             </button>
                           </div>
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-2 gap-2">
                             <input
                               type="text"
                               value={medication.dosage}
@@ -615,6 +654,8 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                               placeholder="Frequency"
                               className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
                             <input
                               type="text"
                               value={medication.prescribedBy}
@@ -632,15 +673,120 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                               placeholder="Prescribed by"
                               className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
+                            <input
+                              type="date"
+                              value={medication.startDate}
+                              onChange={(e) => {
+                                const medications = [...(editedData.medicalInfo?.currentMedications || [])];
+                                medications[index].startDate = e.target.value;
+                                setEditedData({
+                                  ...editedData,
+                                  medicalInfo: {
+                                    ...editedData.medicalInfo,
+                                    currentMedications: medications
+                                  }
+                                });
+                              }}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="time"
+                              value={medication.startTime || ''}
+                              onChange={(e) => {
+                                const medications = [...(editedData.medicalInfo?.currentMedications || [])];
+                                medications[index].startTime = e.target.value;
+                                setEditedData({
+                                  ...editedData,
+                                  medicalInfo: {
+                                    ...editedData.medicalInfo,
+                                    currentMedications: medications
+                                  }
+                                });
+                              }}
+                              placeholder="Start time (HH:MM)"
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <input
+                              type="time"
+                              value={medication.endTime || ''}
+                              onChange={(e) => {
+                                const medications = [...(editedData.medicalInfo?.currentMedications || [])];
+                                medications[index].endTime = e.target.value;
+                                setEditedData({
+                                  ...editedData,
+                                  medicalInfo: {
+                                    ...editedData.medicalInfo,
+                                    currentMedications: medications
+                                  }
+                                });
+                              }}
+                              placeholder="End time (HH:MM)"
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="date"
+                              value={medication.endDate || ''}
+                              onChange={(e) => {
+                                const medications = [...(editedData.medicalInfo?.currentMedications || [])];
+                                medications[index].endDate = e.target.value;
+                                setEditedData({
+                                  ...editedData,
+                                  medicalInfo: {
+                                    ...editedData.medicalInfo,
+                                    currentMedications: medications
+                                  }
+                                });
+                              }}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <input
+                              type="text"
+                              value={medication.notes || ''}
+                              onChange={(e) => {
+                                const medications = [...(editedData.medicalInfo?.currentMedications || [])];
+                                medications[index].notes = e.target.value;
+                                setEditedData({
+                                  ...editedData,
+                                  medicalInfo: {
+                                    ...editedData.medicalInfo,
+                                    currentMedications: medications
+                                  }
+                                });
+                              }}
+                              placeholder="Notes"
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
                           </div>
                         </div>
                       ) : (
                         <div>
-                          <p className="font-medium text-gray-900">{medication.name}</p>
-                          <p className="text-sm text-gray-600">
-                            {medication.dosage} - {medication.frequency}
-                          </p>
-                          <p className="text-sm text-gray-500">Prescribed by: {medication.prescribedBy || 'Unknown'}</p>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium text-gray-900">{medication.name}</p>
+                              <p className="text-sm text-gray-600">
+                                {medication.dosage} - {medication.frequency}
+                              </p>
+                              <p className="text-sm text-gray-500">Prescribed by: {medication.prescribedBy || 'Unknown'}</p>
+                              {(medication.startTime || medication.endTime) && (
+                                <p className="text-sm text-blue-600 mt-1">
+                                  Active: {medication.startTime || '00:00'} - {medication.endTime || '23:59'}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                isMedicationActive(medication) 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {isMedicationActive(medication) ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

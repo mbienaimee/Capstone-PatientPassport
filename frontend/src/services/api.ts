@@ -74,6 +74,10 @@ interface Medication {
   prescribingDoctor: string;
   datePrescribed: string;
   endDate?: string;
+  startTime?: string; // Time in HH:MM format (24-hour)
+  endTime?: string; // Time in HH:MM format (24-hour)
+  frequency?: string;
+  notes?: string;
 }
 
 interface HospitalVisit {

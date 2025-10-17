@@ -14,8 +14,15 @@ export const performanceMonitor = (req: Request, res: Response, next: NextFuncti
       console.warn(`🐌 Slow request: ${req.method} ${req.path} - ${duration}ms`);
     }
     
-    // Add performance header
-    res.setHeader('X-Response-Time', `${duration}ms`);
+    // Only set header if response hasn't been sent yet
+    if (!res.headersSent) {
+      try {
+        res.setHeader('X-Response-Time', `${duration}ms`);
+      } catch (error) {
+        // Ignore header setting errors (response might be already sent)
+        console.debug('Could not set X-Response-Time header:', error.message);
+      }
+    }
     
     // Call original end method with proper arguments
     if (typeof chunk === 'function') {

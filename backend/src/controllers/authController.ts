@@ -120,29 +120,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       throw error;
     }
   } else if (role === 'doctor' && licenseNumber && specialization) {
-    console.log('Creating doctor record...');
-    // Doctor registration requires hospital assignment
-    if (!req.body.hospital) {
-      throw new CustomError('Hospital assignment is required for doctor registration', 400);
-    }
-    
-    try {
-      const doctor = await Doctor.create({
-        user: user._id,
-        licenseNumber,
-        specialization,
-        hospital: req.body.hospital
-      });
-      console.log('Doctor created successfully:', doctor._id);
-      
-      // Automatically verify email for doctors
-      user.isEmailVerified = true;
-      await user.save();
-      console.log('Doctor email automatically verified');
-    } catch (error) {
-      console.error('Error creating doctor:', error);
-      throw error;
-    }
+    // Doctors can only be created by hospitals through the hospital dashboard
+    // This prevents unauthorized doctor registration
+    throw new CustomError('Doctor registration is not allowed through public registration. Doctors must be created by hospitals through the hospital dashboard.', 403);
   } else if (role === 'receptionist' && employeeId && department && shift) {
     console.log('Creating receptionist record...');
     // Receptionist registration requires hospital assignment
