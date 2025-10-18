@@ -153,13 +153,20 @@ class ApiService {
       const response = await fetch(url, config);
       console.log('Response status:', response.status, 'OK:', response.ok);
       
-      const data = await response.json();
-      console.log('Response data:', data);
+      let data;
+      try {
+        data = await response.json();
+        console.log('Response data:', data);
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        throw new ApiError('Invalid response format from server', response.status);
+      }
 
       if (!response.ok) {
-        console.log('Request failed with status:', response.status, 'Message:', data.message);
-        // Handle authentication errors by clearing stored auth data
-        if (response.status === 401 && data.message?.includes('user no longer exists')) {
+        console.log('Request failed with status:', response.status, 'Message:', data?.message);
+        
+        // Handle specific error cases
+        if (response.status === 401 && data?.message?.includes('user no longer exists')) {
           console.warn('User no longer exists, clearing authentication data');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -170,8 +177,15 @@ class ApiService {
           }
         }
         
+        // Handle 500 errors with more specific messaging
+        if (response.status === 500) {
+          const errorMessage = data?.message || 'Internal server error. Please try again later.';
+          console.error('Server error details:', data);
+          throw new ApiError(errorMessage, response.status, data);
+        }
+        
         throw new ApiError(
-          data.message || 'An error occurred',
+          data?.message || 'An error occurred',
           response.status,
           data
         );
@@ -183,7 +197,8 @@ class ApiService {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError('Network error', 0);
+      console.error('Network or other error:', error);
+      throw new ApiError('Network error. Please check your connection and try again.', 0);
     }
   }
 

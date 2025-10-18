@@ -187,35 +187,125 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 // @route   POST /api/auth/login
 // @access  Public
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const { email, nationalId, hospitalName, password }: LoginRequest = req.body;
+  try {
+    const { email, nationalId, hospitalName, password }: LoginRequest = req.body;
 
-  console.log('Login attempt:', { email, nationalId, hospitalName, password: '***' });
+    console.log('Login attempt:', { email, nationalId, hospitalName, password: '***' });
+
+  // Validate required fields
+  if (!password) {
+    throw new CustomError('Password is required', 400);
+  }
+
+  if (!email && !nationalId && !hospitalName) {
+    throw new CustomError('Email, National ID, or Hospital Name is required', 400);
+  }
 
   let user: any = null;
 
-  // Find user by different identifiers
-  if (email) {
-    user = await User.findOne({ email }).select('+password');
-    console.log('Found user by email:', !!user);
-    if (user) {
-      console.log('User details:', { id: user._id, email: user.email, role: user.role, isActive: user.isActive, isEmailVerified: user.isEmailVerified });
+  try {
+    // Find user by different identifiers
+    if (email) {
+      user = await User.findOne({ email }).select('+password');
+      console.log('Found user by email:', !!user);
+      if (user) {
+        console.log('User details:', { id: user._id, email: user.email, role: user.role, isActive: user.isActive, isEmailVerified: user.isEmailVerified });
+      }
+    } else if (nationalId) {
+      console.log('Searching for patient with nationalId:', nationalId);
+      console.log('NationalId type:', typeof nationalId);
+      console.log('NationalId length:', nationalId.length);
+      
+      try {
+        // First, try to find the patient without populate to see if it exists
+        const patientExists = await Patient.findOne({ nationalId });
+        console.log('Patient exists (without populate):', !!patientExists);
+        
+        if (patientExists) {
+          console.log('Patient ID:', patientExists._id);
+          console.log('Patient user reference:', patientExists.user);
+        }
+        
+        // Now try with populate
+        const patient = await Patient.findOne({ nationalId }).populate('user', '+password');
+        console.log('Patient found (with populate):', !!patient);
+        
+        if (patient) {
+          user = patient.user;
+          console.log('User from patient:', !!user);
+          if (user) {
+            console.log('User details from patient:', { 
+              id: user._id, 
+              email: user.email, 
+              role: user.role, 
+              isActive: user.isActive, 
+              isEmailVerified: user.isEmailVerified,
+              hasPassword: !!user.password
+            });
+          } else {
+            console.log('❌ Patient found but user is null/undefined');
+            console.log('Patient data:', {
+              id: patient._id,
+              nationalId: patient.nationalId,
+              userRef: patient.user
+            });
+            
+            // Check if the user reference exists
+            if (patient.user) {
+              console.log('Checking if user exists in database...');
+              const userExists = await User.findById(patient.user);
+              console.log('User exists in database:', !!userExists);
+              
+              if (!userExists) {
+                console.log('❌ User referenced by patient does not exist - orphaned patient record');
+                throw new CustomError('Patient account is corrupted. Please contact support.', 500);
+              }
+            } else {
+              console.log('❌ Patient has no user reference');
+              throw new CustomError('Patient account is incomplete. Please contact support.', 500);
+            }
+          }
+        } else {
+          console.log('❌ No patient found with nationalId:', nationalId);
+          
+          // Try to find any patients to see if the collection exists
+          const allPatients = await Patient.find({}).limit(5);
+          console.log('Total patients in database:', allPatients.length);
+          if (allPatients.length > 0) {
+            console.log('Sample patient nationalIds:', allPatients.map(p => p.nationalId));
+          }
+        }
+      } catch (patientError) {
+        console.error('Error during patient lookup:', patientError);
+        console.error('Patient error details:', {
+          message: patientError.message,
+          name: patientError.name,
+          stack: patientError.stack
+        });
+        
+        // Re-throw as CustomError to ensure proper error handling
+        if (patientError instanceof CustomError) {
+          throw patientError;
+        } else {
+          throw new CustomError(`Database error during patient lookup: ${patientError.message}`, 500);
+        }
+      }
+    } else if (hospitalName) {
+      // For hospital login, treat hospitalName as email
+      const hospitalUser = await User.findOne({ email: hospitalName, role: 'hospital' }).select('+password');
+      if (hospitalUser) {
+        user = hospitalUser;
+        console.log('Found hospital user by email:', !!user);
+      } else {
+        // Fallback: try to find by hospital name
+        const hospital = await Hospital.findOne({ name: hospitalName }).populate('user', '+password');
+        user = hospital?.user;
+        console.log('Found hospital by name:', !!hospital, 'User:', !!user);
+      }
     }
-  } else if (nationalId) {
-    const patient = await Patient.findOne({ nationalId }).populate('user', '+password');
-    user = patient?.user;
-    console.log('Found patient by nationalId:', !!patient, 'User:', !!user);
-  } else if (hospitalName) {
-    // For hospital login, treat hospitalName as email
-    const hospitalUser = await User.findOne({ email: hospitalName, role: 'hospital' }).select('+password');
-    if (hospitalUser) {
-      user = hospitalUser;
-      console.log('Found hospital user by email:', !!user);
-    } else {
-      // Fallback: try to find by hospital name
-      const hospital = await Hospital.findOne({ name: hospitalName }).populate('user', '+password');
-      user = hospital?.user;
-      console.log('Found hospital by name:', !!hospital, 'User:', !!user);
-    }
+  } catch (dbError) {
+    console.error('Database error during login:', dbError);
+    throw new CustomError('Database connection error. Please try again.', 500);
   }
 
   if (!user) {
@@ -236,33 +326,59 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   // Check password
   console.log('Testing password for user:', user.email);
   console.log('User has password field:', !!user.password);
-  const isPasswordValid = await user.comparePassword(password);
-  console.log('Password comparison result:', isPasswordValid);
-  if (!isPasswordValid) {
+  
+  try {
+    const isPasswordValid = await user.comparePassword(password);
+    console.log('Password comparison result:', isPasswordValid);
+    if (!isPasswordValid) {
+      throw new CustomError('Invalid credentials', 401);
+    }
+  } catch (passwordError) {
+    console.error('Password comparison error:', passwordError);
     throw new CustomError('Invalid credentials', 401);
   }
 
   // For patients, hospitals, doctors, and admins, skip OTP and login directly
   if (user.role === 'patient' || user.role === 'hospital' || user.role === 'doctor' || user.role === 'admin') {
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    try {
+      // Update last login
+      console.log('Updating last login for user:', user._id);
+      user.lastLogin = new Date();
+      await user.save();
+      console.log('Last login updated successfully');
 
-    // Generate tokens
-    const token = generateToken(user._id);
-    const refreshToken = generateRefreshToken(user._id);
+      // Generate tokens
+      console.log('Generating tokens for user:', user._id);
+      const token = generateToken(user._id);
+      const refreshToken = generateRefreshToken(user._id);
+      console.log('Tokens generated successfully');
 
-    const response: AuthResponse = {
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: user.getPublicProfile(),
-        token,
-        refreshToken
-      }
-    };
+      // Get public profile
+      console.log('Getting public profile for user:', user._id);
+      const publicProfile = user.getPublicProfile();
+      console.log('Public profile retrieved successfully');
 
-    return res.json(response);
+      const response: AuthResponse = {
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: publicProfile,
+          token,
+          refreshToken
+        }
+      };
+
+      console.log('Login response prepared successfully');
+      return res.json(response);
+    } catch (loginProcessError) {
+      console.error('Error during login process:', loginProcessError);
+      console.error('Login process error details:', {
+        message: loginProcessError.message,
+        name: loginProcessError.name,
+        stack: loginProcessError.stack
+      });
+      throw new CustomError(`Login process error: ${loginProcessError.message}`, 500);
+    }
   }
 
   // For other roles, send OTP for login verification
@@ -285,6 +401,21 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   };
 
   return res.json(response);
+  } catch (error) {
+    console.error('Login function error:', error);
+    console.error('Login error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // Re-throw as CustomError to ensure proper error handling
+    if (error instanceof CustomError) {
+      throw error;
+    } else {
+      throw new CustomError(`Login error: ${error.message}`, 500);
+    }
+  }
 });
 
 // @desc    Refresh token

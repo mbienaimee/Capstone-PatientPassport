@@ -130,6 +130,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Login error:', error);
       if (error instanceof ApiError) {
         console.error('API Error:', error.message, error.status);
+        console.log('API Error details:', error.data);
+      } else {
+        console.error('Non-API Error:', error);
       }
       console.log('=== AUTH CONTEXT LOGIN ERROR ===');
       return { success: false };
