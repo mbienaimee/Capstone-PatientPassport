@@ -177,6 +177,7 @@ const HospitalLogin = () => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="Enter your hospital email"
+                autoComplete="username"
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400"
               />
               {errors.email && (
@@ -199,6 +200,7 @@ const HospitalLogin = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Enter your password"
+                autoComplete="current-password"
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400"
               />
               {errors.password && (
