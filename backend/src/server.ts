@@ -68,11 +68,35 @@ app.use(helmet({
 }));
 
 // CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://jade-pothos-e432d0.netlify.app',
+  'https://patientpassport-api.azurewebsites.net',
+  process.env['FRONTEND_URL']
+].filter(Boolean);
+
 app.use(cors({
-  origin: true, // Allow all origins in development
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow all origins
+    if (process.env['NODE_ENV'] === 'development') {
+      return callback(null, true);
+    }
+    
+    // In production, check against whitelist
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked CORS request from origin: ${origin}`);
+      callback(null, true); // Still allow for now, but log the attempt
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-access-token']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Access-Token', 'x-access-token']
 }));
 
 // Compression middleware

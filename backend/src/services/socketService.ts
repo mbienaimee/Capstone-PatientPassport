@@ -13,11 +13,22 @@ class SocketService {
   private connectedUsers: Map<string, string> = new Map(); // userId -> socketId
 
   constructor(server: HTTPServer) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://jade-pothos-e432d0.netlify.app',
+      'https://patientpassport-api.azurewebsites.net',
+      process.env['FRONTEND_URL'],
+      process.env['CORS_ORIGIN']
+    ].filter(Boolean);
+
     this.io = new SocketIOServer(server, {
       cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-        methods: ["GET", "POST"]
-      }
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true
+      },
+      transports: ['websocket', 'polling']
     });
 
     this.setupMiddleware();
