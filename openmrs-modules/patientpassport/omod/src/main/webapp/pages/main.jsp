@@ -46,7 +46,6 @@
         .passport-iframe { flex: 1; border: none; width: 100%; height: <%= iframeHeight %>; }
         .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-block; margin-left: 10px; background: #3498db; color: white; }
         .btn:hover { background: #2980b9; }
-        .success-message { background: #d4edda; color: #155724; padding: 10px; margin: 10px 0; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -55,11 +54,6 @@
             <h1>Patient Passport</h1>
             <a href="<%= passportUrl %>" target="_blank" class="btn">Open in New Tab</a>
         </div>
-        
-        <div class="success-message">
-            ✅ Patient Passport Loaded Successfully!
-        </div>
-        
         <iframe src="<%= passportUrl %>" class="passport-iframe" frameborder="0" allowfullscreen></iframe>
     </div>
 </body>

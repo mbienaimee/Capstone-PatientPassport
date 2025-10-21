@@ -36,6 +36,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: true,
+      headers: {
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Content-Security-Policy': "frame-ancestors 'self' http://localhost:* https://localhost:*",
+      },
       proxy: {
         '/api': {
           target: 'https://patientpassport-api.azurewebsites.net',

@@ -40,7 +40,6 @@ import {
 import Logo from "./Logo";
 import { dataService } from "../services/dataService";
 
-// Define types
 interface DashboardStats {
   totalPatients: number;
   totalHospitals: number;

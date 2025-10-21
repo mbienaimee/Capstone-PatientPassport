@@ -35,7 +35,6 @@ const OTPLogin: React.FC = () => {
   const [showOTP, setShowOTP] = useState(false);
   const [error, setError] = useState('');
 
-  // Redirect if no email provided
   useEffect(() => {
     if (!email) {
       showNotification({
@@ -47,7 +46,7 @@ const OTPLogin: React.FC = () => {
     }
   }, [email, navigate, showNotification]);
 
-  // Countdown timer
+ 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (countdown > 0) {
@@ -56,7 +55,6 @@ const OTPLogin: React.FC = () => {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Automatically request OTP when component mounts
   useEffect(() => {
     if (email) {
       handleRequestOTP();
@@ -64,7 +62,7 @@ const OTPLogin: React.FC = () => {
   }, [email]);
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+    const value = e.target.value.replace(/\D/g, '');
     if (value.length <= 6) {
       setOtpCode(value);
       setError('');
@@ -92,7 +90,7 @@ const OTPLogin: React.FC = () => {
           title: 'OTP Sent!',
           message: `OTP has been sent to ${email}. Please check your email.`
         });
-        setCountdown(30); // 30 seconds countdown
+        setCountdown(30);
       }
     } catch (error) {
       console.error('Request OTP error:', error);

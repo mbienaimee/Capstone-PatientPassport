@@ -28,7 +28,7 @@
         </fileSet>
         <!-- Include webapp resources -->
         <fileSet>
-            <directory>src/main/webapp</directory>
+            <directory>${project.build.outputDirectory}/webapp</directory>
             <outputDirectory>/</outputDirectory>
             <includes>
                 <include>**/*</include>

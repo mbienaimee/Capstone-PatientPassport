@@ -1,33 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module configVersion="1.2">
+<module configVersion="1.3">
     <id>patientpassport</id>
-    <name>Patient Passport Connector</name>
+    <name>Patient Passport</name>
     <version>1.0.0</version>
     <package>org.openmrs.module.patientpassport</package>
-    <activator>org.openmrs.module.patientpassport.PatientPassportActivator</activator>
     <author>Patient Passport Team</author>
-    <description>
-        This module integrates OpenMRS with the external MERN-based Patient Passport system.
-        It provides seamless access to patient medical records through a modern web interface
-        while maintaining security and data integrity.
-    </description>
-    <updateURL>https://modules.openmrs.org/modules/patientpassport/</updateURL>
-    <require_version>2.7.0</require_version>
-    
-    <!-- Services -->
-    <service>
-        <name>org.openmrs.module.patientpassport.service.PatientPassportService</name>
-        <class>org.openmrs.module.patientpassport.service.impl.PatientPassportServiceImpl</class>
-    </service>
-    
-    <!-- Extension points -->
-    <extension file="apps/patientpassport_app.json" />
-    <extension file="apps/patientpassport_patient_dashboard.json" />
-    
-    <!-- UI Framework Extensions -->
-    <!-- Note: Controllers are automatically discovered by Spring MVC -->
-    
-    <!-- Privileges -->
+    <description>UI for Patient Passport Integration</description>
+    <activator>org.openmrs.module.patientpassport.PatientPassportActivator</activator>
+
+    <pages>
+        <page path="patientPassport" controller="org.openmrs.module.patientpassport.web.controller.PatientPassportController"/>
+        <page path="main" controller="org.openmrs.module.patientpassport.web.controller.PatientPassportController"/>
+        <page path="admin" controller="org.openmrs.module.patientpassport.web.controller.PatientPassportController"/>
+    </pages>
+
     <privilege>
         <name>View Patient Passport</name>
         <description>Allows viewing the Patient Passport interface</description>
@@ -37,8 +23,7 @@
         <name>Access Patient Passport</name>
         <description>Allows access to Patient Passport functionality</description>
     </privilege>
-    
-    <!-- Global Properties -->
+
     <globalProperty>
         <property>patientpassport.frontend.url</property>
         <defaultValue>https://jade-pothos-e432d0.netlify.app</defaultValue>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient Passport - Admin Settings</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: 'Open Sans', Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .config-section {
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #f9f9f9;
+        }
+        
+        .config-section h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+        }
+        
+        .config-item {
+            margin: 15px 0;
+        }
+        
+        .config-item label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        
+        .config-item input, .config-item select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .config-item .description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 10px 0 0;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .test-section {
+            margin-top: 25px;
+            padding: 20px;
+            background: #e8f4fd;
+            border-radius: 6px;
+        }
+        
+        .quick-links {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .quick-links h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+        }
+        
+        .quick-links a {
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .quick-links a:hover {
+            background: #2980b9;
+        }
+        
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Patient Passport - Admin Settings</h1>
+        
+        <div class="info-box">
+            <strong>Integration Status:</strong> This is a direct HTML integration that bypasses the OpenMRS module system. 
+            The Patient Passport module is installed but not serving web content properly, so this provides an alternative access method.
+        </div>
+        
+        <div class="config-section">
+            <h3>Configuration Settings</h3>
+            
+            <div class="config-item">
+                <label for="frontend-url">Frontend URL</label>
+                <input type="text" id="frontend-url" value="https://jade-pothos-e432d0.netlify.app">
+                <div class="description">URL of the deployed Patient Passport frontend application</div>
+            </div>
+            
+            <div class="config-item">
+                <label for="backend-url">Backend URL</label>
+                <input type="text" id="backend-url" value="https://capstone-patientpassport.onrender.com/api">
+                <div class="description">URL of the Patient Passport backend API</div>
+            </div>
+            
+            <div class="config-item">
+                <label for="iframe-height">Iframe Height</label>
+                <input type="text" id="iframe-height" value="calc(100vh - 70px)">
+                <div class="description">Height of the iframe containing the Patient Passport application</div>
+            </div>
+            
+            <div class="config-item">
+                <label>
+                    <input type="checkbox" id="enable-patient-context" checked> Enable Patient Context
+                </label>
+                <div class="description">Enable passing patient data to the Patient Passport application</div>
+            </div>
+            
+            <div class="config-item">
+                <label for="theme">Theme</label>
+                <select id="theme">
+                    <option value="default">Default</option>
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+                <div class="description">Visual theme for the integration</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Connection Testing</h3>
+            <button class="btn btn-primary" onclick="testFrontend()">Test Frontend</button>
+            <button class="btn btn-primary" onclick="testBackend()">Test Backend</button>
+            <button class="btn btn-success" onclick="testAll()">Test All Connections</button>
+        </div>
+        
+        <div class="quick-links">
+            <h3>Quick Access</h3>
+            <a href="patientpassport-integration.html">Open Patient Passport</a>
+            <a href="https://jade-pothos-e432d0.netlify.app" target="_blank">Frontend (New Tab)</a>
+            <a href="https://capstone-patientpassport.onrender.com/api" target="_blank">Backend API</a>
+            <a href="https://capstone-patientpassport.onrender.com/api-docs" target="_blank">API Documentation</a>
+        </div>
+        
+        <div id="status"></div>
+    </div>
+    
+    <script>
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<div class="status ' + type + '">' + message + '</div>';
+        }
+        
+        function testFrontend() {
+            const url = document.getElementById('frontend-url').value;
+            showStatus('Testing frontend connection...', 'info');
+            
+            fetch(url, { mode: 'no-cors' })
+                .then(() => {
+                    showStatus('✅ Frontend connection successful!', 'success');
+                })
+                .catch(() => {
+                    showStatus('❌ Frontend connection failed. Please check the URL.', 'error');
+                });
+        }
+        
+        function testBackend() {
+            const url = document.getElementById('backend-url').value;
+            showStatus('Testing backend connection...', 'info');
+            
+            fetch(url + '/health', { mode: 'no-cors' })
+                .then(() => {
+                    showStatus('✅ Backend connection successful!', 'success');
+                })
+                .catch(() => {
+                    showStatus('❌ Backend connection failed. Please check the URL.', 'error');
+                });
+        }
+        
+        function testAll() {
+            showStatus('Testing all connections...', 'info');
+            
+            const frontendUrl = document.getElementById('frontend-url').value;
+            const backendUrl = document.getElementById('backend-url').value;
+            
+            Promise.all([
+                fetch(frontendUrl, { mode: 'no-cors' }),
+                fetch(backendUrl + '/health', { mode: 'no-cors' })
+            ])
+            .then(() => {
+                showStatus('✅ All connections successful! Frontend and Backend are working.', 'success');
+            })
+            .catch(() => {
+                showStatus('❌ Some connections failed. Please check the URLs.', 'error');
+            });
+        }
+        
+        // Load saved configuration
+        function loadConfig() {
+            const savedConfig = localStorage.getItem('patientpassport-config');
+            if (savedConfig) {
+                const config = JSON.parse(savedConfig);
+                document.getElementById('frontend-url').value = config.frontendUrl || 'https://jade-pothos-e432d0.netlify.app';
+                document.getElementById('backend-url').value = config.backendUrl || 'https://capstone-patientpassport.onrender.com/api';
+                document.getElementById('iframe-height').value = config.iframeHeight || 'calc(100vh - 70px)';
+                document.getElementById('enable-patient-context').checked = config.enablePatientContext !== false;
+                document.getElementById('theme').value = config.theme || 'default';
+            }
+        }
+        
+        // Save configuration
+        function saveConfig() {
+            const config = {
+                frontendUrl: document.getElementById('frontend-url').value,
+                backendUrl: document.getElementById('backend-url').value,
+                iframeHeight: document.getElementById('iframe-height').value,
+                enablePatientContext: document.getElementById('enable-patient-context').checked,
+                theme: document.getElementById('theme').value
+            };
+            localStorage.setItem('patientpassport-config', JSON.stringify(config));
+            showStatus('Configuration saved successfully!', 'success');
+        }
+        
+        // Auto-save on change
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            
+            // Add save button
+            const configSection = document.querySelector('.config-section');
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn btn-success';
+            saveBtn.textContent = 'Save Configuration';
+            saveBtn.onclick = saveConfig;
+            configSection.appendChild(saveBtn);
+            
+            // Auto-save on input change
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('change', saveConfig);
+            });
+        });
+    </script>
+</body>
+</html>
