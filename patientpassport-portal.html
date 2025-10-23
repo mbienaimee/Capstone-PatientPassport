@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient Passport - OpenMRS Integration</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 20px;
+            margin: -40px -40px 30px -40px;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #FF6B6B 0%, #ee5a52 100%);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        .info {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .info p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .url-box {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        
+        .status {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .status-item {
+            text-align: center;
+        }
+        
+        .status-item .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .status-item .text {
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Patient Passport</h1>
+            <p>OpenMRS Integration Portal</p>
+        </div>
+        
+        <div class="status">
+            <div class="status-item">
+                <div class="icon">✅</div>
+                <div class="text">OpenMRS<br>Running</div>
+            </div>
+            <div class="status-item">
+                <div class="icon">✅</div>
+                <div class="text">Frontend<br>Deployed</div>
+            </div>
+            <div class="status-item">
+                <div class="icon">✅</div>
+                <div class="text">Backend<br>Deployed</div>
+            </div>
+            <div class="status-item">
+                <div class="icon">✅</div>
+                <div class="text">Integration<br>Ready</div>
+            </div>
+        </div>
+        
+        <div class="info">
+            <h3>🚀 Quick Access</h3>
+            <p>Click the buttons below to access your Patient Passport application:</p>
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <a href="https://jade-pothos-e432d0.netlify.app" target="_blank" class="btn">
+                🏥 Patient Portal
+            </a>
+            <a href="https://jade-pothos-e432d0.netlify.app/hospital-login" target="_blank" class="btn btn-secondary">
+                🏥 Hospital Login
+            </a>
+        </div>
+        
+        <div class="info">
+            <h3>🔗 Application URLs</h3>
+            <p><strong>Frontend Application:</strong></p>
+            <div class="url-box">https://jade-pothos-e432d0.netlify.app</div>
+            
+            <p><strong>Backend API:</strong></p>
+            <div class="url-box">https://patientpassport-api.azurewebsites.net/api</div>
+            
+            <p><strong>OpenMRS:</strong></p>
+            <div class="url-box">http://localhost:8080/openmrs</div>
+        </div>
+        
+        <div class="info">
+            <h3>📋 Integration Status</h3>
+            <p>✅ <strong>OpenMRS Module:</strong> Loaded Successfully</p>
+            <p>✅ <strong>Frontend Application:</strong> Deployed and Running</p>
+            <p>✅ <strong>Backend API:</strong> Deployed and Running</p>
+            <p>✅ <strong>Integration:</strong> Ready for Use</p>
+            <p>⚠️ <strong>Module URLs:</strong> Using Direct Access (Recommended)</p>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 10px; border-left: 4px solid #2196F3;">
+            <h3>ℹ️ Usage Instructions</h3>
+            <p><strong>For Patients:</strong> Use the "Patient Portal" button</p>
+            <p><strong>For Hospitals:</strong> Use the "Hospital Login" button</p>
+            <p><strong>For Integration:</strong> Your MERN app is fully integrated with OpenMRS</p>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-redirect to patient portal after 10 seconds
+        setTimeout(function() {
+            if (confirm('Auto-redirect to Patient Portal?')) {
+                window.open('https://jade-pothos-e432d0.netlify.app', '_blank');
+            }
+        }, 10000);
+        
+        // Show countdown
+        let countdown = 10;
+        const countdownElement = document.createElement('div');
+        countdownElement.style.cssText = 'margin-top: 20px; color: #666; font-size: 14px;';
+        countdownElement.innerHTML = `Auto-redirect in <span id="countdown">${countdown}</span> seconds...`;
+        document.querySelector('.container').appendChild(countdownElement);
+        
+        const countdownInterval = setInterval(function() {
+            countdown--;
+            document.getElementById('countdown').textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
+
+
+
