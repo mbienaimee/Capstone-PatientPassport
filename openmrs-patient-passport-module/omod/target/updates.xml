@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sqlMap>
+    <!-- Create Patient Passport Access Log Table -->
+    <sql id="createPatientPassportAccessLog">
+        CREATE TABLE IF NOT EXISTS patientpassport_access_log (
+            access_log_id INT AUTO_INCREMENT PRIMARY KEY,
+            patient_id INT NOT NULL,
+            user_id INT NOT NULL,
+            access_type VARCHAR(50) NOT NULL,
+            access_reason TEXT,
+            otp_verified BOOLEAN DEFAULT FALSE,
+            emergency_override BOOLEAN DEFAULT FALSE,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            access_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_patient_id (patient_id),
+            INDEX idx_user_id (user_id),
+            INDEX idx_access_timestamp (access_timestamp),
+            FOREIGN KEY (patient_id) REFERENCES patient(patient_id),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+    </sql>
+
+    <!-- Create Patient Passport Configuration Table -->
+    <sql id="createPatientPassportConfig">
+        CREATE TABLE IF NOT EXISTS patientpassport_config (
+            config_id INT AUTO_INCREMENT PRIMARY KEY,
+            config_key VARCHAR(100) NOT NULL UNIQUE,
+            config_value TEXT,
+            description TEXT,
+            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        );
+    </sql>
+
+    <!-- Create Patient Passport Sync Status Table -->
+    <sql id="createPatientPassportSyncStatus">
+        CREATE TABLE IF NOT EXISTS patientpassport_sync_status (
+            sync_id INT AUTO_INCREMENT PRIMARY KEY,
+            patient_id INT NOT NULL,
+            last_sync_timestamp TIMESTAMP,
+            sync_status VARCHAR(50) DEFAULT 'PENDING',
+            sync_error TEXT,
+            passport_version INT DEFAULT 1,
+            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_patient_id (patient_id),
+            INDEX idx_sync_status (sync_status),
+            FOREIGN KEY (patient_id) REFERENCES patient(patient_id)
+        );
+    </sql>
+
+    <!-- Insert default configuration -->
+    <sql id="insertDefaultConfig">
+        INSERT IGNORE INTO patientpassport_config (config_key, config_value, description) VALUES
+        ('api_base_url', 'https://patientpassport-api.azurewebsites.net/api', 'Base URL for Patient Passport API'),
+        ('frontend_url', 'https://patient-passpo.netlify.app/', 'Frontend URL for Patient Passport'),
+        ('api_timeout', '30000', 'API timeout in milliseconds'),
+        ('enable_otp', 'true', 'Enable OTP verification for passport access'),
+        ('audit_logging', 'true', 'Enable audit logging for passport access'),
+        ('sync_interval', '3600', 'Sync interval in seconds'),
+        ('max_retry_attempts', '3', 'Maximum retry attempts for API calls'),
+        ('emergency_access_duration', '3600', 'Emergency access duration in seconds');
+    </sql>
+
+    <!-- Create indexes for better performance -->
+    <sql id="createIndexes">
+        CREATE INDEX IF NOT EXISTS idx_patientpassport_access_log_patient_user 
+        ON patientpassport_access_log(patient_id, user_id);
+        
+        CREATE INDEX IF NOT EXISTS idx_patientpassport_access_log_timestamp 
+        ON patientpassport_access_log(access_timestamp DESC);
+        
+        CREATE INDEX IF NOT EXISTS idx_patientpassport_sync_patient_status 
+        ON patientpassport_sync_status(patient_id, sync_status);
+    </sql>
+
+    <!-- Update 1.0.1: Add emergency access tracking -->
+    <sql id="addEmergencyAccessTracking">
+        ALTER TABLE patientpassport_access_log 
+        ADD COLUMN IF NOT EXISTS emergency_justification TEXT,
+        ADD COLUMN IF NOT EXISTS emergency_approved_by INT,
+        ADD COLUMN IF NOT EXISTS emergency_expires_at TIMESTAMP;
+        
+        ALTER TABLE patientpassport_access_log 
+        ADD FOREIGN KEY IF NOT EXISTS fk_emergency_approved_by (emergency_approved_by) REFERENCES users(user_id);
+    </sql>
+
+    <!-- Update 1.0.2: Add patient passport mapping -->
+    <sql id="addPatientPassportMapping">
+        CREATE TABLE IF NOT EXISTS patientpassport_mapping (
+            mapping_id INT AUTO_INCREMENT PRIMARY KEY,
+            patient_id INT NOT NULL,
+            passport_id VARCHAR(100),
+            national_id VARCHAR(50),
+            universal_id VARCHAR(100),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_patient_id (patient_id),
+            INDEX idx_passport_id (passport_id),
+            INDEX idx_national_id (national_id),
+            INDEX idx_universal_id (universal_id),
+            FOREIGN KEY (patient_id) REFERENCES patient(patient_id)
+        );
+    </sql>
+
+</sqlMap>
