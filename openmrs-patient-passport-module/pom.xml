@@ -23,6 +23,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openmrs.version>2.5.0</openmrs.version>
         <openmrs.api.version>2.5.0</openmrs.api.version>
+        <legacyui.version>1.23.0</legacyui.version>
         <spring.version>5.3.21</spring.version>
         <jackson.version>2.13.3</jackson.version>
         <httpclient.version>4.5.13</httpclient.version>
@@ -43,6 +44,14 @@
                 <groupId>org.openmrs.web</groupId>
                 <artifactId>openmrs-web</artifactId>
                 <version>${openmrs.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- OpenMRS Legacy UI Module -->
+            <dependency>
+                <groupId>org.openmrs.module</groupId>
+                <artifactId>legacyui-omod</artifactId>
+                <version>${legacyui.version}</version>
                 <scope>provided</scope>
             </dependency>
 

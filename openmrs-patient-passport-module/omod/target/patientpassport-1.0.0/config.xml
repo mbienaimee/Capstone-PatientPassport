@@ -14,6 +14,23 @@
     <!-- Required OpenMRS version -->
     <require_version>2.5.0</require_version>
 
+    <!-- Aware of Legacy UI module (use it if available for admin extensions) -->
+    <aware_of_modules>
+        <aware_of_module>org.openmrs.module.legacyui</aware_of_module>
+    </aware_of_modules>
+
+    <!-- Add link to administration page -->
+    <extension>
+        <point>org.openmrs.admin.list</point>
+        <class>org.openmrs.module.patientpassport.extension.html.AdminList</class>
+    </extension>
+
+    <!-- Add link to main navigation gutter -->
+    <extension>
+        <point>org.openmrs.gutter.tools</point>
+        <class>org.openmrs.module.patientpassport.extension.html.GutterListExt</class>
+    </extension>
+
     <!-- Global Properties -->
     <globalProperty>
         <property>patientpassport.api.baseUrl</property>

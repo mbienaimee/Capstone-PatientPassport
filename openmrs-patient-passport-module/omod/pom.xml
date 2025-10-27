@@ -35,6 +35,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- OpenMRS Legacy UI Module -->
+        <dependency>
+            <groupId>org.openmrs.module</groupId>
+            <artifactId>legacyui-omod</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Spring Framework -->
         <dependency>
             <groupId>org.springframework</groupId>

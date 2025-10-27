@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
  * Controller for Patient Passport web interface
  */
 @Controller
-@RequestMapping("/module/patientpassport")
 public class PatientPassportController {
     
     private static final Log log = LogFactory.getLog(PatientPassportController.class);
@@ -21,7 +20,7 @@ public class PatientPassportController {
     /**
      * Main management page
      */
-    @RequestMapping(value = "/manage", method = RequestMethod.GET)
+    @RequestMapping(value = "/module/patientpassport/manage.form", method = RequestMethod.GET)
     public String manage(ModelMap model) {
         model.addAttribute("apiBaseUrl", "https://patientpassport-api.azurewebsites.net/api");
         model.addAttribute("frontendUrl", "https://patient-passpo.netlify.app/");
@@ -33,7 +32,7 @@ public class PatientPassportController {
     /**
      * Full-screen iframe view of Patient Passport frontend
      */
-    @RequestMapping(value = "/iframe", method = RequestMethod.GET)
+    @RequestMapping(value = "/module/patientpassport/iframe.form", method = RequestMethod.GET)
     public String iframeView(ModelMap model) {
         try {
             User user = Context.getAuthenticatedUser();
