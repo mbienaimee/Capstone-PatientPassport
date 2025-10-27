@@ -1,0 +1,4 @@
+org\openmrs\module\patientpassport\web\controller\PatientPassportController.class
+org\openmrs\module\patientpassport\PatientPassportModuleActivator.class
+org\openmrs\module\patientpassport\service\impl\PatientPassportServiceImpl.class
+org\openmrs\module\patientpassportminimal\PatientPassportMinimalActivator.class

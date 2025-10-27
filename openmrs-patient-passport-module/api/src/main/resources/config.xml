@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="1.0.0" configVersion="2.0" xmlns="http://openmrs.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://openmrs.org http://openmrs.org/xsd/module.xsd">
+
+<id>patientpassport</id>
+<package>org.openmrs.module.patientpassport</package>
+<name>Patient Passport Module</name>
+<description>OpenMRS module for Patient Passport integration</description>
+<author>Patient Passport Team</author>
+
+<require_version>2.5.0</require_version>
+
+<activator>org.openmrs.module.patientpassport.PatientPassportActivator</activator>
+
+<globalProperty>
+<property>patientpassport.api.baseUrl</property>
+<defaultValue>https://patientpassport-api.azurewebsites.net/api</defaultValue>
+<description>Base URL for Patient Passport API</description>
+</globalProperty>
+
+<globalProperty>
+<property>patientpassport.frontend.url</property>
+<defaultValue>https://patient-passpo.netlify.app/</defaultValue>
+<description>Frontend URL for Patient Passport</description>
+</globalProperty>
+
+</module>
+
