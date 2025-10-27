@@ -1,21 +1,43 @@
 # OpenMRS Patient Passport Module - Deployment Guide
 
-## Overview
+**Version:** 1.0.0  
+**Module File:** `patientpassport-1.0.0.omod`  
+**Universal Compatibility:** Works on ANY OpenMRS 2.5+ installation
 
-This guide provides comprehensive instructions for deploying the Patient Passport module to multiple OpenMRS instances. The module integrates your existing Patient Passport system (https://patient-passpo.netlify.app/) with OpenMRS installations.
+## 🎯 Overview
+
+This module adds a **Patient Passport** link directly to the **navigation bar** of any OpenMRS installation. After uploading this module to ANY OpenMRS server, users will see a "Patient Passport" link in their left sidebar navigation, providing instant access to the Patient Passport application.
+
+### ✅ What Happens After Upload
+
+**Navigation Bar Integration:**
+```
+Home
+Find/Create Patient  
+Dictionary
+├─► Patient Passport  ◄── NEW! (Appears automatically in navbar)
+Administration
+    └─► Patient Passport  ◄── Also accessible here
+```
+
+**Key Features:**
+- ✅ **Automatic Navigation Link** - No configuration needed
+- ✅ **Works Everywhere** - Compatible with any OpenMRS 2.5+ server
+- ✅ **Portable** - Upload once, works immediately
+- ✅ **Secure** - Respects OpenMRS privileges and authentication
 
 ## Prerequisites
 
 ### System Requirements
-- OpenMRS 2.5.0 or higher
-- Java 11 or higher
-- Maven 3.6 or higher
-- MySQL 5.7+ or PostgreSQL 9.6+
-- Access to your Patient Passport API (https://patientpassport-api.azurewebsites.net/api)
+- **OpenMRS Version:** 2.5.0 or higher (REQUIRED)
+- **Recommended:** Legacy UI module installed
+- **Java:** 8 or higher
+- **Internet Access:** For Patient Passport frontend
+- **User Privilege:** "View Administration Functions" (to see navbar link)
 
 ### Network Requirements
-- OpenMRS instances must have internet access to reach the Patient Passport API
-- Firewall rules should allow HTTPS traffic to `patientpassport-api.azurewebsites.net`
+- OpenMRS instances must have internet access to reach https://patient-passpo.netlify.app/
+- Firewall rules should allow HTTPS traffic to Patient Passport services
 - If using OTP functionality, ensure SMS/email services are accessible
 
 ## Installation Methods
