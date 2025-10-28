@@ -110,13 +110,13 @@ class USSDService {
   private showInputPrompt(language: 'en' | 'rw', method: 'nationalId' | 'email'): string {
     if (language === 'en') {
       if (method === 'nationalId') {
-        return 'CON Enter your National ID (16 digits):';
+        return 'CON Enter your National ID:';
       } else {
         return 'CON Enter your Email address:';
       }
     } else {
       if (method === 'nationalId') {
-        return 'CON Shyiramo Irangamuntu (imibare 16):';
+        return 'CON Shyiramo Irangamuntu ryawe:';
       } else {
         return 'CON Shyiramo Email yawe:';
       }
@@ -139,34 +139,48 @@ class USSDService {
         return this.showError(language, validationResult.message!);
       }
       
+      // Clean and normalize input
+      const cleanedInput = method === 'nationalId' 
+        ? input.replace(/\D/g, '') // Remove non-numeric characters for national ID
+        : input.trim().toLowerCase(); // Normalize email
+      
+      console.log(`🔍 Searching for patient using ${method}: ${cleanedInput}`);
+      
       // Fetch patient data
       let patient;
       let user;
       
       if (method === 'nationalId') {
-        patient = await Patient.findOne({ nationalId: input })
+        // Search by national ID
+        patient = await Patient.findOne({ nationalId: cleanedInput })
           .populate('user', 'name email phone')
           .lean();
+          
+        console.log(`📋 Patient found by National ID:`, patient ? 'Yes' : 'No');
           
         if (!patient) {
           return this.showError(
             language,
             language === 'en' 
-              ? 'Patient not found with this National ID.' 
-              : 'Ntiwabonye umurwayi ufite iri rangamuntu.'
+              ? 'Patient not found with this National ID. Please check and try again.' 
+              : 'Ntiwabonye umurwayi ufite iri rangamuntu. Suzuma hanyuma ugerageze.'
           );
         }
         
         user = patient.user;
       } else {
-        user = await User.findOne({ email: input }).lean();
+        // Search by email (case-insensitive)
+        const emailRegex = new RegExp(`^${cleanedInput.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        user = await User.findOne({ email: emailRegex }).lean();
+        
+        console.log(`📧 User found by email:`, user ? 'Yes' : 'No');
         
         if (!user) {
           return this.showError(
             language,
             language === 'en' 
-              ? 'User not found with this email.' 
-              : 'Ntiwabonye umukoresha ufite iyi email.'
+              ? 'User not found with this email. Please check and try again.' 
+              : 'Ntiwabonye umukoresha ufite iyi email. Suzuma hanyuma ugerageze.'
           );
         }
         
@@ -174,25 +188,31 @@ class USSDService {
           .populate('user', 'name email phone')
           .lean();
           
+        console.log(`📋 Patient found by user ID:`, patient ? 'Yes' : 'No');
+          
         if (!patient) {
           return this.showError(
             language,
             language === 'en' 
-              ? 'Patient record not found.' 
-              : 'Ntabwo haboneka inyandiko y\'umurwayi.'
+              ? 'Patient record not found for this user.' 
+              : 'Ntabwo haboneka inyandiko y\'umurwayi kuri uyu mukoresha.'
           );
         }
       }
       
+      console.log(`🔍 Searching for passport for patient ID: ${patient._id}`);
+      
       // Get patient passport
       const passport = await PatientPassport.findByPatientId(patient._id);
+      
+      console.log(`📄 Passport found:`, passport ? 'Yes' : 'No');
       
       if (!passport) {
         return this.showError(
           language,
           language === 'en' 
-            ? 'Patient passport not found.' 
-            : 'Ntabwo haboneka passport y\'umurwayi.'
+            ? 'Patient passport not found. Please contact your healthcare provider.' 
+            : 'Ntabwo haboneka passport y\'umurwayi. Nyamuneka vugana n\'inzego z\'ubuzima.'
         );
       }
       
@@ -202,10 +222,12 @@ class USSDService {
       // Log access
       await passport.addAccessRecord(
         null, // No doctor involved
-        'ussd_access',
+        'view', // Access type
         `USSD access via ${method} from ${phoneNumber}`,
-        false
+        false // OTP not verified
       );
+      
+      console.log(`✅ Passport access completed for patient ${patient._id}`);
       
       // Return success message
       if (language === 'en') {
@@ -230,16 +252,18 @@ class USSDService {
    */
   private validateInput(method: 'nationalId' | 'email', input: string): { valid: boolean; message?: string } {
     if (method === 'nationalId') {
-      // Rwanda National ID is 16 digits
-      if (!/^\d{16}$/.test(input)) {
+      // National ID should be 10-16 digits (matching Patient model validation)
+      const cleanedId = input.replace(/\D/g, ''); // Remove non-numeric characters
+      if (!/^\d{10,16}$/.test(cleanedId)) {
         return {
           valid: false,
-          message: 'Invalid National ID. Must be 16 digits.'
+          message: 'Invalid National ID. Must be 10-16 digits.'
         };
       }
     } else {
       // Basic email validation
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input)) {
+      const trimmedEmail = input.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
         return {
           valid: false,
           message: 'Invalid email format.'
