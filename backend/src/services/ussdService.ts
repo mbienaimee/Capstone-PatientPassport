@@ -2,7 +2,6 @@ import Patient from '@/models/Patient';
 import PatientPassport from '@/models/PatientPassport';
 import User from '@/models/User';
 import { smsService } from './smsService';
-import { CustomError } from '@/middleware/errorHandler';
 
 /**
  * USSD Service for handling Patient Passport access via USSD
@@ -74,8 +73,10 @@ class USSDService {
         'Invalid selection. Please try again.'
       );
       
-    } catch (error) {
-      console.error('❌ USSD Error:', error);
+    } catch (error: any) {
+      console.error('❌ USSD Top-Level Error:', error);
+      console.error('❌ Error stack:', error?.stack);
+      console.error('❌ Error message:', error?.message);
       return 'END An error occurred. Please try again later.';
     }
   }
@@ -216,8 +217,8 @@ class USSDService {
         );
       }
       
-      // Format and send passport via SMS
-      await this.sendPassportViaSMS(phoneNumber, passport, language);
+      // Format and send passport via SMS (non-blocking)
+      const smsSent = await this.sendPassportViaSMS(phoneNumber, passport, language);
       
       // Log access
       await passport.addAccessRecord(
@@ -229,15 +230,27 @@ class USSDService {
       
       console.log(`✅ Passport access completed for patient ${patient._id}`);
       
-      // Return success message
+      // Return success message based on SMS status
       if (language === 'en') {
-        return 'END Your Patient Passport has been sent to your phone via SMS. Thank you!';
+        if (smsSent) {
+          return 'END Your Patient Passport has been sent to your phone via SMS. Thank you!';
+        } else {
+          return `END Passport retrieved successfully!\nName: ${passport.personalInfo?.fullName}\nNational ID: ${passport.personalInfo?.nationalId}\nBlood Type: ${passport.personalInfo?.bloodType || 'N/A'}\nVisit: ${process.env.FRONTEND_URL}/patient-passport`;
+        }
       } else {
-        return 'END Passport yawe y\'ubuzima yoherejwe kuri telephone yawe binyuze kuri SMS. Murakoze!';
+        if (smsSent) {
+          return 'END Passport yawe y\'ubuzima yoherejwe kuri telephone yawe binyuze kuri SMS. Murakoze!';
+        } else {
+          return `END Passport yawe yabonekeye neza!\nAmazina: ${passport.personalInfo?.fullName}\nIrangamuntu: ${passport.personalInfo?.nationalId}\nUbwoko bw'amaraso: ${passport.personalInfo?.bloodType || 'Nta na kimwe'}\nSura: ${process.env.FRONTEND_URL}/patient-passport`;
+        }
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error processing passport request:', error);
+      console.error('❌ Error stack:', error?.stack);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error name:', error?.name);
+      
       return this.showError(
         language,
         language === 'en' 
@@ -281,10 +294,12 @@ class USSDService {
     phoneNumber: string,
     passport: any,
     language: 'en' | 'rw'
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       // Format passport summary
       const summary = this.formatPassportSummary(passport, language);
+      
+      console.log(`📤 Attempting to send SMS to ${phoneNumber}`);
       
       // Send via SMS service
       await smsService.sendSMS(phoneNumber, summary);
@@ -297,10 +312,14 @@ class USSDService {
       await smsService.sendSMS(phoneNumber, detailMessage);
       
       console.log(`✅ Passport SMS sent to ${phoneNumber}`);
+      return true;
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error sending passport SMS:', error);
-      throw new CustomError('Failed to send passport via SMS', 500);
+      console.error('❌ SMS Error details:', error?.message);
+      // Don't throw - just log the error and return false
+      // This allows the USSD flow to continue even if SMS fails
+      return false;
     }
   }
   
@@ -308,34 +327,45 @@ class USSDService {
    * Format passport summary for SMS
    */
   private formatPassportSummary(passport: any, language: 'en' | 'rw'): string {
-    const { personalInfo, medicalInfo } = passport;
+    const { personalInfo, medicalInfo } = passport || {};
+    
+    if (!personalInfo) {
+      console.warn('⚠️ Missing personalInfo in passport');
+      return language === 'en' 
+        ? 'PATIENT PASSPORT\nData incomplete. Please contact your healthcare provider.'
+        : 'PASSPORT Y\'UBUZIMA\nAmakuru ntuzuye. Nyamuneka vugana n\'inzego z\'ubuzima.';
+    }
     
     if (language === 'en') {
       let message = `PATIENT PASSPORT\n`;
-      message += `Name: ${personalInfo.fullName}\n`;
-      message += `ID: ${personalInfo.nationalId}\n`;
-      message += `DOB: ${new Date(personalInfo.dateOfBirth).toLocaleDateString()}\n`;
+      message += `Name: ${personalInfo.fullName || 'N/A'}\n`;
+      message += `ID: ${personalInfo.nationalId || 'N/A'}\n`;
+      message += `DOB: ${personalInfo.dateOfBirth ? new Date(personalInfo.dateOfBirth).toLocaleDateString() : 'N/A'}\n`;
       message += `Blood: ${personalInfo.bloodType || 'N/A'}\n`;
       
-      if (medicalInfo.allergies && medicalInfo.allergies.length > 0) {
+      if (medicalInfo?.allergies && medicalInfo.allergies.length > 0) {
         message += `Allergies: ${medicalInfo.allergies.join(', ')}\n`;
       }
       
-      message += `Emergency: ${personalInfo.emergencyContact.name} (${personalInfo.emergencyContact.phone})`;
+      if (personalInfo.emergencyContact) {
+        message += `Emergency: ${personalInfo.emergencyContact.name || 'N/A'} (${personalInfo.emergencyContact.phone || 'N/A'})`;
+      }
       
       return message;
     } else {
       let message = `PASSPORT Y'UBUZIMA\n`;
-      message += `Amazina: ${personalInfo.fullName}\n`;
-      message += `Irangamuntu: ${personalInfo.nationalId}\n`;
-      message += `Itariki y'amavuko: ${new Date(personalInfo.dateOfBirth).toLocaleDateString()}\n`;
+      message += `Amazina: ${personalInfo.fullName || 'Nta na kimwe'}\n`;
+      message += `Irangamuntu: ${personalInfo.nationalId || 'Nta na kimwe'}\n`;
+      message += `Itariki y'amavuko: ${personalInfo.dateOfBirth ? new Date(personalInfo.dateOfBirth).toLocaleDateString() : 'Nta na kimwe'}\n`;
       message += `Ubwoko bw'amaraso: ${personalInfo.bloodType || 'Nta na kimwe'}\n`;
       
-      if (medicalInfo.allergies && medicalInfo.allergies.length > 0) {
+      if (medicalInfo?.allergies && medicalInfo.allergies.length > 0) {
         message += `Imiti itemewe: ${medicalInfo.allergies.join(', ')}\n`;
       }
       
-      message += `Uhamagarwa mu byihutirwa: ${personalInfo.emergencyContact.name} (${personalInfo.emergencyContact.phone})`;
+      if (personalInfo.emergencyContact) {
+        message += `Uhamagarwa mu byihutirwa: ${personalInfo.emergencyContact.name || 'Nta na kimwe'} (${personalInfo.emergencyContact.phone || 'Nta na kimwe'})`;
+      }
       
       return message;
     }
