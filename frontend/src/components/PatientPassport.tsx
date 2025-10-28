@@ -570,13 +570,6 @@ const PatientPassport: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3 py-2">
-                <FiShield className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs sm:text-sm font-medium text-gray-500">Patient ID</span>
-                  <p className="text-xs sm:text-sm font-semibold text-gray-900 font-mono truncate">{patientProfile?._id || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 py-2">
                 <FiMail className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <span className="text-xs sm:text-sm font-medium text-gray-500">Email</span>

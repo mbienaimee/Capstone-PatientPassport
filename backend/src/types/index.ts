@@ -259,6 +259,7 @@ export interface IMedication extends Document {
   _id: string;
   patient: any; // Reference to Patient (ObjectId)
   doctor: any; // Reference to Doctor (ObjectId)
+  hospital?: any; // Reference to Hospital (ObjectId) or hospital name string
   name: string;
   dosage: string;
   frequency: string;

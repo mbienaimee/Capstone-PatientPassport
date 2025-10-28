@@ -70,8 +70,7 @@ const receptionistSchema = new Schema<IReceptionist>({
   toObject: { virtuals: true }
 });
 
-// Indexes (removed employeeId duplicate - already has unique: true)
-receptionistSchema.index({ user: 1 });
+// Indexes (user and employeeId already have unique: true, no need for separate indexes)
 receptionistSchema.index({ hospital: 1 });
 receptionistSchema.index({ department: 1 });
 

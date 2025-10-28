@@ -1,0 +1,228 @@
+{
+  "info": {
+    "name": "Patient Passport USSD API",
+    "description": "USSD endpoints for Patient Passport access via Africa's Talking",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "USSD Callback",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"ATUid_abc123def456\",\n  \"serviceCode\": \"*123#\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/callback",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "callback"]
+        },
+        "description": "Africa's Talking USSD callback endpoint"
+      },
+      "response": []
+    },
+    {
+      "name": "USSD Callback - Language Selection (English)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"ATUid_abc123def456\",\n  \"serviceCode\": \"*123#\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"1\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/callback",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "callback"]
+        },
+        "description": "User selects English language"
+      },
+      "response": []
+    },
+    {
+      "name": "USSD Callback - Access Method (National ID)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"ATUid_abc123def456\",\n  \"serviceCode\": \"*123#\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"1*1\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/callback",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "callback"]
+        },
+        "description": "User selects National ID access method"
+      },
+      "response": []
+    },
+    {
+      "name": "USSD Callback - Submit National ID",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"ATUid_abc123def456\",\n  \"serviceCode\": \"*123#\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"1*1*1234567890123456\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/callback",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "callback"]
+        },
+        "description": "User enters their 16-digit National ID"
+      },
+      "response": []
+    },
+    {
+      "name": "USSD Callback - Access Method (Email)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"ATUid_abc123def456\",\n  \"serviceCode\": \"*123#\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"1*2\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/callback",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "callback"]
+        },
+        "description": "User selects Email access method"
+      },
+      "response": []
+    },
+    {
+      "name": "USSD Callback - Submit Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"ATUid_abc123def456\",\n  \"serviceCode\": \"*123#\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"1*2*patient@example.com\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/callback",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "callback"]
+        },
+        "description": "User enters their email address"
+      },
+      "response": []
+    },
+    {
+      "name": "USSD Callback - Kinyarwanda Flow",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"ATUid_abc123def456\",\n  \"serviceCode\": \"*123#\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"2*1*1234567890123456\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/callback",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "callback"]
+        },
+        "description": "Full Kinyarwanda flow with National ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Test USSD Flow (Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"test-session-123\",\n  \"phoneNumber\": \"+250788123456\",\n  \"text\": \"1*1\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ussd/test",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "test"]
+        },
+        "description": "Test USSD flow programmatically (Admin only)"
+      },
+      "response": []
+    },
+    {
+      "name": "Get USSD Statistics (Admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/ussd/stats",
+          "host": ["{{base_url}}"],
+          "path": ["api", "ussd", "stats"]
+        },
+        "description": "Get USSD usage statistics (Admin only)"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

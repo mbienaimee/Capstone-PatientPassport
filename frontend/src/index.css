@@ -20,9 +20,9 @@
   }
   
   /* Global padding and spacing for main containers */
-  .app-container {
+  /* .app-container {
     @apply min-h-screen px-4 sm:px-6 lg:px-8;
-  }
+  } */
   
   .page-container {
     @apply max-w-7xl mx-auto py-6 sm:py-8 lg:py-12;

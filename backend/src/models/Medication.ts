@@ -12,6 +12,11 @@ const medicationSchema = new Schema<IMedication>({
     ref: 'Doctor',
     required: [true, 'Doctor reference is required']
   },
+  hospital: {
+    type: Schema.Types.ObjectId,
+    ref: 'Hospital',
+    required: false
+  },
   name: {
     type: String,
     required: [true, 'Medication name is required'],
@@ -105,6 +110,7 @@ const medicationSchema = new Schema<IMedication>({
 // Indexes
 medicationSchema.index({ patient: 1 });
 medicationSchema.index({ doctor: 1 });
+medicationSchema.index({ hospital: 1 });
 medicationSchema.index({ status: 1 });
 medicationSchema.index({ startDate: -1 });
 medicationSchema.index({ name: 1 });
@@ -121,6 +127,14 @@ medicationSchema.virtual('patientInfo', {
 medicationSchema.virtual('doctorInfo', {
   ref: 'Doctor',
   localField: 'doctor',
+  foreignField: '_id',
+  justOne: true
+});
+
+// Virtual for hospital info
+medicationSchema.virtual('hospitalInfo', {
+  ref: 'Hospital',
+  localField: 'hospital',
   foreignField: '_id',
   justOne: true
 });

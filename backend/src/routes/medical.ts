@@ -10,6 +10,7 @@ import {
   createMedication,
   updateMedication,
   deleteMedication,
+  deactivateMedication,
   // Test Results
   getAllTestResults,
   createTestResult,
@@ -75,6 +76,11 @@ router.put('/medications/:id', authenticate, authorize('doctor'), validateObject
 // @desc    Delete medication
 // @access  Private (Doctor)
 router.delete('/medications/:id', authenticate, authorize('doctor'), validateObjectId('id'), deleteMedication);
+
+// @route   PATCH /api/medications/:id/deactivate
+// @desc    Deactivate medication (change status to discontinued)
+// @access  Private (Doctor)
+router.patch('/medications/:id/deactivate', authenticate, authorize('doctor'), validateObjectId('id'), deactivateMedication);
 
 // Test Results Routes
 // @route   GET /api/test-results

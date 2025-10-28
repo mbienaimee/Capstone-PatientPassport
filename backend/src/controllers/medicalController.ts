@@ -246,6 +246,78 @@ export const deleteMedication = asyncHandler(async (req: Request, res: Response,
   res.json(response);
 });
 
+// @desc    Deactivate medication (change status to discontinued)
+// @route   PATCH /api/medications/:id/deactivate
+// @access  Private (Doctor)
+export const deactivateMedication = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  const medication = await Medication.findById(id);
+
+  if (!medication) {
+    throw new CustomError('Medication not found', 404);
+  }
+
+  // Check if medication is currently active
+  if (medication.status !== 'active') {
+    throw new CustomError('Medication is not active and cannot be deactivated', 400);
+  }
+
+  // Check if medication is within its time range
+  const now = new Date();
+  const isWithinDateRange = 
+    medication.startDate <= now && 
+    (!medication.endDate || medication.endDate >= now);
+
+  // Check if medication is within its time window (if time constraints are set)
+  let isWithinTimeWindow = true;
+  if (medication.startTime || medication.endTime) {
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    if (medication.startTime) {
+      const [startHour, startMinute] = medication.startTime.split(':').map(Number);
+      const startTimeMinutes = startHour * 60 + startMinute;
+      if (currentTime < startTimeMinutes) {
+        isWithinTimeWindow = false;
+      }
+    }
+    
+    if (medication.endTime) {
+      const [endHour, endMinute] = medication.endTime.split(':').map(Number);
+      const endTimeMinutes = endHour * 60 + endMinute;
+      if (currentTime > endTimeMinutes) {
+        isWithinTimeWindow = false;
+      }
+    }
+  }
+
+  // Allow deactivation if within date range or time window
+  if (!isWithinDateRange && !isWithinTimeWindow) {
+    throw new CustomError('Medication has already expired and cannot be deactivated', 400);
+  }
+
+  // Update medication status to discontinued
+  medication.status = 'discontinued';
+  
+  // Add reason if provided
+  if (reason) {
+    medication.notes = medication.notes 
+      ? `${medication.notes}\n[Discontinued: ${reason}]` 
+      : `[Discontinued: ${reason}]`;
+  }
+  
+  await medication.save();
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Medication deactivated successfully',
+    data: medication
+  };
+
+  res.json(response);
+});
+
 // Test Results Controller
 
 // @desc    Get all test results

@@ -19,6 +19,7 @@ import assignmentRoutes from './routes/assignments';
 import accessControlRoutes from './routes/accessControl';
 import notificationRoutes from './routes/notifications';
 import passportAccessRoutes from './routes/passportAccess';
+import ussdRoutes from './routes/ussd';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -210,6 +211,7 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/access-control', accessControlRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/passport-access', passportAccessRoutes);
+app.use('/api/ussd', ussdRoutes);
 
 app.get('/', (_req, res) => {
   res.json({

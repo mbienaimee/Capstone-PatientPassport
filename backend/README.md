@@ -17,6 +17,8 @@ The Patient Passport Backend API provides secure, RESTful endpoints for managing
 - **Access Control**: Granular permissions for medical record access
 - **Real-time Communication**: WebSocket support for live updates
 - **Email Services**: OTP verification and notification system
+- **USSD Integration**: Patient Passport access via Africa's Talking USSD (works on any phone!)
+- **SMS Notifications**: Real-time SMS alerts and passport delivery
 - **Audit Logging**: Comprehensive activity tracking
 
 ### Security Features
@@ -359,6 +361,62 @@ docker run -p 5000:5000 patient-passport-api
 4. Configure reverse proxy (Nginx)
 5. Set up SSL certificates
 6. Configure monitoring and logging
+7. Set up Africa's Talking for USSD/SMS (see USSD guide below)
+
+## USSD Integration 📱
+
+Patient Passport now supports USSD access via Africa's Talking! Patients can access their medical passport using any mobile phone (no internet required).
+
+### Features
+- 🌍 **Universal Access**: Works on any phone (feature phones included)
+- 🗣️ **Multi-language**: English and Kinyarwanda support
+- 📨 **SMS Delivery**: Passport sent via SMS
+- 🔐 **Secure**: National ID or email verification
+
+### Quick Setup
+
+1. **Install Africa's Talking SDK**
+   ```bash
+   npm install africastalking
+   ```
+
+2. **Configure Environment**
+   ```env
+   AFRICASTALKING_API_KEY=your-api-key
+   AFRICASTALKING_USERNAME=your-username
+   AFRICASTALKING_USSD_CODE=*123#
+   ```
+
+3. **Test USSD Flow**
+   ```bash
+   curl -X POST http://localhost:5000/api/ussd/callback \
+     -H "Content-Type: application/json" \
+     -d '{
+       "sessionId": "test-123",
+       "phoneNumber": "+250788123456",
+       "text": ""
+     }'
+   ```
+
+### USSD Endpoints
+
+- `POST /api/ussd/callback` - Africa's Talking webhook (public)
+- `POST /api/ussd/test` - Test USSD flow (admin only)
+- `GET /api/ussd/stats` - USSD statistics (admin only)
+
+### Documentation
+- **Complete Guide**: [docs/USSD_GUIDE.md](./docs/USSD_GUIDE.md)
+- **Deployment**: [docs/USSD_DEPLOYMENT.md](./docs/USSD_DEPLOYMENT.md)
+- **Quick Start**: [docs/USSD_QUICKSTART.md](./docs/USSD_QUICKSTART.md)
+- **Postman Collection**: [docs/Patient_Passport_USSD.postman_collection.json](./docs/Patient_Passport_USSD.postman_collection.json)
+
+### How It Works
+
+1. Patient dials USSD code (e.g., `*123#`)
+2. Selects language (English/Kinyarwanda)
+3. Chooses access method (National ID/Email)
+4. Enters credentials
+5. Receives passport via SMS
 
 ## Monitoring & Logging
 

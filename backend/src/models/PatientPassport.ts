@@ -118,8 +118,7 @@ const passportSchema = new Schema<IPatientPassport>({
   timestamps: true
 });
 
-// Indexes for better performance
-passportSchema.index({ patient: 1 });
+// Indexes for better performance (patient already has unique: true, no need for separate index)
 passportSchema.index({ 'personalInfo.nationalId': 1 });
 passportSchema.index({ 'accessHistory.doctor': 1 });
 passportSchema.index({ lastUpdated: -1 });
