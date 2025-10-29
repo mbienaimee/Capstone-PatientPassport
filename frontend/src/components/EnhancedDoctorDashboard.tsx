@@ -23,7 +23,9 @@ import {
   FileText,
   Heart,
   Pill,
-  Stethoscope
+  Stethoscope,
+  UserPlus,
+  X
 } from 'lucide-react';
 import { useNotification } from '../contexts/NotificationContext';
 
@@ -73,6 +75,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
   const [selectedPatient, setSelectedPatient] = useState<DoctorPatient | null>(null);
   const [showPassportView, setShowPassportView] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showAddPatientForm, setShowAddPatientForm] = useState(false);
   const [passportData, setPassportData] = useState<any>(null);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
@@ -88,6 +91,24 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
   const [patientsPerPage] = useState(10);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Add patient form state
+  const [newPatientForm, setNewPatientForm] = useState({
+    name: '',
+    email: '',
+    nationalId: '',
+    dateOfBirth: '',
+    gender: 'male',
+    contactNumber: '',
+    address: '',
+    bloodType: '',
+    allergies: '',
+    emergencyContact: {
+      name: '',
+      relationship: '',
+      phone: ''
+    }
+  });
 
   // Role-based access control
   useEffect(() => {
@@ -297,8 +318,91 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
     showNotification({
       type: 'info',
       title: 'Access Request Cancelled',
-      message: 'Patient passport access request has been cancelled.'
+      message: 'Patient passport access request was cancelled.'
     });
+  };
+
+  // Add Patient Functions
+  const handleAddPatient = () => {
+    setShowAddPatientForm(true);
+  };
+
+  const handleCloseAddPatientForm = () => {
+    setShowAddPatientForm(false);
+    setNewPatientForm({
+      name: '',
+      email: '',
+      nationalId: '',
+      dateOfBirth: '',
+      gender: 'male',
+      contactNumber: '',
+      address: '',
+      bloodType: '',
+      allergies: '',
+      emergencyContact: {
+        name: '',
+        relationship: '',
+        phone: ''
+      }
+    });
+  };
+
+  const handleSubmitNewPatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      
+      const patientData = {
+        ...newPatientForm,
+        allergies: newPatientForm.allergies ? newPatientForm.allergies.split(',').map((a: string) => a.trim()) : []
+      };
+
+      const response = await apiService.request('/patients', {
+        method: 'POST',
+        body: JSON.stringify(patientData)
+      });
+
+      if (response.success) {
+        showNotification({
+          type: 'success',
+          title: 'Patient Added',
+          message: `Patient ${newPatientForm.name} has been added successfully.`
+        });
+        
+        handleCloseAddPatientForm();
+        fetchPatients(true); // Refresh patient list
+      }
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      showNotification({
+        type: 'error',
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to add patient'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    if (name.startsWith('emergencyContact.')) {
+      const field = name.split('.')[1];
+      setNewPatientForm(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [field]: value
+        }
+      }));
+    } else {
+      setNewPatientForm(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   // Search and filter functions
@@ -612,6 +716,18 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
                   </select>
                 </div>
               </div>
+              <div className="lg:w-auto">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  ➕ Actions
+                </label>
+                <button
+                  onClick={handleAddPatient}
+                  className="w-full lg:w-auto px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                >
+                  <UserPlus className="h-5 w-5" />
+                  <span className="font-semibold">Add New Patient</span>
+                </button>
+              </div>
             </div>
             
             {/* Results Summary */}
@@ -818,6 +934,260 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
           onClose={handleClosePassportView}
           onUpdate={handlePassportUpdate}
         />
+      )}
+
+      {/* Add Patient Modal */}
+      {showAddPatientForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-t-2xl flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Add New Patient</h2>
+                <p className="text-green-100 text-sm mt-1">Enter patient information to create a new record</p>
+              </div>
+              <button
+                onClick={handleCloseAddPatientForm}
+                className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitNewPatient} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Personal Information */}
+                <div className="md:col-span-2">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <User className="h-5 w-5 mr-2 text-green-600" />
+                    Personal Information
+                  </h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newPatientForm.name}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={newPatientForm.email}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="john.doe@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    National ID *
+                  </label>
+                  <input
+                    type="text"
+                    name="nationalId"
+                    value={newPatientForm.nationalId}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="1234567890123456"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date of Birth *
+                  </label>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    value={newPatientForm.dateOfBirth}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender *
+                  </label>
+                  <select
+                    name="gender"
+                    value={newPatientForm.gender}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer_not_to_say">Prefer not to say</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Number *
+                  </label>
+                  <input
+                    type="tel"
+                    name="contactNumber"
+                    value={newPatientForm.contactNumber}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="+1234567890"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address *
+                  </label>
+                  <textarea
+                    name="address"
+                    value={newPatientForm.address}
+                    onChange={handleFormChange}
+                    required
+                    rows={3}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="123 Main St, City, Country"
+                  />
+                </div>
+
+                {/* Medical Information */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Stethoscope className="h-5 w-5 mr-2 text-green-600" />
+                    Medical Information
+                  </h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Blood Type
+                  </label>
+                  <select
+                    name="bloodType"
+                    value={newPatientForm.bloodType}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="">Select blood type</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Allergies (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    name="allergies"
+                    value={newPatientForm.allergies}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Penicillin, Peanuts"
+                  />
+                </div>
+
+                {/* Emergency Contact */}
+                <div className="md:col-span-2 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Shield className="h-5 w-5 mr-2 text-green-600" />
+                    Emergency Contact
+                  </h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="emergencyContact.name"
+                    value={newPatientForm.emergencyContact.name}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Jane Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Relationship *
+                  </label>
+                  <input
+                    type="text"
+                    name="emergencyContact.relationship"
+                    value={newPatientForm.emergencyContact.relationship}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Spouse, Parent, Sibling"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    name="emergencyContact.phone"
+                    value={newPatientForm.emergencyContact.phone}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="+1234567890"
+                  />
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t">
+                <button
+                  type="button"
+                  onClick={handleCloseAddPatientForm}
+                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Adding Patient...' : 'Add Patient'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

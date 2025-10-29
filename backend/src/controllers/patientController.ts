@@ -161,15 +161,116 @@ export const getPatientByNationalId = asyncHandler(async (req: Request, res: Res
 // @route   POST /api/patients
 // @access  Private (Admin)
 export const createPatient = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const patientData = req.body;
+  const { name, email, nationalId, dateOfBirth, gender, contactNumber, address, bloodType, allergies, emergencyContact, hospitalId } = req.body;
 
   // Check if patient with national ID already exists
-  const existingPatient = await Patient.findByNationalId(patientData.nationalId);
+  const existingPatient = await Patient.findByNationalId(nationalId);
   if (existingPatient) {
     throw new CustomError('Patient with this National ID already exists', 400);
   }
 
-  const patient = await Patient.create(patientData);
+  // Check if user with email already exists
+  const User = require('@/models/User').default;
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    throw new CustomError('User with this email already exists', 400);
+  }
+
+  // Create user for patient
+  const user = await User.create({
+    name,
+    email,
+    password: nationalId, // Default password is national ID (patient should change it)
+    role: 'patient',
+    isActive: true,
+    isEmailVerified: true // Auto-verify for doctor-created patients
+  });
+
+  // Create patient
+  const patient = await Patient.create({
+    user: user._id,
+    nationalId,
+    dateOfBirth,
+    gender,
+    contactNumber,
+    address,
+    bloodType,
+    allergies: allergies || [],
+    emergencyContact,
+    status: 'active'
+  });
+
+  // If doctor is creating patient, add to doctor's patient list and hospital's patient list
+  if (req.user.role === 'doctor') {
+    const Doctor = require('@/models/Doctor').default;
+    const doctor = await Doctor.findOne({ user: req.user._id });
+    
+    if (doctor) {
+      // Add patient to doctor's list
+      doctor.patients.push(patient._id);
+      await doctor.save();
+
+      // Add patient to hospital's list and hospital to patient's visits
+      if (doctor.hospital) {
+        const Hospital = require('@/models/Hospital').default;
+        const hospital = await Hospital.findById(doctor.hospital);
+        if (hospital && !hospital.patients.includes(patient._id)) {
+          hospital.patients.push(patient._id);
+          await hospital.save();
+          
+          // Add hospital to patient's hospitalVisits
+          if (!patient.hospitalVisits.includes(doctor.hospital)) {
+            patient.hospitalVisits.push(doctor.hospital);
+          }
+        }
+      }
+
+      // Add doctor to patient's assigned doctors
+      patient.assignedDoctors.push(doctor._id);
+      await patient.save();
+    }
+  }
+
+  // If hospital is creating patient, add to hospital's patient list
+  if (req.user.role === 'hospital') {
+    const Hospital = require('@/models/Hospital').default;
+    const hospital = await Hospital.findOne({ user: req.user._id });
+    
+    if (hospital) {
+      if (!hospital.patients.includes(patient._id)) {
+        hospital.patients.push(patient._id);
+        await hospital.save();
+      }
+      
+      // Add hospital to patient's hospitalVisits
+      if (!patient.hospitalVisits.includes(hospital._id)) {
+        patient.hospitalVisits.push(hospital._id);
+        await patient.save();
+      }
+    }
+  }
+
+  // If hospitalId is provided in request body, add patient to that hospital
+  if (hospitalId) {
+    const Hospital = require('@/models/Hospital').default;
+    const hospital = await Hospital.findById(hospitalId);
+    
+    if (hospital) {
+      if (!hospital.patients.includes(patient._id)) {
+        hospital.patients.push(patient._id);
+        await hospital.save();
+      }
+      
+      // Add hospital to patient's hospitalVisits
+      if (!patient.hospitalVisits.includes(hospitalId)) {
+        patient.hospitalVisits.push(hospitalId);
+        await patient.save();
+      }
+    }
+  }
+
+  // Populate patient data
+  await patient.populate('user', 'name email');
 
   const response: ApiResponse = {
     success: true,

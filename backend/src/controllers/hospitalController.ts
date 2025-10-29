@@ -238,10 +238,29 @@ export const getHospitalDoctors = asyncHandler(async (req: Request, res: Respons
 // @route   GET /api/hospitals/:id/patients
 // @access  Private (Admin, Hospital)
 export const getHospitalPatients = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const patients = await Patient.find({ hospitalVisits: { $in: [req.params.id] } })
+  // First get the hospital to verify it exists
+  const hospital = await Hospital.findById(req.params.id);
+  
+  if (!hospital) {
+    throw new CustomError('Hospital not found', 404);
+  }
+
+  console.log('Fetching patients for hospital:', hospital.name);
+
+  // Get ALL patients from database (not filtered by hospital)
+  const patients = await Patient.find({})
     .populate('user', 'name email')
-    .populate('assignedDoctors', 'specialization')
-    .populate('assignedDoctors.user', 'name');
+    .populate({
+      path: 'assignedDoctors',
+      select: 'specialization user',
+      populate: {
+        path: 'user',
+        select: 'name'
+      }
+    })
+    .sort({ createdAt: -1 });
+
+  console.log('Total patients found:', patients.length);
 
   const response: ApiResponse = {
     success: true,
@@ -266,7 +285,7 @@ export const getHospitalSummary = asyncHandler(async (req: Request, res: Respons
 
   // Get additional statistics
   const doctorsCount = await Doctor.countDocuments({ hospital: hospital._id });
-  const patientsCount = await Patient.countDocuments({ hospitalVisits: { $in: [hospital._id] } });
+  const patientsCount = hospital.patients ? hospital.patients.length : 0;
 
   const response: ApiResponse = {
     success: true,

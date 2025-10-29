@@ -46,8 +46,8 @@ router.get('/:id', authenticate, validateObjectId('id'), getPatientById);
 
 // @route   POST /api/patients
 // @desc    Create new patient
-// @access  Private (Admin)
-router.post('/', authenticate, authorize('admin'), validatePatient, createPatient);
+// @access  Private (Admin, Doctor, Hospital)
+router.post('/', authenticate, authorize('admin', 'doctor', 'hospital'), validatePatient, createPatient);
 
 // @route   PUT /api/patients/:id
 // @desc    Update patient

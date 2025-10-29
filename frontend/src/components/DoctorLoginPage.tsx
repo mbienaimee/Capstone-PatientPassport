@@ -72,18 +72,32 @@ const DoctorLoginPage: React.FC = () => {
       });
       
       if (success) {
-        // Get user data to show personalized message
+        // Get user data to show personalized message and determine role
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         const userName = userData.name || 'Doctor';
+        const userRole = userData.role || 'doctor';
         
         showNotification({
           type: 'success',
           title: 'Login Successful',
-          message: `Welcome back, Dr. ${userName}! Redirecting to patient list...`
+          message: `Welcome back, ${userRole === 'doctor' ? 'Dr. ' : ''}${userName}!`
         });
         
         setTimeout(() => {
-          navigate('/doctor-dashboard');
+          // Redirect based on user role
+          if (userRole === 'patient') {
+            navigate('/patient-passport');
+          } else if (userRole === 'doctor') {
+            navigate('/doctor-dashboard');
+          } else if (userRole === 'admin') {
+            navigate('/admin-dashboard');
+          } else if (userRole === 'hospital') {
+            navigate('/hospital-dashboard');
+          } else if (userRole === 'receptionist') {
+            navigate('/receptionist-dashboard');
+          } else {
+            navigate('/doctor-dashboard'); // fallback
+          }
         }, 1000);
       } else {
         showNotification({
@@ -203,7 +217,13 @@ const DoctorLoginPage: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-3">
+            <button
+              onClick={() => navigate('/forgot-password')}
+              className="text-sm text-gray-600 hover:text-green-600 transition-colors"
+            >
+              Forgot Password?
+            </button>
             <p className="text-sm text-gray-600">
               Don't have an account? Contact your hospital administrator.
             </p>

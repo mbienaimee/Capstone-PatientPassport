@@ -120,22 +120,56 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
     throw new CustomError('Hospital ID is required', 400);
   }
 
-  // Get hospital information
-  const hospital = await Hospital.findById(hospitalId).select('name address contact licenseNumber status');
-  
+  // Get hospital information with populated data
+  const hospital = await Hospital.findById(hospitalId)
+    .select('name address contact licenseNumber status adminContact createdAt patients')
+    .populate('user', 'name email');
+
   if (!hospital) {
     throw new CustomError('Hospital not found', 404);
   }
 
+  console.log('Hospital found:', hospital.name);
+  console.log('Hospital patients array length:', hospital.patients?.length || 0);
+
   // Get hospital-specific counts
   const totalDoctors = await Doctor.countDocuments({ hospital: hospitalId, isActive: true });
-  const totalPatients = await Patient.countDocuments({ hospitalVisits: { $in: [hospitalId] } });
-
-  // Get recent patients
-  const recentPatients = await Patient.find({ hospitalVisits: { $in: [hospitalId] } })
+  
+  // Get patient IDs from hospital's patients array
+  const hospitalPatientIds = hospital.patients || [];
+  console.log('Hospital patient IDs:', hospitalPatientIds);
+  
+  // Get ALL patients from database for hospital to see
+  const allPatientsInDatabase = await Patient.find({})
     .populate('user', 'name email')
-    .sort({ createdAt: -1 })
-    .limit(5);
+    .populate({
+      path: 'assignedDoctors',
+      select: 'specialization user',
+      populate: {
+        path: 'user',
+        select: 'name'
+      }
+    })
+    .select('nationalId dateOfBirth gender contactNumber address status createdAt hospitalVisits')
+    .sort({ createdAt: -1 });
+
+  console.log('Total patients in database:', allPatientsInDatabase.length);
+  
+  const totalPatients = allPatientsInDatabase.length;
+  
+  // Get recent patients using all patients
+  const recentPatients = allPatientsInDatabase.slice(0, 5);
+
+  // Get all doctors for this hospital
+  const doctors = await Doctor.find({ hospital: hospitalId, isActive: true })
+    .populate('user', 'name email')
+    .select('licenseNumber specialization isActive createdAt')
+    .sort({ createdAt: -1 });
+
+  // Return ALL patients from the database (not filtered by hospital)
+  const allPatients = allPatientsInDatabase;
+
+  console.log('Returning patients count:', allPatients.length);
 
   // Get recent medical records
   const recentMedicalConditions = await MedicalCondition.find({ hospital: hospitalId })
@@ -189,7 +223,10 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
         address: hospital.address,
         contact: hospital.contact,
         licenseNumber: hospital.licenseNumber,
-        status: hospital.status
+        status: hospital.status,
+        adminContact: hospital.adminContact,
+        email: hospital.user?.email,
+        createdAt: hospital.createdAt
       },
       stats: {
         totalDoctors,
@@ -198,6 +235,8 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
         recentMedicalConditions,
         recentTestResults
       },
+      doctors,
+      patients: allPatients,
       monthlyVisits
     }
   };

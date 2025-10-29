@@ -78,9 +78,9 @@ const PatientPassportLogin: React.FC = () => {
           } 
         });
       } else if (result) {
-        // Login successful without OTP - go directly to passport
+        // Login successful without OTP - redirect based on role
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        const userName = userData.name || 'Patient';
+        const userName = userData.name || 'User';
         
         showNotification({
           type: 'success',
@@ -88,8 +88,20 @@ const PatientPassportLogin: React.FC = () => {
           message: `Welcome back, ${userName}!`
         });
         
-        // Redirect immediately to patient passport
-        navigate('/patient-passport');
+        // Redirect based on user role
+        if (userData.role === 'patient') {
+          navigate('/patient-passport');
+        } else if (userData.role === 'doctor') {
+          navigate('/doctor-dashboard');
+        } else if (userData.role === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (userData.role === 'hospital') {
+          navigate('/hospital-dashboard');
+        } else if (userData.role === 'receptionist') {
+          navigate('/receptionist-dashboard');
+        } else {
+          navigate('/patient-passport'); // fallback for patients
+        }
       } else {
         showNotification({
           type: 'error',
@@ -134,11 +146,7 @@ const PatientPassportLogin: React.FC = () => {
   };
 
   const handleForgotPassword = () => {
-    showNotification({
-      type: 'info',
-      title: 'Password Reset',
-      message: 'Password reset functionality will be implemented soon.'
-    });
+    navigate('/forgot-password');
   };
 
   const handleRegister = () => {

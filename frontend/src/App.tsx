@@ -24,6 +24,8 @@ import HospitalListPage from './components/HospitalListPage';
 import DoctorPatientPassport from './components/DoctorPatientPassport';
 import DoctorAccessRequest from './components/DoctorAccessRequest';
 import DoctorLoginPage from './components/DoctorLoginPage';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 
 // Wrapper component for OTP verification to handle state
 const OTPVerificationWrapper: React.FC = () => {
@@ -65,6 +67,8 @@ export default function App() {
               <Route path="/hospital-register" element={<HospitalRegistration />} />
               <Route path="/verify-email" element={<EmailVerification />} />
               <Route path="/otp-verification" element={<OTPVerificationPage />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* Patient Routes */}
               <Route path="/patient-passport" element={<PatientPassport />} />

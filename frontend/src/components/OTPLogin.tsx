@@ -141,17 +141,26 @@ const OTPLogin: React.FC = () => {
         localStorage.setItem('token', (response.data as any).token);
         localStorage.setItem('user', JSON.stringify((response.data as any).user));
         
-        // Redirect based on user type
+        // Redirect based on user type/role
         setTimeout(() => {
-          switch (userType) {
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          const role = userData.role || userType;
+          
+          switch (role) {
             case 'patient':
               navigate('/patient-passport');
+              break;
+            case 'doctor':
+              navigate('/doctor-dashboard');
               break;
             case 'hospital':
               navigate('/hospital-dashboard');
               break;
-            case 'doctor':
-              navigate('/doctor-dashboard');
+            case 'admin':
+              navigate('/admin-dashboard');
+              break;
+            case 'receptionist':
+              navigate('/receptionist-dashboard');
               break;
             default:
               navigate('/');

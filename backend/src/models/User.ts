@@ -50,6 +50,14 @@ const userSchema = new Schema<IUser>({
     type: Date,
     default: null
   },
+  passwordResetToken: {
+    type: String,
+    default: null
+  },
+  passwordResetExpires: {
+    type: Date,
+    default: null
+  },
   lastLogin: {
     type: Date,
     default: null
@@ -97,6 +105,21 @@ userSchema.methods.getPublicProfile = function() {
   delete userObject.password;
   delete userObject.__v;
   return userObject;
+};
+
+// Method to create password reset token
+userSchema.methods.createPasswordResetToken = function(): string {
+  const crypto = require('crypto');
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  
+  return resetToken;
 };
 
 // Static method to find by email

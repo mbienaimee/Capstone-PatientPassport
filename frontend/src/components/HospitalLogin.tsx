@@ -98,10 +98,16 @@ const HospitalLogin = () => {
         setTimeout(() => {
           // Redirect based on user role
           const userData = JSON.parse(localStorage.getItem('user') || '{}');
-          if (userData.role === 'admin') {
+          if (userData.role === 'patient') {
+            navigate('/patient-passport');
+          } else if (userData.role === 'doctor') {
+            navigate('/doctor-dashboard');
+          } else if (userData.role === 'admin') {
             navigate('/admin-dashboard');
           } else if (userData.role === 'hospital') {
             navigate('/hospital-dashboard');
+          } else if (userData.role === 'receptionist') {
+            navigate('/receptionist-dashboard');
           } else {
             navigate('/hospital-dashboard'); // fallback
           }
@@ -124,7 +130,7 @@ const HospitalLogin = () => {
   };
 
   const handleForgotPassword = () => {
-    alert('Password reset functionality would be implemented here');
+    navigate('/forgot-password');
   };
 
   const handleRegister = () => {

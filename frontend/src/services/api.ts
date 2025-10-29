@@ -500,6 +500,25 @@ class ApiService {
       body: JSON.stringify(updateData)
     });
   }
+
+  // Password Reset Methods
+  async forgotPassword(email: string): Promise<ApiResponse<any>> {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  }
+
+  async verifyResetToken(token: string): Promise<ApiResponse<any>> {
+    return this.request(`/auth/verify-reset-token/${token}`);
+  }
+
+  async resetPassword(token: string, password: string, confirmPassword: string): Promise<ApiResponse<any>> {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password, confirmPassword })
+    });
+  }
 }
 
 export const apiService = new ApiService();

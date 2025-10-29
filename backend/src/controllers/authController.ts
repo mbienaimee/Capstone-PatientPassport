@@ -855,4 +855,162 @@ export const resendEmailVerification = asyncHandler(async (req: Request, res: Re
   res.json(response);
 });
 
+// @desc    Forgot password - send reset email
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new CustomError('Please provide an email address', 400);
+  }
+
+  // Find user by email
+  const user = await User.findOne({ email: email.toLowerCase() });
+
+  if (!user) {
+    // Don't reveal if user exists or not
+    const response: ApiResponse = {
+      success: true,
+      message: 'If an account exists with this email, a password reset link has been sent.'
+    };
+    res.json(response);
+    return;
+  }
+
+  // Generate reset token
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  // Create reset URL (for email link - we'll also return the token for testing)
+  const resetURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+
+  try {
+    // TODO: Send email with reset link
+    // For now, we'll return the token in the response (in production, only send via email)
+    console.log('Password reset token generated for:', email);
+    console.log('Reset URL:', resetURL);
+    console.log('Reset Token:', resetToken);
+
+    // In production, send email here
+    // await sendPasswordResetEmail(user.email, resetURL);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Password reset link has been sent to your email',
+      data: {
+        resetToken, // Remove this in production
+        resetURL // Remove this in production
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    throw new CustomError('Error sending password reset email. Please try again later.', 500);
+  }
+});
+
+// @desc    Reset password with token
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { token, password, confirmPassword } = req.body;
+
+  if (!token || !password || !confirmPassword) {
+    throw new CustomError('Please provide token, password, and password confirmation', 400);
+  }
+
+  if (password !== confirmPassword) {
+    throw new CustomError('Passwords do not match', 400);
+  }
+
+  if (password.length < 8) {
+    throw new CustomError('Password must be at least 8 characters long', 400);
+  }
+
+  // Hash the token to compare with database
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+  // Find user with valid reset token
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    throw new CustomError('Password reset token is invalid or has expired', 400);
+  }
+
+  // Set new password (will be hashed by pre-save middleware)
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  // Generate new token for auto-login
+  const authToken = generateToken(user._id.toString());
+  const refreshToken = generateRefreshToken(user._id.toString());
+
+  const response: AuthResponse = {
+    success: true,
+    message: 'Password has been reset successfully',
+    data: {
+      user: user.getPublicProfile(),
+      token: authToken,
+      refreshToken
+    }
+  };
+
+  res.json(response);
+});
+
+// @desc    Verify reset token (check if token is valid)
+// @route   GET /api/auth/verify-reset-token/:token
+// @access  Public
+export const verifyResetToken = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { token } = req.params;
+
+  if (!token) {
+    throw new CustomError('Please provide a reset token', 400);
+  }
+
+  // Hash the token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+  // Find user with valid token
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    const response: ApiResponse = {
+      success: false,
+      message: 'Password reset token is invalid or has expired'
+    };
+    res.status(400).json(response);
+    return;
+  }
+
+  const response: ApiResponse = {
+    success: true,
+    message: 'Reset token is valid',
+    data: {
+      email: user.email
+    }
+  };
+
+  res.json(response);
+});
+
 

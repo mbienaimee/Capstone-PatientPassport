@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
-import { UserPlus, UserMinus, Edit, Eye, Trash2, Key, LogIn, X, Stethoscope, Users, Mail, Shield, User } from 'lucide-react';
-import DoctorLogin from './DoctorLogin';
-import DoctorPatientList from './DoctorPatientList';
+import { UserPlus, Edit, Trash2, X, Stethoscope, Users, Mail, Shield } from 'lucide-react';
 
 interface Doctor {
   _id: string;
@@ -23,14 +20,10 @@ interface DoctorManagementProps {
 }
 
 const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
-  const { user } = useAuth();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
-  const [showDoctorLogin, setShowDoctorLogin] = useState<Doctor | null>(null);
-  const [showPatientList, setShowPatientList] = useState<Doctor | null>(null);
-  const [showChangePassword, setShowChangePassword] = useState<Doctor | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -208,42 +201,6 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
       licenseNumber: '',
       specialization: 'General Practice'
     });
-  };
-
-  const handleDoctorLogin = (doctor: Doctor) => {
-    setShowDoctorLogin(doctor);
-  };
-
-  const handleLoginSuccess = (data: { doctor: Doctor; patients: any[] }) => {
-    setShowPatientList(data.doctor);
-    setShowDoctorLogin(null);
-  };
-
-  const handleChangePassword = (doctor: Doctor) => {
-    setShowChangePassword(doctor);
-  };
-
-  const handlePasswordChange = async (doctor: Doctor, newPassword: string) => {
-    try {
-      const url = `/auth/users/${doctor.user._id}/change-password`;
-      console.log('Changing password for doctor:', doctor.user._id);
-      console.log('Using URL:', url);
-      
-      const response = await apiService.request(url, {
-        method: 'PUT',
-        body: JSON.stringify({ newPassword })
-      });
-      
-      console.log('Change password response:', response);
-      
-      if (response.success) {
-        alert('Password changed successfully!');
-        setShowChangePassword(null);
-      }
-    } catch (error) {
-      console.error('Error changing password:', error);
-      alert('Failed to change password. Please try again.');
-    }
   };
 
   if (loading) {
@@ -447,29 +404,18 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => handleDoctorLogin(doctor)}
-                        className="bg-green-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-green-700 transition-colors flex items-center"
-                      >
-                        <User className="h-4 w-4 mr-1" />
-                        Login as Doctor
-                      </button>
-                      <button
-                        onClick={() => handleChangePassword(doctor)}
-                        className="bg-gray-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-gray-700 transition-colors"
-                      >
-                        Password
-                      </button>
-                      <button
                         onClick={() => handleEditDoctor(doctor)}
-                        className="bg-yellow-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-yellow-700 transition-colors"
+                        className="bg-blue-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-blue-700 transition-colors flex items-center"
                       >
+                        <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </button>
                       <button
                         onClick={() => handleRemoveDoctor(doctor._id)}
-                        className="bg-red-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-red-700 transition-colors"
+                        className="bg-red-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-red-700 transition-colors flex items-center"
                       >
-                        Remove
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -478,129 +424,6 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Doctor Login Modal */}
-      {showDoctorLogin && (
-        <DoctorLogin
-          doctor={showDoctorLogin}
-          onClose={() => setShowDoctorLogin(null)}
-          onLoginSuccess={handleLoginSuccess}
-        />
-      )}
-
-      {/* Doctor Patient List Modal */}
-      {showPatientList && (
-        <DoctorPatientList
-          doctor={showPatientList}
-          onClose={() => setShowPatientList(null)}
-        />
-      )}
-
-      {/* Change Password Modal */}
-      {showChangePassword && (
-        <ChangePasswordModal
-          doctor={showChangePassword}
-          onClose={() => setShowChangePassword(null)}
-          onPasswordChange={handlePasswordChange}
-        />
-      )}
-    </div>
-  );
-};
-
-// Change Password Modal Component
-const ChangePasswordModal: React.FC<{
-  doctor: Doctor;
-  onClose: () => void;
-  onPasswordChange: (doctor: Doctor, newPassword: string) => void;
-}> = ({ doctor, onClose, onPasswordChange }) => {
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      alert('Passwords do not match!');
-      return;
-    }
-    
-    if (newPassword.length < 8) {
-      alert('Password must be at least 8 characters long!');
-      return;
-    }
-
-    setLoading(true);
-    await onPasswordChange(doctor, newPassword);
-    setLoading(false);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
-        <div className="flex items-center justify-between p-6 border-b border-green-200">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Change Password</h2>
-            <p className="text-sm text-green-600">Dr. {doctor.user.name}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                New Password
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-              >
-                {loading ? 'Changing...' : 'Change Password'}
-              </button>
-            </div>
-          </div>
-        </form>
       </div>
     </div>
   );

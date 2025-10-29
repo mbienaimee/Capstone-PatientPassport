@@ -13,7 +13,10 @@ import {
   verifyOTPLogin,
   verifyEmail,
   resendEmailVerification,
-  verifyRegistrationOTP
+  verifyRegistrationOTP,
+  forgotPassword,
+  resetPassword,
+  verifyResetToken
 } from '@/controllers/authController';
 import { testEmail } from '@/controllers/testEmailController';
 import { authenticate } from '@/middleware/auth';
@@ -80,6 +83,11 @@ router.post('/resend-verification', authLimiter, resendEmailVerification);
 
 // OTP Verification Routes
 router.post('/verify-registration-otp', authLimiter, verifyRegistrationOTP);
+
+// Password Reset Routes
+router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/reset-password', authLimiter, resetPassword);
+router.get('/verify-reset-token/:token', verifyResetToken);
 
 // Test Email Route (for debugging)
 router.post('/test-email', testEmail);

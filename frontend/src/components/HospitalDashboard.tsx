@@ -28,6 +28,9 @@ interface HospitalInfo {
   contact: string;
   licenseNumber: string;
   status: string;
+  adminContact?: string;
+  email?: string;
+  createdAt?: string;
 }
 
 interface UserResponse {
@@ -46,6 +49,42 @@ interface HospitalStats {
   recentTestResults: unknown[];
 }
 
+interface Doctor {
+  _id: string;
+  licenseNumber: string;
+  specialization: string;
+  isActive: boolean;
+  createdAt: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface Patient {
+  _id: string;
+  nationalId: string;
+  dateOfBirth: string;
+  gender: string;
+  contactNumber: string;
+  address: string;
+  status: string;
+  createdAt: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  assignedDoctors?: Array<{
+    _id: string;
+    specialization: string;
+    user: {
+      name: string;
+    };
+  }>;
+}
+
 const HospitalDashboard: React.FC = () => {
   const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -55,6 +94,8 @@ const HospitalDashboard: React.FC = () => {
   const [hospitalId, setHospitalId] = useState<string>('');
   const [hospitalInfo, setHospitalInfo] = useState<HospitalInfo | null>(null);
   const [hospitalStats, setHospitalStats] = useState<HospitalStats | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -97,6 +138,8 @@ const HospitalDashboard: React.FC = () => {
             setHospitalId(parsed.data.hospital._id);
             setHospitalInfo(parsed.data.hospital);
             setHospitalStats(parsed.data.stats || null);
+            setDoctors(parsed.data.doctors || []);
+            setPatients(parsed.data.patients || []);
             return;
           }
         } catch (error) {
@@ -150,15 +193,22 @@ const HospitalDashboard: React.FC = () => {
         const data = response.data as { 
           hospital?: HospitalInfo;
           stats?: HospitalStats;
+          doctors?: Doctor[];
+          patients?: Patient[];
         };
         
         console.log('Dashboard data received:', data);
+        console.log('Patients in dashboard response:', data.patients?.length || 0);
         
         if (data.hospital) {
           setHospitalId(data.hospital._id);
           setHospitalInfo(data.hospital);
           setHospitalStats(data.stats || null);
+          setDoctors(data.doctors || []);
+          setPatients(data.patients || []);
           console.log('Hospital info loaded successfully:', data.hospital);
+          console.log('Doctors loaded:', data.doctors?.length || 0);
+          console.log('Patients loaded and set to state:', data.patients?.length || 0);
           
           // Cache the data
           localStorage.setItem(cacheKey, JSON.stringify({
@@ -176,7 +226,7 @@ const HospitalDashboard: React.FC = () => {
           throw new Error('Hospital data not found in response');
         }
       } else {
-        console.error('Failed to get hospital dashboard:', response);
+        console.log('Failed to get hospital dashboard:', response);
         throw new Error(response.message || 'Failed to load hospital dashboard');
       }
     } catch (error) {
