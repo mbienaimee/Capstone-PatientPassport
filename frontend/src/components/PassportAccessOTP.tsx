@@ -143,8 +143,8 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 h-screen" onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full h-[95%] overflow-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 rounded-t-2xl">
           <div className="flex items-center justify-between">
@@ -169,29 +169,29 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
         {/* Content */}
         <div className="p-6">
           {/* Patient Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          {/* <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="font-semibold text-gray-900 mb-2">Patient Information</h3>
             <div className="space-y-1 text-sm text-gray-600">
               <p><strong>Name:</strong> {patientName}</p>
               <p><strong>Email:</strong> {patientEmail}</p>
             </div>
-          </div>
+          </div> */}
 
           {/* Instructions */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-blue-900 mb-2">📋 How to Access Patient Passport</h4>
-            <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+            <h4 className="font-semibold text-blue-900 mb-2">How to Access Patient Passport</h4>
+            <ol className="text-xs text-blue-800 space-y-2 list-decimal list-inside">
               <li><strong>OTP Sent:</strong> A 6-digit code has been sent to <strong>{patientEmail}</strong></li>
               <li><strong>Get Code:</strong> Ask the patient to check their email and share the code with you</li>
               <li><strong>Enter Code:</strong> Type the 6-digit code in the field below</li>
               <li><strong>Access Granted:</strong> You'll be able to view and update their passport</li>
             </ol>
             <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs text-yellow-800">
-              ⚠️ <strong>Important:</strong> The OTP expires in 10 minutes. Ask the patient to share it quickly!
+              <strong>Important:</strong> The OTP expires in 10 minutes. Ask the patient to share it quickly!
             </div>
-            <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
+            {/* <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
               💡 <strong>For Testing:</strong> If email delivery fails, check the console logs for the OTP code
-            </div>
+            </div> */}
           </div>
 
           {/* OTP Form */}
@@ -218,7 +218,7 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
                   disabled={isLoading}
                   autoComplete="one-time-code"
                   autoFocus
-                  className={`w-full pl-10 pr-12 py-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-2xl tracking-widest font-mono ${
+                  className={`w-full pl-10 pr-12 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-sm tracking-widest font-mono ${
                     error 
                       ? 'border-red-300 focus:ring-red-500' 
                       : 'border-gray-300 hover:border-gray-400'
@@ -246,7 +246,7 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
                 type="button"
                 onClick={handleRequestOTP}
                 disabled={countdown > 0 || isRequestingOTP}
-                className={`text-sm flex items-center justify-center gap-2 mx-auto ${
+                className={`text-xs flex items-center justify-center gap-2 mx-auto ${
                   countdown > 0 || isRequestingOTP
                     ? 'text-gray-400 cursor-not-allowed'
                     : 'text-green-600 hover:text-green-700 font-medium'
@@ -266,7 +266,7 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
             <button
               type="submit"
               disabled={isLoading || otpCode.length !== 6}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
               {isLoading ? (
                 <>

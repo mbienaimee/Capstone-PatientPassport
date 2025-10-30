@@ -465,7 +465,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
+      <div className="min-h-screen bg-green-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-600 font-medium">Loading Doctor Dashboard...</p>
@@ -490,20 +490,20 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50">
+    <div className="min-h-screen bg-green-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-green-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2 sm:space-x-4">
               <Logo size="sm" className="text-green-600" />
+            </div>
+            <div className="relative flex items-center gap-4">
               <div className="hidden sm:block">
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900">Doctor Portal</h1>
-                <p className="text-xs sm:text-sm text-gray-600">Patient Passport Management System</p>
+                {/* <p className="text-xs sm:text-sm text-gray-600">Patient Passport Management System</p> */}
                 <p className="text-xs text-green-600 mt-1">👥 View your assigned patients below</p>
               </div>
-            </div>
-            <div className="relative">
               <button
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                 className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-4 py-2 bg-green-50 hover:bg-green-100 rounded-lg transition-all duration-200 border border-green-200"
@@ -519,7 +519,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
               </button>
 
               {showProfileDropdown && (
-                <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-xl shadow-xl border border-green-200 py-2 z-50">
+                <div className="absolute right-0 top-12 mt-2 w-40 sm:w-48 bg-white rounded-xl shadow-xl border border-green-200 py-2 z-[999]">
                   <div className="px-3 sm:px-4 py-3 border-b border-green-100">
                     <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
                     <p className="text-xs text-green-600 font-medium">Medical Doctor</p>
@@ -547,43 +547,13 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Welcome Section */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-green-500 via-green-600 to-green-700 rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 text-white shadow-xl">
-          <div className="absolute inset-0 bg-black/10"></div>
-          <div className="relative z-10">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2 sm:space-y-4">
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <div className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Welcome back, Dr. {user?.name?.split(' ')[1] || user?.name}</h1>
-                    <p className="text-green-100 text-sm sm:text-base lg:text-lg">Access patient passports and manage medical records</p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 lg:mt-0 lg:block">
-                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/30">
-                  <div className="text-center">
-                    <p className="text-green-100 text-xs sm:text-sm font-medium">Total Patients</p>
-                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">{stats.totalPatients}</p>
-                    <div className="mt-2 h-1 bg-white/30 rounded-full overflow-hidden">
-                      <div className="h-full bg-white/60 rounded-full" style={{width: '75%'}}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
+      
+              {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-white rounded-md shadow border border-green-200/50 px-4 py-2 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-md flex items-center justify-center">
                   <Users className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -599,10 +569,10 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-white rounded-md shadow border border-green-200/50 px-4 py-2 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -618,10 +588,10 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg border border-green-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 md:col-span-2 lg:col-span-1">
+          <div className="bg-white rounded-md shadow border border-green-200/50 px-4 py-2 hover:shadow-md transition-all duration-300 hover:-translate-y-1 md:col-span-2 lg:col-span-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className={`h-12 w-12 bg-gradient-to-br rounded-xl flex items-center justify-center ${
+                <div className={`h-12 w-12 bg-gradient-to-br rounded-md flex items-center justify-center ${
                   stats.systemStatus === 'online' 
                     ? 'from-green-500 to-green-600' 
                     : 'from-red-500 to-red-600'
@@ -650,27 +620,58 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
           </div>
         </div>
 
+        {/* Welcome Section */}
+        <div className="relative overflow-hidden rounded-md p-4 sm:p-6 lg:px-4 lg:py-4 mb-6 sm:mb-8 text-gray-900 shadow">
+          <div className="absolute inset-0 bg-white"></div>
+          <div className="relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2 sm:space-y-4">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                    <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-500/30" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Welcome back, Dr. {user?.name?.split(' ')[1] || user?.name}</h1>
+                    <p className="text-green-700 text-sm sm:text-base lg:text-lg">Access patient passports and manage medical records</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 lg:mt-0 lg:block">
+                <div className="bg-green-500/20 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-green-500/30">
+                  <div className="text-center">
+                    <p className="text-green-700 text-xs sm:text-sm font-medium">Total Patients</p>
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-700">{stats.totalPatients}</p>
+                    <div className="mt-2 h-1 bg-green-500/30 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500/60 rounded-full" style={{width: '75%'}}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Patient Management Section */}
-        <div className="bg-white rounded-2xl shadow-xl border border-green-200/50 mb-8 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-500 to-green-600 px-8 py-8">
+        <div className="bg-white rounded-md border border-slate-200 border-green-200/50 mb-8 overflow-hidden">
+          <div className="bg-white border-b border-slate-200 px-8 py-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
-                  <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-white" />
+                  <div className="h-10 w-10 bg-green-500/20 rounded-xl flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-green-700" />
                   </div>
-                  <h2 className="text-2xl font-bold text-white">Patient Passport Access</h2>
+                  <h2 className="text-2xl font-bold text-green-700">Patient Passport Access</h2>
                 </div>
-                <p className="text-green-100 text-lg">Request OTP access to view patient medical records</p>
+                <p className="text-green-800 text-lg">Request OTP access to view patient medical records</p>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
-                  <span className="text-sm font-semibold text-white">{stats.totalPatients} Patients Available</span>
+                <div className="bg-green-500/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-green-500/30">
+                  <span className="text-sm font-semibold text-green-700">{stats.totalPatients} Patients Available</span>
                 </div>
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="inline-flex items-center px-6 py-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-xl hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="inline-flex items-center px-6 py-2 bg-green-500/20 backdrop-blur-sm border border-green-500/30 text-green-700 rounded-xl hover:bg-green-500/30 focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                   {refreshing ? 'Refreshing...' : 'Refresh'}
@@ -694,7 +695,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
                     value={searchTerm}
                     onChange={handleSearchChange}
                     placeholder="Search by name, national ID, or email..."
-                    className="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-gray-50 hover:bg-white transition-colors"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm bg-gray-50 hover:bg-white transition-colors"
                   />
                 </div>
               </div>
@@ -708,7 +709,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
                     id="status-filter"
                     value={filterStatus}
                     onChange={handleFilterChange}
-                    className="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-gray-50 hover:bg-white transition-colors"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-gray-50 hover:bg-white transition-colors"
                   >
                     <option value="all">All Patients</option>
                     <option value="active">Active Only</option>
@@ -722,7 +723,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
                 </label>
                 <button
                   onClick={handleAddPatient}
-                  className="w-full lg:w-auto px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                  className="w-full lg:w-auto px-6 py-2 text-sm bg-green-700 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow hover:shadow-md flex items-center justify-center space-x-2"
                 >
                   <UserPlus className="h-5 w-5" />
                   <span className="font-semibold">Add New Patient</span>
@@ -731,10 +732,10 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
             </div>
             
             {/* Results Summary */}
-            <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-6 mb-6">
+            <div className="bg-green-100 border border-green-200 rounded-md px-6 py-2 mb-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-base font-semibold text-gray-900">
                     📋 Showing {currentPatients.length} of {filteredPatients.length} patients
                   </span>
                   {searchTerm && (
@@ -754,8 +755,8 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
         </div>
 
         {/* Patients List */}
-        <div className="bg-white rounded-2xl shadow-xl border border-green-200/50 overflow-hidden">
-          <div className="p-8">
+        <div className="bg-white rounded shadow border border-green-200/50 overflow-hidden">
+          <div className="p-4">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
@@ -809,10 +810,10 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
             ) : (
               <div className="space-y-3">
                 {currentPatients.map((patient) => (
-                  <div key={patient._id} className="group bg-gradient-to-r from-white to-green-50/30 rounded-xl border border-green-200/50 hover:border-green-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                  <div key={patient._id} className="group bg-gradient-to-r from-white to-green-50/30 rounded-md border border-green-200/50 hover:border-green-300 transition-all duration-300 overflow-hidden">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 space-y-3 sm:space-y-0">
                       <div className="flex items-center space-x-3 sm:space-x-4">
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-br from-green-500 to-green-600 rounded flex items-center justify-center shadow">
                           <User className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -823,7 +824,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
                           <p className="text-xs sm:text-sm text-gray-500 truncate">Email: {patient.user?.email || 'N/A'}</p>
                         </div>
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                      <div className="group-hover:flex hidden flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                         <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold ${
                           patient.status === 'active' 
                             ? 'bg-green-100 text-green-800 border border-green-200' 
