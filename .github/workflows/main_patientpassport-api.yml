@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: write  # Required to upload artifacts
 
     defaults:
       run:
@@ -51,9 +52,23 @@ jobs:
           # Copy scripts folder if exists
           [ -d scripts ] && cp -r scripts deploy-package/ || true
           
-          # Show package size
+          # Show package size and contents
+          echo "Package contents:"
+          ls -lah deploy-package/
           du -sh deploy-package
           echo "Deployment package prepared"
+
+      - name: Verify deployment package exists
+        run: |
+          if [ ! -d "deploy-package" ]; then
+            echo "❌ Error: deploy-package directory not found!"
+            exit 1
+          fi
+          if [ ! -f "deploy-package/package.json" ]; then
+            echo "❌ Error: package.json not found in deploy-package!"
+            exit 1
+          fi
+          echo "✅ Deployment package verified"
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -61,6 +76,8 @@ jobs:
           name: node-app
           path: ./deploy-package
           retention-days: 1
+          if-no-files-found: error
+          compression-level: 6
 
   deploy:
     runs-on: ubuntu-latest
@@ -68,6 +85,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: read  # Required to download artifacts
 
     steps:
       - name: Download artifact from build job
@@ -75,6 +93,18 @@ jobs:
         with:
           name: node-app
           path: ./deploy-package
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify artifact download
+        run: |
+          echo "Verifying downloaded artifact..."
+          if [ ! -d "deploy-package" ]; then
+            echo "❌ Error: deploy-package not found after download!"
+            exit 1
+          fi
+          echo "Artifact contents:"
+          ls -lah deploy-package/
+          echo "✅ Artifact verified"
 
       - name: Setup Node.js for deployment
         uses: actions/setup-node@v3
@@ -85,8 +115,10 @@ jobs:
         run: |
           cd deploy-package
           echo "Installing production dependencies..."
+          echo "Current directory: $(pwd)"
+          echo "Package.json exists: $([ -f package.json ] && echo 'yes' || echo 'no')"
           npm ci --only=production --prefer-offline --no-audit
-          echo "Dependencies installed successfully"
+          echo "✅ Dependencies installed successfully"
 
       - name: Login to Azure
         uses: azure/login@v2
