@@ -1,243 +1,584 @@
 # Patient Passport System
 
-A comprehensive digital healthcare platform that enables secure management of patient medical records, doctor-patient interactions, and hospital workflows with advanced access control and real-time communication.
+Digital patient passport platform with: patient profiles, doctor/hospital workflows, real-time notifications, OTP-protected passport access, and USSD support for feature phones.
 
-## Overview
+## 🚀 Quick Links
 
-The Patient Passport System is a modern, secure, and scalable healthcare management platform built with cutting-edge technologies. It provides a unified interface for patients, doctors, hospitals, and administrators to manage medical records, appointments, and healthcare workflows efficiently.
+- **🌐 Live Application**: [https://patient-passpo.netlify.app/](https://patient-passpo.netlify.app/)
+- **🔗 Alternate Frontend URL**: [https://jade-pothos-e432d0.netlify.app/patient-passport](https://jade-pothos-e432d0.netlify.app/patient-passport)
+- **⚙️ Backend API**: [https://patientpassport-api.azurewebsites.net/api](https://patientpassport-api.azurewebsites.net/api)
+- **📹 Demo Video**: [demo-video.mp4](./demo-video.mp4) (located in project root)
 
-## Key Features
+---
 
-### Patient Management
-- **Digital Patient Profiles**: Comprehensive patient information management
-- **Medical Records**: Secure storage and retrieval of medical history
-- **Passport Access Control**: Granular permissions for medical record access
-- **OTP Verification**: Multi-factor authentication for enhanced security
-- **Real-time Notifications**: Instant updates on medical record access
+## 📋 Table of Contents
 
-### Doctor Dashboard
-- **Patient List Management**: View and manage assigned patients
-- **Medical Record Access**: Secure access to patient medical histories
-- **Passport Request System**: Request access to patient records with OTP verification
-- **Real-time Updates**: Live notifications and status updates
-- **Responsive Interface**: Optimized for desktop and mobile devices
+1. [Installation & Setup](#-installation--setup-step-by-step)
+2. [Running the Application](#-running-the-application)
+3. [Related Files](#-related-files)
+4. [Demo Video](#-demo-video)
+5. [Deployed Version](#-deployed-version)
+6. [Project Overview](#-project-overview)
+7. [Additional Documentation](#-additional-documentation)
 
-### Hospital Management
-- **Multi-hospital Support**: Manage multiple hospital locations
-- **Doctor Management**: Add, edit, and manage doctor profiles
-- **Patient Registration**: Streamlined patient onboarding process
-- **Access Control**: Comprehensive permission management system
-- **Analytics Dashboard**: Real-time insights and reporting
+---
 
-### Security Features
-- **JWT Authentication**: Secure token-based authentication
-- **Role-based Access Control**: Granular permissions for different user types
-- **OTP Verification**: Two-factor authentication for sensitive operations
-- **Audit Logging**: Comprehensive logging of all system activities
-- **Data Encryption**: End-to-end encryption for sensitive medical data
-
-## Technology Stack
-
-### Backend
-- **Node.js**: Runtime environment
-- **TypeScript**: Type-safe development
-- **Express.js**: Web application framework
-- **MongoDB**: NoSQL database with Mongoose ODM
-- **JWT**: JSON Web Tokens for authentication
-- **Socket.io**: Real-time communication
-- **Nodemailer**: Email service integration
-- **Swagger**: API documentation
-
-### Frontend
-- **React**: User interface library
-- **TypeScript**: Type-safe development
-- **Vite**: Build tool and development server
-- **Tailwind CSS**: Utility-first CSS framework
-- **Lucide React**: Icon library
-- **Socket.io Client**: Real-time communication
-- **Axios**: HTTP client for API requests
-
-### Development Tools
-- **ESLint**: Code linting and formatting
-- **Prettier**: Code formatting
-- **Jest**: Testing framework
-- **Docker**: Containerization
-- **Git**: Version control
-
-## Project Structure
-
-```
-PatientPassport/
-├── backend/                 # Backend API server
-│   ├── src/
-│   │   ├── controllers/    # Request handlers
-│   │   ├── middleware/     # Custom middleware
-│   │   ├── models/         # Database models
-│   │   ├── routes/         # API routes
-│   │   ├── services/       # Business logic
-│   │   ├── utils/          # Utility functions
-│   │   └── types/          # TypeScript type definitions
-│   ├── docs/               # API documentation
-│   ├── scripts/            # Utility scripts
-│   └── package.json        # Backend dependencies
-├── frontend/               # React frontend application
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── contexts/       # React contexts
-│   │   ├── services/       # API services
-│   │   └── types/          # TypeScript type definitions
-│   └── package.json        # Frontend dependencies
-└── openmrs-modules/        # OpenMRS integration modules
-```
-
-## Installation & Setup
+## 🛠️ Installation & Setup (Step-by-Step)
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- MongoDB Atlas account
-- Git
 
-### Backend Setup
+Before you begin, ensure you have the following installed:
 
-1. **Clone the repository**
+- **Node.js** (v18 or higher) - [Download](https://nodejs.org/)
+- **npm** (comes with Node.js) or **yarn**
+- **Git** - [Download](https://git-scm.com/)
+- **MongoDB** - MongoDB Atlas account (recommended) or local MongoDB instance
+- **Email Service Account** - Gmail (with App Password) or SendGrid account
+
+### Step 1: Clone the Repository
+
+```bash
+git clone <repository-url>
+cd Capstone-PatientPassport
+```
+
+### Step 2: Backend Setup
+
+#### 2.1 Navigate to Backend Directory
+
+```bash
+cd backend
+```
+
+#### 2.2 Install Dependencies
+
+```bash
+npm install
+```
+
+#### 2.3 Configure Environment Variables
+
+1. Copy the example environment file:
    ```bash
-   git clone <repository-url>
-   cd PatientPassport/backend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Configuration**
-   ```bash
+   # On Windows (PowerShell)
+   copy env.example .env
+   
+   # On Linux/Mac
    cp env.example .env
    ```
+
+2. Open `.env` file and configure the following variables:
+
+```env
+# Server Configuration
+NODE_ENV=development
+PORT=5000
+HOST=localhost
+
+# Database Configuration - Replace with your MongoDB connection string
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
+
+# JWT Configuration - Generate strong random secrets
+JWT_SECRET=your-super-secret-jwt-key-here-change-this
+JWT_EXPIRE=7d
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-here-change-this
+JWT_REFRESH_EXPIRE=30d
+
+# Password Reset
+JWT_RESET_SECRET=your-reset-secret-key-here-change-this
+JWT_RESET_EXPIRE=10m
+
+# Email Configuration - Gmail SMTP
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-gmail-app-password
+EMAIL_FROM=PatientPassport <your-email@gmail.com>
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+
+# Optional: Cloudinary for file uploads
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# Optional: Africa's Talking for USSD/SMS
+AFRICASTALKING_API_KEY=your-africastalking-api-key
+AFRICASTALKING_USERNAME=sandbox
+AFRICASTALKING_USSD_CODE=*123#
+```
+
+**Important Notes:**
+- For Gmail, use an [App Password](https://support.google.com/accounts/answer/185833) instead of your regular password
+- Generate strong, random values for JWT secrets (you can use `openssl rand -hex 32`)
+- For MongoDB, you can create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+
+#### 2.4 Build the Project (Optional - for production)
+
+```bash
+npm run build
+```
+
+### Step 3: Frontend Setup
+
+#### 3.1 Navigate to Frontend Directory
+
+Open a **new terminal window** and navigate to the frontend directory:
+
+```bash
+cd frontend
+```
+
+#### 3.2 Install Dependencies
+
+```bash
+npm install
+```
+
+#### 3.3 Configure Environment Variables
+
+1. Copy the example environment file:
+   ```bash
+   # On Windows (PowerShell)
+   copy env.example .env
    
-   Update the `.env` file with your configuration:
-   ```env
-   # Database Configuration
-   MONGODB_URI=your-mongodb-connection-string
-   
-   # JWT Configuration
-   JWT_SECRET=your-jwt-secret
-   JWT_REFRESH_SECRET=your-refresh-secret
-   
-   # Email Configuration
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_USER=your-email@gmail.com
-   EMAIL_PASS=your-app-password
+   # On Linux/Mac
+   cp env.example .env
    ```
 
-4. **Start the development server**
+2. Open `.env` file and configure:
+
+```env
+# Development Backend URL
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+
+# Application Configuration
+VITE_APP_NAME=Patient Passport
+VITE_APP_VERSION=1.0.0
+VITE_APP_DESCRIPTION=Comprehensive Medical Records Management System
+
+# Feature Flags
+VITE_ENABLE_DEBUG=true
+VITE_ENABLE_NOTIFICATIONS=true
+VITE_ENABLE_SOCKET_IO=true
+```
+
+**Note:** For production deployment, use the production API URLs in the `.env` file.
+
+---
+
+## ▶️ Running the Application
+
+### Development Mode (Recommended)
+
+#### Option 1: Run Backend and Frontend Separately
+
+1. **Start Backend Server** (Terminal 1):
    ```bash
+   cd backend
    npm run dev
    ```
+   
+   Backend will run on: `http://localhost:5000`
+   - API Base URL: `http://localhost:5000/api`
+   - API Docs: `http://localhost:5000/api-docs` (if configured)
 
-### Frontend Setup
-
-1. **Navigate to frontend directory**
+2. **Start Frontend Server** (Terminal 2):
    ```bash
-   cd ../frontend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server**
-   ```bash
+   cd frontend
    npm run dev
    ```
+   
+   Frontend will run on: `http://localhost:5173`
+   
+   Open your browser and navigate to: `http://localhost:5173`
 
-## API Documentation
+#### Option 2: Run Production Build Locally
 
-The API documentation is available at `http://localhost:5000/api-docs` when the backend server is running. The documentation includes:
-
-- Authentication endpoints
-- Patient management APIs
-- Doctor management APIs
-- Hospital management APIs
-- Medical record APIs
-- Access control APIs
-
-## User Roles & Permissions
-
-### Patient
-- View personal medical records
-- Grant/revoke access to doctors
-- Receive notifications about record access
-- Update personal information
-
-### Doctor
-- View assigned patients
-- Request access to patient records
-- Update patient medical information
-- Receive real-time notifications
-
-### Hospital Admin
-- Manage hospital information
-- Add/edit doctor profiles
-- View hospital analytics
-- Manage patient registrations
-
-### System Admin
-- Full system access
-- User management
-- System configuration
-- Audit log access
-
-## Security Features
-
-### Authentication & Authorization
-- JWT-based authentication
-- Role-based access control (RBAC)
-- OTP verification for sensitive operations
-- Session management with secure cookies
-
-### Data Protection
-- End-to-end encryption for sensitive data
-- Secure password hashing with bcrypt
-- Input validation and sanitization
-- Rate limiting to prevent abuse
-
-### Audit & Compliance
-- Comprehensive audit logging
-- Data access tracking
-- Compliance with healthcare data standards
-- Regular security updates
-
-## Deployment
-
-### Production Deployment
-
-1. **Environment Setup**
-   - Configure production environment variables
-   - Set up MongoDB Atlas cluster
-   - Configure email service (SendGrid recommended)
-
-2. **Backend Deployment**
+1. **Backend Production Build:**
    ```bash
+   cd backend
    npm run build
    npm start
    ```
 
-3. **Frontend Deployment**
+2. **Frontend Production Build:**
    ```bash
+   cd frontend
    npm run build
-   # Deploy dist/ folder to your hosting service
+   npm run preview
    ```
 
-### Docker Deployment
+### Docker Deployment (Alternative)
+
+#### Backend Docker
 
 ```bash
-# Build and run with Docker Compose
-docker-compose up -d
+cd backend
+docker build -t patient-passport-api .
+docker run -p 5000:5000 --env-file .env patient-passport-api
 ```
 
-## Contributing
+#### Frontend Docker
+
+```bash
+cd frontend
+docker build -t patient-passport-frontend .
+docker run -p 5173:5173 patient-passport-frontend
+```
+
+### Verification
+
+After starting both servers, you should see:
+
+- ✅ Backend: Server running on port 5000
+- ✅ Frontend: Development server running on port 5173
+- ✅ MongoDB: Connection established
+
+**Test the setup:**
+1. Open `http://localhost:5173` in your browser
+2. Check browser console for any connection errors
+3. Visit `http://localhost:5000/api/health` (if health endpoint exists) to verify backend
+
+---
+
+## 📁 Related Files
+
+### Project Structure
+
+```
+Capstone-PatientPassport/
+├── backend/                          # Backend API Server
+│   ├── src/                         # Source code
+│   │   ├── controllers/             # Request handlers
+│   │   ├── middleware/              # Authentication, validation, etc.
+│   │   ├── models/                  # MongoDB models
+│   │   ├── routes/                  # API routes
+│   │   ├── services/                # Business logic
+│   │   ├── utils/                   # Utility functions
+│   │   └── app.ts                   # Application entry point
+│   ├── docs/                        # API documentation
+│   │   ├── USSD_GUIDE.md           # USSD implementation guide
+│   │   ├── USSD_DEPLOYMENT.md      # USSD deployment guide
+│   │   ├── USSD_QUICKSTART.md      # Quick start for USSD
+│   │   └── swagger.yml              # Swagger API documentation
+│   ├── test/                        # Test files
+│   │   └── ussd.test.js            # USSD testing
+│   ├── Dockerfile                   # Docker configuration
+│   ├── package.json                 # Backend dependencies
+│   ├── env.example                  # Environment variables template
+│   └── README.md                    # Backend-specific documentation
+│
+├── frontend/                         # React Frontend Application
+│   ├── src/                         # Source code
+│   │   ├── components/             # React components
+│   │   ├── contexts/               # React contexts
+│   │   ├── services/               # API services
+│   │   ├── types/                  # TypeScript types
+│   │   └── App.tsx                 # Main App component
+│   ├── public/                      # Static assets
+│   ├── Dockerfile                   # Docker configuration
+│   ├── package.json                 # Frontend dependencies
+│   ├── env.example                  # Environment variables template
+│   └── README.md                    # Frontend-specific documentation
+│
+├── openmrs-patient-passport-module/  # OpenMRS Integration Module
+│   ├── api/                         # OpenMRS API module
+│   ├── omod/                        # OpenMRS module
+│   ├── README.md                    # OpenMRS integration docs
+│   └── DEPLOYMENT_GUIDE.md          # OpenMRS deployment guide
+│
+├── demo-video.mp4                    # 5-minute demo video
+├── LICENSE                           # License file
+└── README.md                         # This file
+```
+
+### Key Documentation Files
+
+#### Backend Documentation
+- **`backend/README.md`** - Complete backend API documentation
+- **`backend/docs/USSD_GUIDE.md`** - Comprehensive USSD implementation guide
+- **`backend/docs/USSD_DEPLOYMENT.md`** - Step-by-step USSD deployment
+- **`backend/docs/USSD_QUICKSTART.md`** - Quick start guide for USSD features
+- **`backend/docs/swagger.yml`** - Swagger/OpenAPI specification
+
+#### Frontend Documentation
+- **`frontend/README.md`** - Frontend component architecture and guides
+
+#### Integration Documentation
+- **`openmrs-patient-passport-module/README.md`** - OpenMRS integration guide
+- **`openmrs-patient-passport-module/DEPLOYMENT_GUIDE.md`** - OpenMRS deployment steps
+
+#### Additional Guides
+- **`backend/docs/Patient_Passport_USSD.postman_collection.json`** - Postman collection for API testing
+- **`HOSPITAL_DOCTOR_WORKFLOW_IMPLEMENTATION.md`** - Hospital and doctor workflow documentation (if exists)
+
+### Configuration Files
+
+- **`backend/env.example`** - Backend environment variables template
+- **`frontend/env.example`** - Frontend environment variables template
+- **`backend/tsconfig.json`** - TypeScript configuration for backend
+- **`frontend/tsconfig.json`** - TypeScript configuration for frontend
+- **`frontend/tailwind.config.js`** - Tailwind CSS configuration
+- **`frontend/vite.config.ts`** - Vite build configuration
+
+---
+
+## 🎬 Demo Video
+
+### Video Location
+
+The 5-minute demo video is located at: **`./demo-video.mp4`** (in the project root directory)
+
+### Demo Video Guidelines
+
+The demo video should focus on **core functionalities** and avoid spending time on sign-up and sign-in screens. Here's a suggested structure:
+
+#### Suggested Demo Structure (5 minutes)
+
+| Timestamp | Content | Focus |
+|-----------|---------|-------|
+| **00:00 - 00:20** | Quick app intro + goals | Overview of what will be demonstrated |
+| **00:20 - 01:30** | **Patient Passport** | Open a patient, browse passport summary, show key fields (medical history, medications, allergies) |
+| **01:30 - 02:20** | **Doctor Dashboard** | Find a patient, request passport access, show OTP verification flow and result |
+| **02:20 - 03:10** | **Hospital Admin** | Add/edit a doctor, show patient assignments, analytics overview |
+| **03:10 - 03:50** | **USSD Flow** | Screen-record USSD flow: dial code, language selection, SMS passport delivery |
+| **03:50 - 04:30** | **Real-time Notifications** | Trigger an update (new record or access event), show socket notification in action |
+| **04:30 - 05:00** | Wrap up | Where code lives, how to reproduce locally, link to deployed app |
+
+#### Recording Tips
+
+- ✅ **Focus on Core Features**: Minimize time on authentication screens
+- ✅ **Show Real Data**: Use realistic patient data and medical scenarios
+- ✅ **Demonstrate Workflows**: Show complete user journeys, not just features
+- ✅ **Clear Audio**: Ensure narration is clear and understandable
+- ✅ **Good Quality**: Use screen recording software with good resolution
+- ⚠️ **Security**: Keep credentials out of the video; use test/demo accounts or redacted values
+
+### Video Upload Options
+
+You can:
+1. **Keep it local**: Reference `./demo-video.mp4` in the README (current approach)
+2. **Upload to YouTube**: Upload to YouTube and replace the link above with the YouTube URL
+3. **Upload to cloud storage**: Upload to Google Drive, Dropbox, etc., and share the link
+
+---
+
+## 🌐 Deployed Version
+
+### Live Application Links
+
+- **🌐 Primary Frontend**: [https://patient-passpo.netlify.app/](https://patient-passpo.netlify.app/)
+- **🔗 Alternate Frontend**: [https://jade-pothos-e432d0.netlify.app/patient-passport](https://jade-pothos-e432d0.netlify.app/patient-passport)
+- **⚙️ Backend API**: [https://patientpassport-api.azurewebsites.net/api](https://patientpassport-api.azurewebsites.net/api)
+- **📖 API Documentation**: [https://patientpassport-api.azurewebsites.net/api-docs](https://patientpassport-api.azurewebsites.net/api-docs) (if available)
+
+### Installable Packages
+
+Currently, the application is deployed as a web application. If you need installable packages:
+
+**For Android (APK):**
+- The application can be packaged as a Progressive Web App (PWA) and installed on Android devices
+- Alternatively, a native Android app can be built using React Native
+
+**For Windows (.exe):**
+- An Electron wrapper can be built to create a Windows executable
+- Build command: `npm run build:electron` (if configured)
+
+**For iOS:**
+- React Native build for iOS devices
+- Requires Apple Developer account
+
+To request an installable package, specify the target platform and we can provide build instructions.
+
+---
+
+## 🏥 Project Overview
+
+### Technology Stack
+
+- **Backend**: Node.js + TypeScript + Express + MongoDB
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Real-time**: Socket.io for live notifications
+- **USSD/SMS**: Africa's Talking integration (optional)
+- **Authentication**: JWT-based with OTP verification
+- **Database**: MongoDB with Mongoose ODM
+
+### Core Features
+
+1. **Patient Management**
+   - Patient registration and profile management
+   - Medical record storage and retrieval
+   - Passport access control
+
+2. **Doctor Dashboard**
+   - Patient list and search
+   - Medical record access requests
+   - OTP-based access verification
+
+3. **Hospital Administration**
+   - Doctor management
+   - Patient assignments
+   - Analytics and reporting
+
+4. **USSD Support**
+   - Access medical passport via feature phones
+   - Multi-language support (English/Kinyarwanda)
+   - SMS delivery of passport data
+
+5. **Real-time Notifications**
+   - Socket.io for live updates
+   - Email notifications
+   - SMS notifications (optional)
+
+### Security Features
+
+- JWT authentication with refresh tokens
+- OTP verification for sensitive operations
+- Role-based access control (RBAC)
+- Password hashing with bcrypt
+- Input validation and sanitization
+- Rate limiting
+- CORS protection
+- Helmet security headers
+
+---
+
+## 📚 Additional Documentation
+
+### Backend Guides
+
+- **[Backend README](./backend/README.md)** - Complete backend API documentation
+- **[USSD Guide](./backend/docs/USSD_GUIDE.md)** - Comprehensive USSD implementation
+- **[USSD Deployment](./backend/docs/USSD_DEPLOYMENT.md)** - USSD deployment steps
+- **[USSD Quick Start](./backend/docs/USSD_QUICKSTART.md)** - Quick start for USSD
+
+### Frontend Guides
+
+- **[Frontend README](./frontend/README.md)** - Frontend architecture and components
+
+### Integration Guides
+
+- **[OpenMRS Module](./openmrs-patient-passport-module/README.md)** - OpenMRS integration
+- **[OpenMRS Deployment](./openmrs-patient-passport-module/DEPLOYMENT_GUIDE.md)** - OpenMRS deployment
+
+### Testing
+
+#### Backend Tests
+```bash
+cd backend
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
+```
+
+#### Frontend Tests
+```bash
+cd frontend
+npm run test          # Run tests (if configured)
+```
+
+#### USSD Testing
+```bash
+cd backend
+node test/ussd.test.js
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Backend won't start:**
+- ✅ Check MongoDB connection string in `.env`
+- ✅ Verify all required environment variables are set
+- ✅ Ensure port 5000 is not in use
+- ✅ Check Node.js version (requires v18+)
+
+**Frontend can't connect to API:**
+- ✅ Verify `VITE_API_BASE_URL` in `.env` is correct
+- ✅ Check backend server is running
+- ✅ Verify CORS settings in backend
+- ✅ Check browser console for errors
+
+**MongoDB connection failed:**
+- ✅ Verify MongoDB URI in `.env`
+- ✅ Check network connectivity
+- ✅ Ensure MongoDB Atlas IP whitelist includes your IP
+- ✅ Verify MongoDB username and password
+
+**USSD not working:**
+- ✅ Verify Africa's Talking credentials
+- ✅ Check webhook URL is correct and publicly accessible
+- ✅ Ensure server has SSL certificate (HTTPS required)
+- ✅ Verify USSD code is configured correctly
+
+**OTP not received:**
+- ✅ Check email service configuration (Gmail App Password)
+- ✅ Verify patient email address is correct
+- ✅ Check spam folder
+- ✅ Ensure EMAIL_HOST, EMAIL_USER, and EMAIL_PASS are set correctly
+
+**Port already in use:**
+- ✅ Change PORT in backend `.env` file
+- ✅ Kill process using the port: `npx kill-port 5000` (or on Linux: `lsof -ti:5000 | xargs kill`)
+
+---
+
+## 🚀 Production Deployment
+
+### Backend Deployment (Azure)
+
+1. **Build the application:**
+   ```bash
+   cd backend
+   npm run build
+   ```
+
+2. **Start production server:**
+   ```bash
+   npm start
+   ```
+
+3. **Environment Setup:**
+   - Configure production environment variables in Azure
+   - Set up MongoDB Atlas cluster
+   - Configure email service (SendGrid recommended)
+   - Set up Africa's Talking for USSD/SMS
+   - Configure SSL certificates
+
+### Frontend Deployment (Netlify/Vercel)
+
+1. **Build for production:**
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+2. **Deploy dist/ folder:**
+   - Deploy to Netlify, Vercel, or Azure Static Web Apps
+   - Configure environment variables in hosting platform
+   - Set build command: `npm run build`
+   - Set publish directory: `dist`
+
+### Environment Checklist
+
+- [ ] MongoDB Atlas cluster configured
+- [ ] Environment variables set in production
+- [ ] Email service configured
+- [ ] JWT secrets generated (strong, random values)
+- [ ] CORS origins configured for production URLs
+- [ ] SSL certificates installed
+- [ ] Africa's Talking configured (if using USSD)
+- [ ] Monitoring and logging setup
+- [ ] Backup strategy implemented
+
+---
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -245,42 +586,29 @@ docker-compose up -d
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## Development Guidelines
+### Development Guidelines
 
-### Code Style
 - Use TypeScript for type safety
 - Follow ESLint configuration
 - Write meaningful commit messages
 - Add JSDoc comments for functions
-- Use meaningful variable and function names
-
-### Testing
-- Write unit tests for business logic
-- Test API endpoints
-- Test React components
-- Maintain test coverage above 80%
-
-### Security
-- Never commit sensitive information
-- Use environment variables for configuration
-- Implement proper input validation
-- Follow OWASP security guidelines
-
-## Support & Documentation
-
-- **API Documentation**: Available at `/api-docs` endpoint
-- **Component Documentation**: Inline JSDoc comments
-- **Database Schema**: MongoDB models in `backend/src/models/`
-- **Type Definitions**: TypeScript interfaces in `types/` directories
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-For questions, support, or contributions, please contact the development team or create an issue in the repository.
+- Write tests for new features
+- Ensure accessibility compliance
 
 ---
 
-**Patient Passport System** - Empowering healthcare through secure, efficient, and user-friendly digital solutions.
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+---
+
+## 🙏 Credits
+
+**Patient Passport System** - Secure, scalable healthcare data management platform.
+
+For questions or support, please open an issue in the repository or contact the development team.
+
+---
+
+**Last Updated**: 2024

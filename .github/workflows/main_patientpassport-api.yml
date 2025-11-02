@@ -99,11 +99,27 @@ jobs:
           fi
           echo "✅ Deployment package verified"
 
+      - name: Verify path from repository root
+        run: |
+          echo "Checking path from repository root..."
+          cd ${{ github.workspace }}
+          echo "Repository root: $(pwd)"
+          echo "Checking for backend/deploy-package:"
+          if [ -d "backend/deploy-package" ]; then
+            echo "✅ Found: backend/deploy-package"
+            ls -lah backend/deploy-package/
+            echo "File count: $(find backend/deploy-package -type f | wc -l)"
+          else
+            echo "❌ backend/deploy-package not found from repo root!"
+            echo "Contents of backend/:"
+            ls -la backend/ 2>/dev/null || echo "backend directory not found"
+          fi
+
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: ./backend/deploy-package
+          path: backend/deploy-package
           retention-days: 1
           if-no-files-found: error
           compression-level: 6
