@@ -61,11 +61,21 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EF97F0EC5FF346DDA6A50509B60EC278 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5003280868E84F909999D3A50199FDCA }}
 
-      - name: Stop Azure Web App
+      - name: Wait for any ongoing deployments to complete
         run: |
-          az webapp stop --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv) || true
-          echo "Waiting for app service to stop..."
-          sleep 10
+          echo "Checking for ongoing deployments..."
+          MAX_WAIT=300  # 5 minutes max wait
+          WAIT_TIME=0
+          while [ $WAIT_TIME -lt $MAX_WAIT ]; do
+            DEPLOYMENT_STATUS=$(az webapp deployment list --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv) --query "[0].status" -o tsv 2>/dev/null || echo "Unknown")
+            if [ "$DEPLOYMENT_STATUS" != "Running" ] && [ "$DEPLOYMENT_STATUS" != "Pending" ]; then
+              echo "No ongoing deployment detected. Proceeding..."
+              break
+            fi
+            echo "Waiting for deployment to complete... (${WAIT_TIME}s/${MAX_WAIT}s)"
+            sleep 10
+            WAIT_TIME=$((WAIT_TIME + 10))
+          done
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -74,8 +84,5 @@ jobs:
           package: ./node-app
           type: zip
           async: false
-
-      - name: Start Azure Web App
-        run: |
-          az webapp start --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
-          echo "App service started successfully"
+          restart: true
+          clean: true

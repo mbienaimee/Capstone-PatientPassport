@@ -12,7 +12,27 @@ const NotificationCenter: React.FC = () => {
   useEffect(() => {
     fetchNotifications();
     fetchStats();
-    setupSocketListeners();
+    
+    // Setup socket listener
+    const notificationHandler = (data: any) => {
+      console.log('New notification received:', data);
+      fetchNotifications();
+      fetchStats();
+      
+      // Show toast for urgent notifications
+      if (data.priority === 'urgent') {
+        toast.error(data.title, { duration: 10000 });
+      } else {
+        toast.success(data.title);
+      }
+    };
+    
+    socketService.onNotification(notificationHandler);
+    
+    // Cleanup on unmount
+    return () => {
+      socketService.removeAllListeners();
+    };
   }, []);
 
   const fetchNotifications = async () => {
@@ -38,21 +58,6 @@ const NotificationCenter: React.FC = () => {
     } catch (error: any) {
       console.error('Error fetching notification stats:', error);
     }
-  };
-
-  const setupSocketListeners = () => {
-    socketService.onNotification((data) => {
-      console.log('New notification received:', data);
-      fetchNotifications();
-      fetchStats();
-      
-      // Show toast for urgent notifications
-      if (data.priority === 'urgent') {
-        toast.error(data.title, { duration: 10000 });
-      } else {
-        toast.success(data.title);
-      }
-    });
   };
 
   const markAsRead = async (notificationId: string) => {

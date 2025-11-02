@@ -10,7 +10,20 @@ const PatientAccessRequestList: React.FC = () => {
 
   useEffect(() => {
     fetchRequests();
-    setupSocketListeners();
+    
+    // Setup socket listener
+    const accessRequestHandler = (data: any) => {
+      console.log('New access request received:', data);
+      fetchRequests(); // Refresh the list
+      toast.success('New access request received!');
+    };
+    
+    socketService.onAccessRequest(accessRequestHandler);
+    
+    // Cleanup on unmount
+    return () => {
+      socketService.removeAllListeners();
+    };
   }, []);
 
   const fetchRequests = async () => {
@@ -24,14 +37,6 @@ const PatientAccessRequestList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const setupSocketListeners = () => {
-    socketService.onAccessRequest((data) => {
-      console.log('New access request received:', data);
-      fetchRequests(); // Refresh the list
-      toast.success('New access request received!');
-    });
   };
 
   const handleResponse = async (requestId: string, status: 'approved' | 'denied', reason?: string) => {
