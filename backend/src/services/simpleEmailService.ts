@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 
 // Email service with multiple fallback options for Render free tier
 class RenderCompatibleEmailService {
