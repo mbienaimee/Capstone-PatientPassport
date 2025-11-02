@@ -46,6 +46,9 @@ export const requestPassportAccessOTP = asyncHandler(async (req: Request, res: R
     console.log(`   OTP: ${patient.tempOTP}`);
     console.log(`   Expires: ${patient.tempOTPExpiry}`);
     
+    // Check if email was previously sent (we can't know for sure, but assume yes if OTP exists)
+    const hasEmailConfig = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    
     const response: ApiResponse = {
       success: true,
       message: 'OTP already sent. Please use the existing OTP or wait for it to expire.',
@@ -53,7 +56,9 @@ export const requestPassportAccessOTP = asyncHandler(async (req: Request, res: R
         patientName: patient.user.name,
         patientEmail: patient.user.email,
         otpExpiry: '10 minutes',
-        existingOTP: true
+        existingOTP: true,
+        emailSent: hasEmailConfig ? true : undefined, // Assume sent if config exists
+        emailWarning: !hasEmailConfig ? 'No email credentials configured. Check server logs for OTP code.' : undefined
       }
     };
     return res.json(response);
@@ -68,25 +73,71 @@ export const requestPassportAccessOTP = asyncHandler(async (req: Request, res: R
   patient.tempOTPDoctor = doctorId;
   await patient.save();
 
+  console.log(`💾 OTP stored in database:`);
+  console.log(`   Patient: ${patient.user.name} (${patient.user.email})`);
+  console.log(`   Doctor: ${doctor.user.name}`);
+  console.log(`   OTP: ${otp}`);
+  console.log(`   Expires: ${patient.tempOTPExpiry.toISOString()}`);
+
   // Send OTP to patient using the real email service
+  let emailSent = false;
+  let emailError: any = null;
+  
+  // Check if email credentials are configured
+  const hasEmailConfig = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+  
   try {
+    console.log(`📧 Attempting to send OTP email to: ${patient.user.email}`);
+    if (hasEmailConfig) {
+      console.log(`✅ Email credentials found - attempting real email delivery`);
+    } else {
+      console.log(`⚠️  No email credentials configured - OTP will be logged to console only`);
+    }
+    
     await sendOTP(patient.user.email, otp, 'passport-access', doctor.user.name, patient.user.name);
-    console.log(`✅ OTP sent to patient ${patient.user.email}: ${otp}`);
+    emailSent = true;
+    console.log(`✅ OTP email sent successfully to ${patient.user.email}`);
     console.log(`📧 Patient: ${patient.user.name}`);
     console.log(`👨‍⚕️ Doctor: ${doctor.user.name}`);
   } catch (error) {
-    console.error('❌ Error sending OTP:', error);
-    // Don't fail the request if OTP sending fails, but log the issue
-    console.log('⚠️  OTP request succeeded but email delivery failed');
+    emailError = error;
+    console.error('❌ Error sending OTP email:', error);
+    console.error('   Error details:', error instanceof Error ? error.message : String(error));
+    
+    if (hasEmailConfig) {
+      console.error('⚠️  Email credentials are configured but email delivery failed!');
+      console.error('   Please check:');
+      console.error('   1. EMAIL_USER and EMAIL_PASS are correct');
+      console.error('   2. Gmail App Password is valid (if using Gmail)');
+      console.error('   3. Network connectivity to SMTP server');
+      console.error('   4. Server firewall allows outbound SMTP (port 587)');
+    } else {
+      console.log('⚠️  No email credentials configured');
+      console.log('   To enable email delivery, set environment variables:');
+      console.log('   EMAIL_HOST=smtp.gmail.com');
+      console.log('   EMAIL_USER=your-email@gmail.com');
+      console.log('   EMAIL_PASS=your-app-password');
+    }
+    
+    // Even if email fails, OTP is stored and can be retrieved from logs
+    console.log('💾 OTP is stored in database and logged to console for testing');
+    console.log(`🔐 OTP Code for testing: ${otp}`);
   }
 
+  // Return response indicating email status
   const response: ApiResponse = {
     success: true,
-    message: 'OTP sent to patient successfully',
+    message: emailSent 
+      ? 'OTP sent to patient successfully' 
+      : 'OTP generated successfully. Email delivery failed - check server logs for OTP code.',
     data: {
       patientName: patient.user.name,
       patientEmail: patient.user.email,
-      otpExpiry: '10 minutes'
+      otpExpiry: '10 minutes',
+      emailSent: emailSent,
+      ...(emailError && { 
+        emailWarning: 'Email delivery failed. OTP is available in server logs for testing purposes.'
+      })
     }
   };
 
@@ -122,31 +173,55 @@ export const verifyPassportAccessOTP = asyncHandler(async (req: Request, res: Re
   console.log(`   User ID: ${req.user._id}`);
   console.log(`   Doctor ID: ${doctorId}`);
   console.log(`   OTP Code: ${otpCode}`);
-  console.log(`   Stored OTP: ${patient.tempOTP}`);
-  console.log(`   Stored Doctor ID: ${patient.tempOTPDoctor}`);
+  console.log(`   Stored OTP: ${patient.tempOTP || 'NOT SET'}`);
+  console.log(`   Stored Doctor ID: ${patient.tempOTPDoctor?.toString() || 'NOT SET'}`);
+  console.log(`   OTP Expiry: ${patient.tempOTPExpiry?.toISOString() || 'NOT SET'}`);
+  console.log(`   Current Time: ${new Date().toISOString()}`);
   console.log(`   Timestamp: ${new Date().toISOString()}`);
 
-  // Verify OTP
-  if (!patient.tempOTP || patient.tempOTP !== otpCode) {
-    throw new CustomError('Invalid OTP code', 400);
+  // Check if OTP exists
+  if (!patient.tempOTP) {
+    console.log(`❌ No OTP found for patient`);
+    throw new CustomError('No OTP code found. Please request a new OTP.', 400);
   }
 
+  // Verify OTP code matches
+  if (patient.tempOTP !== otpCode.trim()) {
+    console.log(`❌ OTP mismatch:`);
+    console.log(`   Provided: ${otpCode}`);
+    console.log(`   Expected: ${patient.tempOTP}`);
+    throw new CustomError('Invalid OTP code. Please check the code and try again.', 400);
+  }
+
+  // Check if OTP has expired
   if (!patient.tempOTPExpiry || patient.tempOTPExpiry < new Date()) {
-    throw new CustomError('OTP has expired', 400);
+    console.log(`❌ OTP expired:`);
+    console.log(`   Expiry: ${patient.tempOTPExpiry?.toISOString() || 'NOT SET'}`);
+    console.log(`   Current: ${new Date().toISOString()}`);
+    // Clear expired OTP
+    patient.tempOTP = undefined;
+    patient.tempOTPExpiry = undefined;
+    patient.tempOTPDoctor = undefined;
+    await patient.save();
+    throw new CustomError('OTP has expired. Please request a new OTP.', 400);
   }
 
-  if (patient.tempOTPDoctor?.toString() !== doctorId.toString()) {
+  // Verify doctor ID matches
+  if (!patient.tempOTPDoctor || patient.tempOTPDoctor.toString() !== doctorId.toString()) {
     console.log(`❌ Doctor ID mismatch:`);
     console.log(`   Expected: ${doctorId.toString()}`);
-    console.log(`   Stored: ${patient.tempOTPDoctor?.toString()}`);
-    throw new CustomError('OTP was not requested by this doctor', 400);
+    console.log(`   Stored: ${patient.tempOTPDoctor?.toString() || 'NOT SET'}`);
+    throw new CustomError('This OTP was not requested by you. Please request a new OTP.', 400);
   }
 
-  // Clear OTP
+  console.log(`✅ OTP verification successful`);
+
+  // Clear OTP after successful verification
   patient.tempOTP = undefined;
   patient.tempOTPExpiry = undefined;
   patient.tempOTPDoctor = undefined;
   await patient.save();
+  console.log(`🧹 OTP cleared from patient record`);
 
   // Find or create patient passport
   let passport = await PatientPassport.findByPatientId(patientId);
@@ -199,15 +274,21 @@ export const verifyPassportAccessOTP = asyncHandler(async (req: Request, res: Re
     }
   }
 
-  // Add access record
+  // Add access record for audit trail
   await passport.addAccessRecord(doctorId, 'view', 'OTP verified access', true);
+  console.log(`📝 Access record added for doctor: ${doctorId}`);
 
-  // Populate passport data
+  // Populate passport data with all related information
   const populatedPassport = await PatientPassport.findById(passport._id)
     .populate('patient', 'user nationalId')
     .populate('patient.user', 'name email')
     .populate('lastUpdatedBy', 'user')
-    .populate('lastUpdatedBy.user', 'name');
+    .populate('lastUpdatedBy.user', 'name')
+    .populate('accessHistory.doctor', 'user')
+    .populate('accessHistory.doctor.user', 'name');
+
+  console.log(`✅ Passport populated successfully`);
+  console.log(`✅ Doctor ${doctor.user.name} now has access to ${patient.user.name}'s passport`);
 
   const response: ApiResponse = {
     success: true,
@@ -215,7 +296,10 @@ export const verifyPassportAccessOTP = asyncHandler(async (req: Request, res: Re
     data: {
       passport: populatedPassport,
       accessToken: 'temp-access-token', // You can implement JWT tokens for passport access
-      expiresIn: '1 hour'
+      expiresIn: '1 hour',
+      doctorId: doctorId.toString(),
+      patientId: patientId,
+      grantedAt: new Date().toISOString()
     }
   };
 

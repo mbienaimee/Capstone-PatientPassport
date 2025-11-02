@@ -4,18 +4,23 @@ import nodemailer from 'nodemailer';
 class RenderCompatibleEmailService {
   private transporter: nodemailer.Transporter | null = null;
   private isRenderFreeTier: boolean = true;
+  private initializationPromise: Promise<void> | null = null;
+  private initialized: boolean = false;
 
   constructor() {
     // Initialize transporter asynchronously without blocking
-    setImmediate(() => {
-      this.initializeTransporter().catch(error => {
-        console.error('Failed to initialize email transporter:', error);
-      });
+    this.initializationPromise = this.initializeTransporter().catch(error => {
+      console.error('Failed to initialize email transporter:', error);
+      this.initialized = true;
     });
   }
 
   private async initializeTransporter() {
-    console.log('Initializing email service for deployment...');
+    if (this.initialized) {
+      return; // Already initialized or in progress
+    }
+    
+    console.log('📧 Initializing email service...');
     console.log('Environment check:');
     console.log('   EMAIL_HOST:', process.env.EMAIL_HOST || 'not set');
     console.log('   EMAIL_USER:', process.env.EMAIL_USER ? 'set' : 'not set');
@@ -66,6 +71,7 @@ class RenderCompatibleEmailService {
           console.log('✅ SendGrid email provider connected successfully');
           this.transporter = transporter;
           this.isRenderFreeTier = false;
+          this.initialized = true;
           return;
         }
       } catch (error) {
@@ -113,6 +119,7 @@ class RenderCompatibleEmailService {
           console.log('✅ Gmail email provider connected successfully');
           this.transporter = transporter;
           this.isRenderFreeTier = false;
+          this.initialized = true;
           return;
         }
       } catch (error) {
@@ -129,26 +136,62 @@ class RenderCompatibleEmailService {
     console.log('   2. Gmail: EMAIL_USER=your-email@gmail.com, EMAIL_PASS=app-password');
     console.log('   3. Railway.app - Free tier allows SMTP');
     console.log('   4. Render Starter - $7/month removes restrictions');
+    this.initialized = true;
   }
 
   async sendEmail(mailOptions: nodemailer.SendMailOptions): Promise<void> {
     // Always log OTP codes to console for debugging, regardless of SMTP status
     await this.logOTPToConsole(mailOptions);
     
-    if (this.transporter && !this.isRenderFreeTier) {
+    // Wait for initialization to complete if credentials are configured
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS && !this.initialized && this.initializationPromise) {
       try {
-        const result = await this.transporter.sendMail(mailOptions);
-        console.log('✅ Email sent successfully:', result.messageId);
-        console.log('📧 Email delivered to:', mailOptions.to);
-        return;
+        console.log('⏳ Waiting for email service initialization...');
+        await this.initializationPromise;
       } catch (error) {
-        console.error('❌ Email sending failed:', error?.message || error);
-        console.log('🔄 Falling back to development mode');
+        console.error('Email initialization error:', error);
       }
     }
     
-    // Enhanced development mode for Render free tier
+    // Try to initialize on-demand if credentials exist but transporter isn't ready
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS && !this.transporter) {
+      console.log('🔄 Attempting on-demand email service initialization...');
+      // Reset initialized flag to allow re-initialization
+      const wasInitialized = this.initialized;
+      this.initialized = false;
+      await this.initializeTransporter().catch(error => {
+        console.error('On-demand initialization failed:', error);
+        this.initialized = wasInitialized;
+      });
+    }
+    
+    // Try to send email if transporter is available
+    if (this.transporter && !this.isRenderFreeTier) {
+      try {
+        console.log(`📤 Attempting to send email to: ${mailOptions.to}`);
+        const result = await this.transporter.sendMail(mailOptions);
+        console.log('✅ Email sent successfully:', result.messageId);
+        console.log('📧 Email delivered to:', mailOptions.to);
+        return; // Success - email sent
+      } catch (error: any) {
+        console.error('❌ Email sending failed:', error?.message || error);
+        console.error('   Error code:', error?.code);
+        console.error('   Error response:', error?.response);
+        // Don't fall through - throw error so caller knows email failed
+        throw new Error(`Email delivery failed: ${error?.message || 'Unknown error'}`);
+      }
+    }
+    
+    // If we have credentials but transporter failed, throw error
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      console.error('❌ Email credentials configured but transporter not available');
+      throw new Error('Email service not properly configured. Please check your email settings.');
+    }
+    
+    // Enhanced development mode - only if no credentials configured
+    console.log('⚠️  No email credentials configured - using development mode');
     await this.sendEmailDev(mailOptions);
+    // In dev mode, we don't throw - just log
   }
 
   private async logOTPToConsole(mailOptions: nodemailer.SendMailOptions): Promise<void> {
@@ -336,4 +379,5 @@ export const sendNotificationEmail = async (email: string, subject: string, html
   };
 
   await renderCompatibleEmailService.sendEmail(mailOptions);
+};
 };

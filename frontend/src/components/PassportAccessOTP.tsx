@@ -61,13 +61,61 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
       const response = await apiService.requestPassportAccessOTP(patientId);
       
       if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'OTP Sent!',
-          message: `OTP has been sent to ${patientName}'s email. Please ask them to share the code with you.`
-        });
+        const emailSent = response.data?.emailSent;
+        const emailWarning = response.data?.emailWarning;
+        const existingOTP = response.data?.existingOTP;
+        
+        if (existingOTP) {
+          // Existing OTP case
+          if (emailSent === true) {
+            showNotification({
+              type: 'info',
+              title: 'Existing OTP',
+              message: `An OTP was already sent to ${patientName}'s email (${patientEmail}). Please use that OTP or wait for it to expire.`
+            });
+          } else if (emailSent === false || emailWarning) {
+            showNotification({
+              type: 'warning',
+              title: 'Existing OTP Found',
+              message: `An OTP was already generated. ${emailWarning || 'Please check server logs for the OTP code or ask the patient to check their email.'}`
+            });
+          } else {
+            showNotification({
+              type: 'info',
+              title: 'Existing OTP',
+              message: `An OTP was already sent. Please use the existing OTP or wait for it to expire.`
+            });
+          }
+        } else {
+          // New OTP case
+          if (emailSent === true) {
+            showNotification({
+              type: 'success',
+              title: 'OTP Sent!',
+              message: `OTP has been sent to ${patientName}'s email (${patientEmail}). Please ask them to share the code with you.`
+            });
+          } else if (emailSent === false || emailWarning) {
+            showNotification({
+              type: 'warning',
+              title: 'OTP Generated',
+              message: `OTP was generated but email delivery failed. Check server logs for the OTP code or ask the patient to check their email.`
+            });
+          } else {
+            showNotification({
+              type: 'info',
+              title: 'OTP Generated',
+              message: `OTP has been generated. ${emailWarning || 'Please check server logs for the OTP code.'}`
+            });
+          }
+        }
+        
         setCountdown(30); // 30 seconds countdown to prevent spam
         console.log('✅ OTP request successful');
+        console.log('📧 Email sent:', emailSent);
+        console.log('📋 Existing OTP:', existingOTP);
+        if (emailWarning) {
+          console.warn('⚠️ Email warning:', emailWarning);
+        }
       }
     } catch (error) {
       console.error('❌ Request OTP error:', error);
@@ -108,7 +156,12 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
     setError('');
     
     try {
-      const response = await apiService.verifyPassportAccessOTP(patientId, otpCode);
+      // Trim OTP code before sending
+      const trimmedOTP = otpCode.trim();
+      console.log(`🔐 Verifying OTP for patient: ${patientName}`);
+      console.log(`   OTP Length: ${trimmedOTP.length}`);
+      
+      const response = await apiService.verifyPassportAccessOTP(patientId, trimmedOTP);
       
       if (response.success) {
         showNotification({
@@ -143,8 +196,20 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 h-screen" onClick={onCancel}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full h-[95%] overflow-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 h-screen"
+      onClick={(e) => {
+        // Only close if clicking directly on the backdrop, not on child elements
+        if (e.target === e.currentTarget) {
+          // Don't auto-close on backdrop click - require explicit cancel
+          // onCancel();
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full h-[95%] overflow-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 rounded-t-2xl">
           <div className="flex items-center justify-between">
@@ -158,8 +223,13 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
               </div>
             </div>
             <button
-              onClick={onCancel}
+              onClick={() => {
+                if (window.confirm('Are you sure you want to cancel? The OTP has already been sent to the patient. If you cancel, you will need to request a new OTP.')) {
+                  onCancel();
+                }
+              }}
               className="text-white hover:text-green-200 transition-colors"
+              title="Cancel (requires confirmation)"
             >
               <ArrowLeft className="w-6 h-6" />
             </button>

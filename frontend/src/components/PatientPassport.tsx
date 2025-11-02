@@ -16,8 +16,12 @@ import {
   FiChevronDown, 
   FiEye, 
   FiBell,
-  FiLogOut
+  FiLogOut,
+  FiFileText,
+  FiBuilding,
+  FiPill
 } from 'react-icons/fi';
+import { Calendar, Stethoscope, Building as BuildingIcon, User, Pill, Activity, FileText } from 'lucide-react';
 
 interface MedicalCondition {
   name: string;
@@ -180,9 +184,9 @@ const PatientPassport: React.FC = () => {
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your passport...</p>
         </div>
       </div>
@@ -408,6 +412,192 @@ const PatientPassport: React.FC = () => {
     }
   });
 
+  // Helper function to extract name from object or string
+  const getName = (obj: any): string => {
+    if (!obj) return 'Unknown';
+    if (typeof obj === 'string') return obj;
+    if (obj.name) return obj.name;
+    if (obj.user?.name) return obj.user.name;
+    return 'Unknown';
+  };
+
+  // Helper function to check if dates are close (within same day)
+  const datesMatch = (date1: any, date2: any): boolean => {
+    if (!date1 || !date2) return false;
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    return d1.toDateString() === d2.toDateString();
+  };
+
+  // Combine medical history data into consolidated records
+  const getConsolidatedMedicalHistory = () => {
+    const records: any[] = [];
+    
+    // Get raw data from medicalData for better compatibility
+    const rawVisits = medicalData.visits || hospitalVisits || [];
+    const rawConditions = medicalData.conditions || medicalHistory || [];
+    const rawMedications = medicalData.medications || medications || [];
+    const rawTests = medicalData.tests || testResults || [];
+    
+    // Process hospital visits - they contain the most complete information
+    const visits = rawVisits;
+    const conditions = medicalHistory.length > 0 ? medicalHistory : rawConditions.map((c: any) => ({
+      name: c.condition || c.name || '',
+      diagnosed: c.diagnosedDate || c.diagnosed || c.date || '',
+      details: c.notes || c.details || '',
+      procedure: c.diagnosedBy || c.procedure || ''
+    }));
+    const meds = medications.length > 0 ? medications : rawMedications;
+    const tests = testResults.length > 0 ? testResults : rawTests;
+
+    // Create consolidated records from hospital visits
+    visits.forEach((visit: any, index: number) => {
+      // Extract visit data (handle both direct and nested formats)
+      const visitData = visit.data || visit;
+      const visitDateStr = visitData.date || visitData.visitDate;
+      const visitDate = visitDateStr ? (typeof visitDateStr === 'string' ? new Date(visitDateStr) : visitDateStr) : new Date();
+      
+      // Find related conditions (diagnosed on the same date)
+      const relatedConditions = conditions.filter((c: any) => {
+        const condDate = c.diagnosed || c.diagnosedDate;
+        if (!condDate) return false;
+        return datesMatch(condDate, visitDate);
+      });
+      
+      // Find related medications (prescribed around visit date)
+      const relatedMedications = meds.filter((m: any) => {
+        const medData = m.data || m;
+        const startDate = medData.startDate;
+        if (!startDate) return false;
+        const medDate = typeof startDate === 'string' ? new Date(startDate) : startDate;
+        const visit = typeof visitDate === 'string' ? new Date(visitDate) : visitDate;
+        const daysDiff = Math.abs((medDate.getTime() - visit.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 7;
+      });
+
+      // Find related tests (tested on the same date or within 3 days)
+      const relatedTests = tests.filter((t: any) => {
+        const testData = t.data || t;
+        const testDate = testData.date || testData.testDate;
+        if (!testDate) return false;
+        const test = typeof testDate === 'string' ? new Date(testDate) : testDate;
+        const visit = typeof visitDate === 'string' ? new Date(visitDate) : visitDate;
+        const daysDiff = Math.abs((test.getTime() - visit.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 3;
+      });
+
+      // Extract doctor and hospital names
+      const doctorName = getName(visitData.doctor) || visitData.doctorName || 'Unknown';
+      const hospitalName = getName(visitData.hospital) || visitData.hospital || 'Unknown';
+
+      // Get diagnosis from visit or related conditions
+      const diagnosis = visitData.diagnosis || 
+                       visitData.reason ||
+                       relatedConditions.map((c: any) => c.name).join(', ') || 
+                       'No diagnosis recorded';
+
+      records.push({
+        id: visit._id || visit.id || `visit-${index}`,
+        date: visitDate,
+        diagnosis: diagnosis,
+        medications: relatedMedications.map((m: any) => {
+          const medData = m.data || m;
+          return {
+            name: medData.medicationName || medData.name || '',
+            dosage: medData.dosage || '',
+            frequency: medData.frequency || '',
+            startDate: medData.startDate,
+            endDate: medData.endDate,
+            prescribedBy: getName(medData.prescribedBy)
+          };
+        }),
+        testResults: relatedTests.map((t: any) => {
+          const testData = t.data || t;
+          return {
+            testType: testData.testName || testData.testType || testData.name || '',
+            results: testData.result || testData.results || '',
+            status: testData.status || 'normal',
+            date: testData.date || testData.testDate
+          };
+        }),
+        doctorName: doctorName,
+        hospitalName: hospitalName,
+        visitType: visitData.reason || 'General Visit',
+        notes: visitData.treatment || visitData.notes || ''
+      });
+    });
+
+    // Add standalone conditions without visits
+    conditions.forEach((condition: any, index: number) => {
+      const condData = condition.data || condition;
+      const conditionDateStr = condData.diagnosed || condData.diagnosedDate || condData.date;
+      const conditionDate = conditionDateStr ? (typeof conditionDateStr === 'string' ? new Date(conditionDateStr) : conditionDateStr) : new Date();
+      
+      const hasVisit = visits.some((visit: any) => {
+        const visitData = visit.data || visit;
+        const visitDate = visitData.date || visitData.visitDate;
+        if (!visitDate) return false;
+        return datesMatch(visitDate, conditionDate);
+      });
+
+      if (!hasVisit) {
+        // Find medications and tests around this condition date
+        const relatedMedications = meds.filter((m: any) => {
+          const medData = m.data || m;
+          const startDate = medData.startDate;
+          if (!startDate) return false;
+          return datesMatch(startDate, conditionDate);
+        });
+
+        const relatedTests = tests.filter((t: any) => {
+          const testData = t.data || t;
+          const testDate = testData.date || testData.testDate;
+          if (!testDate) return false;
+          return datesMatch(testDate, conditionDate);
+        });
+
+        records.push({
+          id: condition._id || condition.id || `condition-${index}`,
+          date: conditionDate,
+          diagnosis: condData.condition || condData.name || 'No diagnosis',
+          medications: relatedMedications.map((m: any) => {
+            const medData = m.data || m;
+            return {
+              name: medData.medicationName || medData.name || '',
+              dosage: medData.dosage || '',
+              frequency: medData.frequency || '',
+              startDate: medData.startDate,
+              endDate: medData.endDate,
+              prescribedBy: getName(medData.prescribedBy)
+            };
+          }),
+          testResults: relatedTests.map((t: any) => {
+            const testData = t.data || t;
+            return {
+              testType: testData.testName || testData.testType || testData.name || '',
+              results: testData.result || testData.results || '',
+              status: testData.status || 'normal',
+              date: testData.date || testData.testDate
+            };
+          }),
+          doctorName: condData.diagnosedBy || condData.procedure || 'Unknown',
+          hospitalName: 'Unknown',
+          visitType: 'Diagnosis Only',
+          notes: condData.notes || condData.details || ''
+        });
+      }
+    });
+
+    // Sort by date (most recent first)
+    return records.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA;
+    });
+  };
+
+  const consolidatedRecords = getConsolidatedMedicalHistory();
+
   // Empty state component
   const isMedicationCurrentlyActive = (medication: any) => {
     const now = new Date();
@@ -460,9 +650,9 @@ const PatientPassport: React.FC = () => {
   // Show loading state while fetching data
   if (dataLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading medical records...</p>
         </div>
       </div>
@@ -692,202 +882,165 @@ const PatientPassport: React.FC = () => {
           </div>
         </div>
 
-        {/* Medical History */}
-        <div className="dashboard-card mb-6">
-          <div className="dashboard-card-header">
-            <h2 className="dashboard-card-title text-green-600">
+        {/* Consolidated Medical History - All in One Card */}
+        <div className="mb-6">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <Activity className="h-6 w-6 mr-2 text-green-600" />
               Medical History
             </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Complete medical records with diagnosis, medications, tests, and visit information
+            </p>
           </div>
-          <div className="space-y-3">
-            {medicalHistory.length === 0 ? (
-              <EmptyState 
-                title="No Medical History" 
-                description="Your medical conditions and procedures will appear here once added by your healthcare providers."
-                icon={FiActivity}
-              />
-            ) : (
-              medicalHistory.map((condition, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
-                <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 rounded-lg"
-                  onClick={() =>
-                    setExpandedCondition(expandedCondition === idx ? null : idx)
-                  }
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      setExpandedCondition(expandedCondition === idx ? null : idx);
-                    }
-                  }}
-                  aria-expanded={expandedCondition === idx}
+          
+          <div className="space-y-4">
+            {consolidatedRecords.length > 0 ? (
+              consolidatedRecords.map((record: any, index: number) => (
+                <div 
+                  key={record.id || index}
+                  className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {condition.name}
+                  {/* Header */}
+                  <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Calendar className="h-4 w-4 text-green-600" />
+                          <span className="font-semibold text-gray-900">
+                            {new Date(record.date).toLocaleDateString('en-US', { 
+                              weekday: 'short',
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Stethoscope className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-700">{record.visitType}</span>
+                        </div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900 mb-2 bg-green-50 px-3 py-1.5 rounded border border-green-200">
+                          <BuildingIcon className="h-4 w-4 text-green-600" />
+                          <span className="text-green-700">{record.hospitalName}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1.5 rounded border border-blue-200">
+                          <User className="h-4 w-4 text-blue-600" />
+                          <span className="text-blue-700">{record.doctorName}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Diagnosis */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                      <Activity className="h-4 w-4 mr-1 text-red-500" />
+                      Diagnosis
+                    </h4>
+                    <p className="text-gray-900 bg-white p-3 rounded border border-green-200">
+                      {record.diagnosis || 'No diagnosis recorded'}
                     </p>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="badge-gray">
-                      {condition.diagnosed
-                        ? `Diagnosed: ${condition.diagnosed}`
-                        : `Procedure: ${condition.procedure}`}
-                    </span>
-                    <FiChevronDown
-                      className={`w-5 h-5 text-gray-400 transition-transform ${
-                        expandedCondition === idx ? "rotate-180" : ""
-                      }`}
-                    />
-                  </div>
+
+                  {/* Medications */}
+                  {record.medications && record.medications.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                        <Pill className="h-4 w-4 mr-1 text-blue-500" />
+                        Medications
+                      </h4>
+                      <div className="space-y-2">
+                        {record.medications.map((med: any, medIndex: number) => (
+                          <div key={medIndex} className="bg-white p-3 rounded border border-green-200">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">{med.name}</p>
+                                <p className="text-sm text-gray-600">
+                                  {med.dosage} - {med.frequency}
+                                </p>
+                                {med.prescribedBy && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Prescribed by: {med.prescribedBy}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right text-xs text-gray-500">
+                                {med.startDate && (
+                                  <p>Start: {new Date(med.startDate).toLocaleDateString()}</p>
+                                )}
+                                {med.endDate && (
+                                  <p>End: {new Date(med.endDate).toLocaleDateString()}</p>
+                                )}
+                                {!med.endDate && (
+                                  <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs mt-1">
+                                    Active
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Test Results */}
+                  {record.testResults && record.testResults.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                        <Activity className="h-4 w-4 mr-1 text-green-500" />
+                        Test Results
+                      </h4>
+                      <div className="space-y-2">
+                        {record.testResults.map((test: any, testIndex: number) => (
+                          <div key={testIndex} className="bg-white p-3 rounded border border-green-200">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">{test.testType}</p>
+                                <p className="text-sm text-gray-700 mt-1">{test.results}</p>
+                              </div>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                test.status === 'normal' ? 'bg-green-100 text-green-800' :
+                                test.status === 'abnormal' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {test.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {record.notes && (
+                    <div className="mt-4 pt-4 border-t border-green-300">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Notes</h4>
+                      <p className="text-sm text-gray-600 bg-white p-3 rounded border border-green-200">
+                        {record.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* No medications or tests message */}
+                  {(!record.medications || record.medications.length === 0) && 
+                   (!record.testResults || record.testResults.length === 0) && (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      No medications or test results recorded for this visit
+                    </div>
+                  )}
                 </div>
-                {expandedCondition === idx && condition.details && (
-                  <div className="px-4 pb-4 border-t border-gray-100">
-                    <p className="text-sm text-gray-600 mt-3">
-                      {condition.details}
-                    </p>
-                  </div>
-                )}
+              ))
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-8 text-center">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500">No medical history records available</p>
               </div>
-            ))
             )}
-          </div>
-        </div>
-
-        {/* Medications */}
-        <div className="dashboard-card mb-6">
-          <div className="dashboard-card-header">
-            <h2 className="dashboard-card-title text-green-600">
-              Medications
-            </h2>
-          </div>
-          <div className="space-y-3">
-            {medications.length === 0 ? (
-              <EmptyState 
-                title="No Medications" 
-                description="Your current and past medications will appear here once added by your healthcare providers."
-                icon={FiActivity}
-              />
-            ) : (
-              medications.map((med, idx) => {
-                const isActive = isMedicationCurrentlyActive(med);
-                return (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {med.name}
-                      </p>
-                      <p className="text-xs text-gray-600">{med.dosage}</p>
-                      {(med.startTime || med.endTime) && (
-                        <p className="text-xs text-blue-600 mt-1">
-                          Active: {med.startTime || '00:00'} - {med.endTime || '23:59'}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={isActive ? "badge-success" : "badge-gray"}
-                      >
-                        {isActive ? "Active Now" : "Inactive"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Test Results */}
-          <div className="dashboard-card">
-            <div className="dashboard-card-header">
-              <h2 className="dashboard-card-title text-green-600">
-                Test Results
-              </h2>
-            </div>
-            <div className="space-y-2">
-              {testResults.length === 0 ? (
-                <EmptyState 
-                  title="No Test Results" 
-                  description="Your lab tests and diagnostic results will appear here once added by your healthcare providers."
-                  icon={FiActivity}
-                />
-              ) : (
-                testResults.map((test, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {test.name}
-                    </p>
-                    <p className="text-xs text-gray-600">{test.date}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span
-                      className={
-                        test.status === "Critical"
-                          ? "badge-danger"
-                          : test.status === "Normal Sinus Rhythm"
-                          ? "badge-info"
-                          : "badge-success"
-                      }
-                    >
-                      {test.status}
-                    </span>
-                    <button 
-                      onClick={() => navigate('/patient-passport')}
-                      className="text-xs text-green-600 hover:text-blue-700 font-semibold transition-colors flex items-center gap-1"
-                      aria-label={`View ${test.name} report`}
-                    >
-                      <FiEye className="w-3 h-3" />
-                      View Report
-                    </button>
-                  </div>
-                </div>
-              ))
-              )}
-            </div>
-          </div>
-
-          {/* Hospital Visits */}
-          <div className="dashboard-card">
-            <div className="dashboard-card-header">
-              <h2 className="dashboard-card-title text-green-600">
-                Hospital Visits
-              </h2>
-            </div>
-            <div className="space-y-2">
-              {hospitalVisits.length === 0 ? (
-                <EmptyState 
-                  title="No Hospital Visits" 
-                  description="Your hospital visits and appointments will appear here once added by your healthcare providers."
-                  icon={FiHome}
-                />
-              ) : (
-                hospitalVisits.map((visit, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {visit.hospital}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">{visit.reason}</p>
-                      <p className="text-xs text-gray-500 mt-1">{visit.date}</p>
-                    </div>
-                  </div>
-                </div>
-              ))
-              )}
-            </div>
           </div>
         </div>
 
