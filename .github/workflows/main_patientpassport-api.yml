@@ -34,11 +34,33 @@ jobs:
       - name: Skip tests (optional)
         run: echo "Skipping tests to avoid workflow failure"
 
+      - name: Prepare deployment package
+        run: |
+          echo "Creating deployment package..."
+          mkdir -p deploy-package
+          
+          # Copy essential files only (exclude node_modules and source files)
+          cp -r dist deploy-package/
+          cp package*.json deploy-package/
+          cp tsconfig.json deploy-package/ 2>/dev/null || true
+          
+          # Copy necessary config files
+          [ -f .env.example ] && cp .env.example deploy-package/ || true
+          [ -f README.md ] && cp README.md deploy-package/ || true
+          
+          # Copy scripts folder if exists
+          [ -d scripts ] && cp -r scripts deploy-package/ || true
+          
+          # Show package size
+          du -sh deploy-package
+          echo "Deployment package prepared"
+
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: ./  # Upload current backend folder
+          path: ./deploy-package
+          retention-days: 1
 
   deploy:
     runs-on: ubuntu-latest
@@ -52,7 +74,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-          path: ./node-app
+          path: ./deploy-package
+
+      - name: Setup Node.js for deployment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+
+      - name: Install production dependencies in deployment package
+        run: |
+          cd deploy-package
+          echo "Installing production dependencies..."
+          npm ci --only=production --prefer-offline --no-audit
+          echo "Dependencies installed successfully"
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -61,28 +95,30 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EF97F0EC5FF346DDA6A50509B60EC278 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5003280868E84F909999D3A50199FDCA }}
 
-      - name: Wait for any ongoing deployments to complete
+      - name: Stop Azure Web App before deployment
         run: |
-          echo "Checking for ongoing deployments..."
-          MAX_WAIT=300  # 5 minutes max wait
-          WAIT_TIME=0
-          while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-            DEPLOYMENT_STATUS=$(az webapp deployment list --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv) --query "[0].status" -o tsv 2>/dev/null || echo "Unknown")
-            if [ "$DEPLOYMENT_STATUS" != "Running" ] && [ "$DEPLOYMENT_STATUS" != "Pending" ]; then
-              echo "No ongoing deployment detected. Proceeding..."
-              break
-            fi
-            echo "Waiting for deployment to complete... (${WAIT_TIME}s/${MAX_WAIT}s)"
-            sleep 10
-            WAIT_TIME=$((WAIT_TIME + 10))
-          done
+          echo "Stopping app service to release file locks..."
+          az webapp stop --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv) || echo "App may already be stopped"
+          sleep 5
+
+      - name: Clean previous deployment files
+        run: |
+          echo "Cleaning previous deployment artifacts..."
+          RESOURCE_GROUP=$(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
+          az webapp deployment source delete --name patientpassport-api --resource-group $RESOURCE_GROUP --manual-integration || echo "No previous deployments to clean"
+          sleep 3
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'patientpassport-api'
-          package: ./node-app
+          package: ./deploy-package
           type: zip
           async: false
           restart: true
-          clean: true
+
+      - name: Start Azure Web App
+        run: |
+          echo "Starting app service..."
+          az webapp start --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
+          echo "Deployment complete!"
