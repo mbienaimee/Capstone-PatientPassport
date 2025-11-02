@@ -380,4 +380,3 @@ export const sendNotificationEmail = async (email: string, subject: string, html
 
   await renderCompatibleEmailService.sendEmail(mailOptions);
 };
-};
