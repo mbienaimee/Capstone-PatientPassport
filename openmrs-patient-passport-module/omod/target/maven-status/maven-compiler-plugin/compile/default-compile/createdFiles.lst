@@ -1,3 +1,4 @@
+org\openmrs\module\patientpassport\advice\ObservationSaveAdvice.class
 org\openmrs\module\patientpassport\web\controller\PatientPassportController.class
 org\openmrs\module\patientpassport\extension\html\GutterListExt.class
 org\openmrs\module\patientpassport\PatientPassportModuleActivator.class
