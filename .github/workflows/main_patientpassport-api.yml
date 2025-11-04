@@ -165,6 +165,46 @@ jobs:
           npm ci --only=production --prefer-offline --no-audit
           echo "✅ Dependencies installed successfully"
 
+      - name: Create web.config for Node.js
+        run: |
+          cat > deploy-package/web.config << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <webSocket enabled="false" />
+              <handlers>
+                <add name="iisnode" path="dist/server.js" verb="*" modules="iisnode"/>
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+                    <match url="^dist/server.js\/debug[\/]?" />
+                  </rule>
+                  <rule name="StaticContent">
+                    <action type="Rewrite" url="public{REQUEST_URI}"/>
+                  </rule>
+                  <rule name="DynamicContent">
+                    <conditions>
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+                    </conditions>
+                    <action type="Rewrite" url="dist/server.js"/>
+                  </rule>
+                </rules>
+              </rewrite>
+              <security>
+                <requestFiltering>
+                  <hiddenSegments>
+                    <remove segment="bin"/>
+                  </hiddenSegments>
+                </requestFiltering>
+              </security>
+              <httpErrors existingResponse="PassThrough" />
+              <iisnode node_env="production" />
+            </system.webServer>
+          </configuration>
+          EOF
+          echo "✅ web.config created for Node.js runtime"
+
       - name: Create deployment zip
         run: |
           echo "🚀 [FIXED VERSION] Creating deployment zip file..."
@@ -203,6 +243,24 @@ jobs:
           az webapp stop --name patientpassport-api --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "App may already be stopped"
           sleep 5
 
+      - name: Configure Azure Web App for Node.js
+        shell: bash
+        run: |
+          echo "Configuring app service for Node.js runtime..."
+          # Set Node.js version
+          az webapp config appsettings set --name patientpassport-api \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --settings WEBSITE_NODE_DEFAULT_VERSION="~18" \
+            SCM_DO_BUILD_DURING_DEPLOYMENT="false" \
+            WEBSITE_RUN_FROM_PACKAGE="1" || echo "Settings may already be configured"
+          
+          # Set startup command
+          az webapp config set --name patientpassport-api \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --startup-file "node dist/server.js" || echo "Startup file may already be set"
+          
+          echo "✅ App service configured for Node.js"
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
@@ -210,9 +268,11 @@ jobs:
           package: ./deploy.zip
           type: zip
           restart: true
+          startup-command: 'node dist/server.js'
           # ✅ NO async parameter - this caused the warning
           # ✅ Using ./deploy.zip (file) NOT ./deploy-package (directory)
           # ✅ This is the CORRECTED version
+          # ✅ Added startup-command for Node.js
 
       - name: Start Azure Web App
         shell: bash
