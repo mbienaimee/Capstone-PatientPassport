@@ -172,17 +172,24 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EF97F0EC5FF346DDA6A50509B60EC278 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5003280868E84F909999D3A50199FDCA }}
 
+      - name: Get Resource Group
+        id: get-rg
+        run: |
+          echo "Fetching resource group..."
+          RESOURCE_GROUP=$(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
+          echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
+          echo "✅ Resource Group: $RESOURCE_GROUP"
+
       - name: Stop Azure Web App before deployment
         run: |
           echo "Stopping app service to release file locks..."
-          az webapp stop --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv) || echo "App may already be stopped"
+          az webapp stop --name patientpassport-api --resource-group ${{ steps.get-rg.outputs.resource_group }} || echo "App may already be stopped"
           sleep 5
 
       - name: Clean previous deployment files
         run: |
           echo "Cleaning previous deployment artifacts..."
-          RESOURCE_GROUP=$(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
-          az webapp deployment source delete --name patientpassport-api --resource-group $RESOURCE_GROUP --manual-integration || echo "No previous deployments to clean"
+          az webapp deployment source delete --name patientpassport-api --resource-group ${{ steps.get-rg.outputs.resource_group }} --manual-integration || echo "No previous deployments to clean"
           sleep 3
 
       - name: Deploy to Azure Web App
@@ -197,5 +204,5 @@ jobs:
       - name: Start Azure Web App
         run: |
           echo "Starting app service..."
-          az webapp start --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
+          az webapp start --name patientpassport-api --resource-group ${{ steps.get-rg.outputs.resource_group }}
           echo "Deployment complete!"
