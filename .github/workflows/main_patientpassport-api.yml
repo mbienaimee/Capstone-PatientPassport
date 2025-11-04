@@ -231,16 +231,24 @@ jobs:
 
       - name: Verify Azure Resource Group
         run: |
-          echo "Using resource group: ${{ secrets.AZURE_RESOURCE_GROUP }}"
+          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
+          # Fallback to hardcoded value if secret not set
+          if [ -z "$RESOURCE_GROUP" ]; then
+            RESOURCE_GROUP="passportpatient_group-364"
+            echo "⚠️  Using hardcoded resource group (secret not set): $RESOURCE_GROUP"
+          else
+            echo "✅ Using resource group from secret: $RESOURCE_GROUP"
+          fi
+          echo "AZURE_RG=$RESOURCE_GROUP" >> $GITHUB_ENV
           echo "Web app name: patientpassport-api"
           echo "Verifying resource group exists..."
-          az group show --name ${{ secrets.AZURE_RESOURCE_GROUP }} -o table || echo "Resource group not found - deployment may fail"
+          az group show --name "$RESOURCE_GROUP" -o table || echo "Resource group not found - deployment may fail"
 
       - name: Stop Azure Web App before deployment
         shell: bash
         run: |
           echo "Stopping app service to release file locks..."
-          az webapp stop --name patientpassport-api --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "App may already be stopped"
+          az webapp stop --name patientpassport-api --resource-group "$AZURE_RG" || echo "App may already be stopped"
           sleep 5
 
       - name: Configure Azure Web App for Node.js
@@ -249,14 +257,14 @@ jobs:
           echo "Configuring app service for Node.js runtime..."
           # Set Node.js version
           az webapp config appsettings set --name patientpassport-api \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --resource-group "$AZURE_RG" \
             --settings WEBSITE_NODE_DEFAULT_VERSION="~18" \
             SCM_DO_BUILD_DURING_DEPLOYMENT="false" \
             WEBSITE_RUN_FROM_PACKAGE="1" || echo "Settings may already be configured"
           
           # Set startup command
           az webapp config set --name patientpassport-api \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --resource-group "$AZURE_RG" \
             --startup-file "node dist/server.js" || echo "Startup file may already be set"
           
           echo "✅ App service configured for Node.js"
@@ -278,6 +286,6 @@ jobs:
         shell: bash
         run: |
           echo "Starting app service..."
-          az webapp start --name patientpassport-api --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+          az webapp start --name patientpassport-api --resource-group "$AZURE_RG"
           echo "✅ Deployment complete!"
           echo "🌐 App URL: https://patientpassport-api.azurewebsites.net"
