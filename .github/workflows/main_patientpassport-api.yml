@@ -36,14 +36,44 @@ jobs:
         run: |
           echo "Creating deployment package..."
           mkdir -p deploy-package
+          
+          # Copy built app
           cp -r dist deploy-package/
+          
+          # Copy package files
           cp package*.json deploy-package/
           [ -f tsconfig.json ] && cp tsconfig.json deploy-package/
           [ -f .env.example ] && cp .env.example deploy-package/
           [ -f README.md ] && cp README.md deploy-package/
-          echo "✅ Deployment package prepared"
+          
+          # Create web.config
+          cat > deploy-package/web.config << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <system.webServer>
+    <handlers>
+      <add name="iisnode" path="dist/server.js" verb="*" modules="iisnode"/>
+    </handlers>
+    <rewrite>
+      <rules>
+        <rule name="DynamicContent">
+          <conditions>
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+          </conditions>
+          <action type="Rewrite" url="dist/server.js"/>
+        </rule>
+      </rules>
+    </rewrite>
+    <httpErrors existingResponse="PassThrough" />
+    <iisnode node_env="production" />
+  </system.webServer>
+</configuration>
+EOF
 
-      - name: Upload artifact for deployment
+          echo "✅ Deployment package ready"
+          ls -lah deploy-package/
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
@@ -58,13 +88,13 @@ jobs:
       contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: node-app
           path: ./deploy-package
 
-      - name: Setup Node.js for deployment
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
@@ -74,50 +104,24 @@ jobs:
           cd deploy-package
           npm ci --only=production --prefer-offline --no-audit
 
-      - name: Create web.config for Node.js
-        run: |
-          cat > deploy-package/web.config << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <configuration>
-            <system.webServer>
-              <webSocket enabled="false" />
-              <handlers>
-                <add name="iisnode" path="dist/server.js" verb="*" modules="iisnode"/>
-              </handlers>
-              <rewrite>
-                <rules>
-                  <rule name="DynamicContent">
-                    <conditions>
-                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
-                    </conditions>
-                    <action type="Rewrite" url="dist/server.js"/>
-                  </rule>
-                </rules>
-              </rewrite>
-              <httpErrors existingResponse="PassThrough" />
-              <iisnode node_env="production" />
-            </system.webServer>
-          </configuration>
-          EOF
-
       - name: Create deployment zip
         run: |
           cd deploy-package
           zip -r ../deploy.zip . -x "*.git*" -x "node_modules/.cache/*"
           cd ..
-          ls -lh deploy.zip
           echo "✅ Deployment zip created"
+          ls -lh deploy.zip
 
-      # 🔐 Login to Azure using Service Principal JSON
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          auth-type: service-principal
+          client-id: ${{ secrets.CLIENTID }}
+          tenant-id: ${{ secrets.TENANTID }}
+          subscription-id: ${{ secrets.SUBSCRIPTIONID }}
+          client-secret: ${{ secrets.CLIENTSECRET }}
 
       - name: Set Azure subscription
-        run: |
-          az account set --subscription $(jq -r '.subscriptionId' <<< "${{ secrets.AZURE_CREDENTIALS }}")
+        run: az account set --subscription ${{ secrets.SUBSCRIPTIONID }}
 
       - name: Define resource group
         run: |
