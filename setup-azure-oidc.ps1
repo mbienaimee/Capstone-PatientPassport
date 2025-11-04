@@ -2,7 +2,7 @@
 # This script configures federated identity credential for GitHub Actions
 
 Write-Host "🔧 Azure OIDC Setup for GitHub Actions" -ForegroundColor Cyan
-Write-Host "======================================" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Variables - UPDATE THESE IF NEEDED
@@ -11,6 +11,8 @@ $githubOrg = "mbienaimee"
 $githubRepo = "Capstone-PatientPassport"
 $githubBranch = "main"
 $credentialName = "github-actions-main-branch"
+$webAppName = "patientpassport-api"
+$resourceGroup = "passportpatient_group-364"
 
 Write-Host "📋 Configuration:" -ForegroundColor Yellow
 Write-Host "   App Name: $appDisplayName" -ForegroundColor White
@@ -133,19 +135,73 @@ Write-Host "Add these secrets to your GitHub repository:" -ForegroundColor Yello
 Write-Host "https://github.com/$githubOrg/$githubRepo/settings/secrets/actions" -ForegroundColor Blue
 Write-Host ""
 
-Write-Host "Secret Name: CLIENTID" -ForegroundColor Green
+Write-Host "Secret Name: AZURE_CLIENT_ID" -ForegroundColor Green
 Write-Host "Value: $clientId" -ForegroundColor White
 Write-Host ""
 
-Write-Host "Secret Name: TENANTID" -ForegroundColor Green
+Write-Host "Secret Name: AZURE_TENANT_ID" -ForegroundColor Green
 Write-Host "Value: $tenantId" -ForegroundColor White
 Write-Host ""
 
-Write-Host "Secret Name: SUBSCRIPTIONID" -ForegroundColor Green
+Write-Host "Secret Name: AZURE_SUBSCRIPTION_ID" -ForegroundColor Green
 Write-Host "Value: $subscriptionId" -ForegroundColor White
 Write-Host ""
 
-Write-Host "⚠️  You can now DELETE the CLIENTSECRET secret (no longer needed with OIDC)" -ForegroundColor Yellow
+Write-Host "Secret Name: AZURE_RESOURCE_GROUP" -ForegroundColor Green
+Write-Host "Value: $resourceGroup" -ForegroundColor White
+Write-Host ""
+
+Write-Host "⚠️  You can now DELETE these old secrets (no longer needed with OIDC):" -ForegroundColor Yellow
+Write-Host "   - CLIENTID (replaced by AZURE_CLIENT_ID)" -ForegroundColor Gray
+Write-Host "   - TENANTID (replaced by AZURE_TENANT_ID)" -ForegroundColor Gray
+Write-Host "   - SUBSCRIPTIONID (replaced by AZURE_SUBSCRIPTION_ID)" -ForegroundColor Gray
+Write-Host "   - CLIENTSECRET (not needed with OIDC)" -ForegroundColor Gray
+Write-Host ""
+
+# Check and assign role to the service principal
+Write-Host ""
+Write-Host "🔐 Verifying Role Assignment..." -ForegroundColor Yellow
+
+try {
+    # Get the app's service principal
+    $servicePrincipalId = az ad sp list --display-name $appDisplayName --query "[0].id" -o tsv
+    
+    if ([string]::IsNullOrWhiteSpace($servicePrincipalId)) {
+        Write-Host "   ⚠️  Service principal not found. Creating one..." -ForegroundColor Yellow
+        az ad sp create --id $clientId
+        Start-Sleep -Seconds 5
+        $servicePrincipalId = az ad sp list --display-name $appDisplayName --query "[0].id" -o tsv
+    }
+    
+    Write-Host "   ✅ Service Principal ID: $servicePrincipalId" -ForegroundColor Green
+    
+    # Check if Web App exists and assign contributor role
+    Write-Host "   🔍 Checking role assignment on Web App '$webAppName'..." -ForegroundColor Gray
+    
+    $webAppId = az webapp show --name $webAppName --resource-group $resourceGroup --query id -o tsv 2>$null
+    
+    if ([string]::IsNullOrWhiteSpace($webAppId)) {
+        Write-Host "   ⚠️  Web App '$webAppName' not found in resource group '$resourceGroup'" -ForegroundColor Yellow
+        Write-Host "   Please verify the app name and resource group, then assign role manually:" -ForegroundColor Yellow
+        Write-Host "   az role assignment create --role 'Website Contributor' --assignee $servicePrincipalId --scope /subscriptions/$subscriptionId/resourceGroups/$resourceGroup" -ForegroundColor Gray
+    } else {
+        Write-Host "   ✅ Found Web App: $webAppName" -ForegroundColor Green
+        
+        # Check existing role assignment
+        $existingRole = az role assignment list --assignee $servicePrincipalId --scope $webAppId --query "[?roleDefinitionName=='Website Contributor' || roleDefinitionName=='Contributor'].roleDefinitionName" -o tsv
+        
+        if ([string]::IsNullOrWhiteSpace($existingRole)) {
+            Write-Host "   🔨 Assigning 'Website Contributor' role..." -ForegroundColor Yellow
+            az role assignment create --role "Website Contributor" --assignee $servicePrincipalId --scope $webAppId 2>$null
+            Write-Host "   ✅ Role assigned successfully!" -ForegroundColor Green
+        } else {
+            Write-Host "   ✅ Role already assigned: $existingRole" -ForegroundColor Green
+        }
+    }
+} catch {
+    Write-Host "   ⚠️  Could not verify/assign role: $_" -ForegroundColor Yellow
+    Write-Host "   Please assign the role manually in Azure Portal" -ForegroundColor Yellow
+}
 Write-Host ""
 
 # List all federated credentials for verification
