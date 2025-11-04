@@ -108,18 +108,16 @@ jobs:
           ls -lh deploy.zip
           echo "✅ Deployment zip created"
 
-      # 🔐 Login to Azure using Service Principal (client secret)
+      # 🔐 Login to Azure using Service Principal JSON
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID }}
-          tenant-id: ${{ secrets.TENANTID }}
-          subscription-id: ${{ secrets.SUBSCRIPTIONID }}
-          client-secret: ${{ secrets.CLIENTSECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          auth-type: service-principal
 
       - name: Set Azure subscription
         run: |
-          az account set --subscription ${{ secrets.SUBSCRIPTIONID }}
+          az account set --subscription $(jq -r '.subscriptionId' <<< "${{ secrets.AZURE_CREDENTIALS }}")
 
       - name: Define resource group
         run: |
