@@ -167,12 +167,14 @@ jobs:
 
       - name: Create deployment zip
         run: |
-          echo "Creating deployment zip file..."
+          echo "🚀 [FIXED VERSION] Creating deployment zip file..."
+          echo "This is the CORRECTED workflow - no async parameter, using zip file"
           cd deploy-package
           zip -r ../deploy.zip . -x "*.git*" -x "node_modules/.cache/*"
           cd ..
           ls -lh deploy.zip
           echo "✅ Deployment package created: $(du -h deploy.zip | cut -f1)"
+          echo "📦 Package ready for deployment!"
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -208,6 +210,9 @@ jobs:
           package: ./deploy.zip
           type: zip
           restart: true
+          # ✅ NO async parameter - this caused the warning
+          # ✅ Using ./deploy.zip (file) NOT ./deploy-package (directory)
+          # ✅ This is the CORRECTED version
 
       - name: Start Azure Web App
         shell: bash
