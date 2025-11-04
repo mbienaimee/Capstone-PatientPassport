@@ -181,11 +181,12 @@ jobs:
       - name: Set Resource Group
         id: get-rg
         run: |
-          echo "Setting resource group name..."
-          # Use the exact resource group name from Azure Portal
+          echo "Setting resource group name from Azure Portal..."
+          # Using exact resource group name: passportpatient_group-364
           RESOURCE_GROUP="passportpatient_group-364"
           echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "✅ Resource Group: $RESOURCE_GROUP"
+          echo "✅ Web App: patientpassport-api"
 
       - name: Stop Azure Web App before deployment
         run: |
