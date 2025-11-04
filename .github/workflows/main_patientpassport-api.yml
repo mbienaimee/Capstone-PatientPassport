@@ -189,9 +189,10 @@ jobs:
           echo "✅ Web App: patientpassport-api"
 
       - name: Stop Azure Web App before deployment
+        shell: bash
         run: |
           echo "Stopping app service to release file locks..."
-          az webapp stop --name patientpassport-api --resource-group ${{ steps.get-rg.outputs.resource_group }} || echo "App may already be stopped"
+          az webapp stop --name patientpassport-api --resource-group passportpatient_group-364 || echo "App may already be stopped"
           sleep 5
 
       - name: Deploy to Azure Web App
@@ -204,7 +205,8 @@ jobs:
           restart: true
 
       - name: Start Azure Web App
+        shell: bash
         run: |
           echo "Starting app service..."
-          az webapp start --name patientpassport-api --resource-group ${{ steps.get-rg.outputs.resource_group }}
-          echo "Deployment complete!"
+          az webapp start --name patientpassport-api --resource-group passportpatient_group-364
+          echo "✅ Deployment complete!"
