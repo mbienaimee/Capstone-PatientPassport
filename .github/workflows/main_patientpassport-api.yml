@@ -46,6 +46,9 @@ jobs:
           # Copy web.config for Windows IIS
           [ -f web.config ] && cp web.config deploy-package/
           
+          # Copy swagger documentation (CRITICAL for API docs)
+          [ -f swagger.json ] && cp swagger.json deploy-package/
+          
           # Copy optional files
           [ -f tsconfig.json ] && cp tsconfig.json deploy-package/
           [ -f .env.example ] && cp .env.example deploy-package/
