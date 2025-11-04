@@ -178,26 +178,12 @@ jobs:
           az account set --subscription ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5003280868E84F909999D3A50199FDCA }}
           az account show
 
-      - name: Get Resource Group
+      - name: Set Resource Group
         id: get-rg
         run: |
-          echo "Fetching resource group..."
-          
-          # Try to get resource group from webapp
-          RESOURCE_GROUP=$(az webapp show --name patientpassport-api --query resourceGroup -o tsv 2>&1 || echo "")
-          
-          # If that fails, try listing all webapps
-          if [ -z "$RESOURCE_GROUP" ]; then
-            echo "⚠️ Direct query failed, searching all web apps..."
-            RESOURCE_GROUP=$(az webapp list --query "[?name=='patientpassport-api'].resourceGroup | [0]" -o tsv)
-          fi
-          
-          # If still empty, use default resource group name pattern
-          if [ -z "$RESOURCE_GROUP" ]; then
-            echo "⚠️ Could not auto-detect, using default naming pattern..."
-            RESOURCE_GROUP="patientpassport-api-rg"
-          fi
-          
+          echo "Setting resource group name..."
+          # Use the exact resource group name from Azure Portal
+          RESOURCE_GROUP="passportpatient_group-364"
           echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "✅ Resource Group: $RESOURCE_GROUP"
 
