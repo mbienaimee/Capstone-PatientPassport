@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write  # Required to upload artifacts
+      actions: write
 
     defaults:
       run:
-        working-directory: ./backend  # Ensure npm runs in backend folder
+        working-directory: ./backend
 
     steps:
       - name: Checkout repository
@@ -108,13 +108,14 @@ jobs:
           ls -lh deploy.zip
           echo "✅ Deployment zip created"
 
-      # 🔐 Login using OIDC (OpenID Connect) - More secure, no secrets needed
+      # 🔐 Login to Azure using Service Principal (client secret)
       - name: Login to Azure
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.CLIENTID }}
           tenant-id: ${{ secrets.TENANTID }}
           subscription-id: ${{ secrets.SUBSCRIPTIONID }}
+          client-secret: ${{ secrets.CLIENTSECRET }}
 
       - name: Set Azure subscription
         run: |
