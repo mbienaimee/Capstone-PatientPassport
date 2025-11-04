@@ -36,12 +36,23 @@ jobs:
         run: |
           echo "Creating deployment package..."
           mkdir -p deploy-package
+          
+          # Copy built application
           cp -r dist deploy-package/
+          
+          # Copy package files
           cp package*.json deploy-package/
+          
+          # Copy web.config for Windows IIS
+          [ -f web.config ] && cp web.config deploy-package/
+          
+          # Copy optional files
           [ -f tsconfig.json ] && cp tsconfig.json deploy-package/
           [ -f .env.example ] && cp .env.example deploy-package/
           [ -f README.md ] && cp README.md deploy-package/
+          
           echo "✅ Deployment package prepared"
+          ls -la deploy-package/
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -102,22 +113,24 @@ jobs:
           fi
           echo "AZURE_RG=$RESOURCE_GROUP" >> $GITHUB_ENV
 
-      - name: Stop Azure Web App
+      - name: Configure Node.js version (Windows App)
         run: |
-          az webapp stop --name patientpassport-api --resource-group "$AZURE_RG" || echo "App may already be stopped"
+          az webapp config appsettings set \
+            --name patientpassport-api \
+            --resource-group "$AZURE_RG" \
+            --settings WEBSITE_NODE_DEFAULT_VERSION="~18"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'patientpassport-api'
           package: ./deploy.zip
-          type: zip
-          restart: true
-          startup-command: 'node dist/server.js'
 
-      - name: Start Azure Web App
+      - name: Verify deployment
         run: |
-          az webapp start --name patientpassport-api --resource-group "$AZURE_RG"
           echo "✅ Deployment complete!"
           echo "🌐 URL: https://patientpassport-api.azurewebsites.net"
+          echo "Waiting for app to start..."
+          sleep 10
+          curl -I https://patientpassport-api.azurewebsites.net || echo "App is starting up..."
 
