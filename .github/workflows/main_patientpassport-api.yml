@@ -15,7 +15,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./backend  # Make sure npm runs in your backend folder
+        working-directory: ./backend  # Ensure npm runs in backend folder
 
     steps:
       - name: Checkout repository
@@ -32,88 +32,16 @@ jobs:
       - name: Build project
         run: npm run build --if-present
 
-      - name: Skip tests (optional)
-        run: echo "Skipping tests to avoid workflow failure"
-
       - name: Prepare deployment package
         run: |
           echo "Creating deployment package..."
-          echo "Current directory: $(pwd)"
-          echo "Working directory context: ./backend"
-          
-          # Create deploy-package directory
           mkdir -p deploy-package
-          
-          # Verify dist exists
-          if [ ! -d "dist" ]; then
-            echo "❌ Error: dist directory not found!"
-            echo "Contents of current directory:"
-            ls -la
-            exit 1
-          fi
-          
-          # Copy essential files only (exclude node_modules and source files)
-          echo "Copying dist directory..."
-          cp -r dist deploy-package/ || exit 1
-          
-          echo "Copying package files..."
-          cp package*.json deploy-package/ || exit 1
-          
-          [ -f tsconfig.json ] && cp tsconfig.json deploy-package/ || true
-          
-          # Copy necessary config files
-          [ -f .env.example ] && cp .env.example deploy-package/ || true
-          [ -f README.md ] && cp README.md deploy-package/ || true
-          
-          # Copy scripts folder if exists
-          [ -d scripts ] && cp -r scripts deploy-package/ || true
-          
-          # Show package size and contents
-          echo "Package contents:"
-          ls -lah deploy-package/
-          echo "Package size:"
-          du -sh deploy-package
+          cp -r dist deploy-package/
+          cp package*.json deploy-package/
+          [ -f tsconfig.json ] && cp tsconfig.json deploy-package/
+          [ -f .env.example ] && cp .env.example deploy-package/
+          [ -f README.md ] && cp README.md deploy-package/
           echo "✅ Deployment package prepared"
-
-      - name: Verify deployment package exists
-        run: |
-          echo "Verifying deployment package..."
-          echo "Current directory: $(pwd)"
-          if [ ! -d "deploy-package" ]; then
-            echo "❌ Error: deploy-package directory not found!"
-            echo "Contents of current directory:"
-            ls -la
-            exit 1
-          fi
-          if [ ! -f "deploy-package/package.json" ]; then
-            echo "❌ Error: package.json not found in deploy-package!"
-            echo "Contents of deploy-package:"
-            ls -la deploy-package/
-            exit 1
-          fi
-          if [ ! -d "deploy-package/dist" ]; then
-            echo "❌ Error: dist directory not found in deploy-package!"
-            echo "Contents of deploy-package:"
-            ls -la deploy-package/
-            exit 1
-          fi
-          echo "✅ Deployment package verified"
-
-      - name: Verify path from repository root
-        run: |
-          echo "Checking path from repository root..."
-          cd ${{ github.workspace }}
-          echo "Repository root: $(pwd)"
-          echo "Checking for backend/deploy-package:"
-          if [ -d "backend/deploy-package" ]; then
-            echo "✅ Found: backend/deploy-package"
-            ls -lah backend/deploy-package/
-            echo "File count: $(find backend/deploy-package -type f | wc -l)"
-          else
-            echo "❌ backend/deploy-package not found from repo root!"
-            echo "Contents of backend/:"
-            ls -la backend/ 2>/dev/null || echo "backend directory not found"
-          fi
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -121,8 +49,6 @@ jobs:
           name: node-app
           path: backend/deploy-package
           retention-days: 1
-          if-no-files-found: error
-          compression-level: 6
 
   deploy:
     runs-on: ubuntu-latest
@@ -130,7 +56,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      actions: read  # Required to download artifacts
 
     steps:
       - name: Download artifact from build job
@@ -138,32 +63,16 @@ jobs:
         with:
           name: node-app
           path: ./deploy-package
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify artifact download
-        run: |
-          echo "Verifying downloaded artifact..."
-          if [ ! -d "deploy-package" ]; then
-            echo "❌ Error: deploy-package not found after download!"
-            exit 1
-          fi
-          echo "Artifact contents:"
-          ls -lah deploy-package/
-          echo "✅ Artifact verified"
 
       - name: Setup Node.js for deployment
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
 
-      - name: Install production dependencies in deployment package
+      - name: Install production dependencies
         run: |
           cd deploy-package
-          echo "Installing production dependencies..."
-          echo "Current directory: $(pwd)"
-          echo "Package.json exists: $([ -f package.json ] && echo 'yes' || echo 'no')"
           npm ci --only=production --prefer-offline --no-audit
-          echo "✅ Dependencies installed successfully"
 
       - name: Create web.config for Node.js
         run: |
@@ -177,12 +86,6 @@ jobs:
               </handlers>
               <rewrite>
                 <rules>
-                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
-                    <match url="^dist/server.js\/debug[\/]?" />
-                  </rule>
-                  <rule name="StaticContent">
-                    <action type="Rewrite" url="public{REQUEST_URI}"/>
-                  </rule>
                   <rule name="DynamicContent">
                     <conditions>
                       <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
@@ -191,83 +94,45 @@ jobs:
                   </rule>
                 </rules>
               </rewrite>
-              <security>
-                <requestFiltering>
-                  <hiddenSegments>
-                    <remove segment="bin"/>
-                  </hiddenSegments>
-                </requestFiltering>
-              </security>
               <httpErrors existingResponse="PassThrough" />
               <iisnode node_env="production" />
             </system.webServer>
           </configuration>
           EOF
-          echo "✅ web.config created for Node.js runtime"
 
       - name: Create deployment zip
         run: |
-          echo "🚀 [FIXED VERSION] Creating deployment zip file..."
-          echo "This is the CORRECTED workflow - no async parameter, using zip file"
           cd deploy-package
           zip -r ../deploy.zip . -x "*.git*" -x "node_modules/.cache/*"
           cd ..
           ls -lh deploy.zip
-          echo "✅ Deployment package created: $(du -h deploy.zip | cut -f1)"
-          echo "📦 Package ready for deployment!"
+          echo "✅ Deployment zip created"
 
+      # 🔐 Login using your new service principal credentials
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_91056519DD7F4A2F986CBC49EEBF8553 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EF97F0EC5FF346DDA6A50509B60EC278 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5003280868E84F909999D3A50199FDCA }}
+          client-id: ${{ secrets.CLIENTID }}
+          tenant-id: ${{ secrets.TENANTID }}
+          subscription-id: ${{ secrets.SUBSCRIPTIONID }}
+          client-secret: ${{ secrets.CLIENTSECRET }}
 
-      - name: Set Azure context
+      - name: Set Azure subscription
         run: |
-          echo "Setting Azure subscription context..."
-          az account set --subscription ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5003280868E84F909999D3A50199FDCA }}
-          az account show
+          az account set --subscription ${{ secrets.SUBSCRIPTIONID }}
 
-      - name: Verify Azure Resource Group
+      - name: Define resource group
         run: |
           RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
-          # Fallback to hardcoded value if secret not set
           if [ -z "$RESOURCE_GROUP" ]; then
             RESOURCE_GROUP="passportpatient_group-364"
-            echo "⚠️  Using hardcoded resource group (secret not set): $RESOURCE_GROUP"
-          else
-            echo "✅ Using resource group from secret: $RESOURCE_GROUP"
+            echo "⚠️ Using default resource group: $RESOURCE_GROUP"
           fi
           echo "AZURE_RG=$RESOURCE_GROUP" >> $GITHUB_ENV
-          echo "Web app name: patientpassport-api"
-          echo "Verifying resource group exists..."
-          az group show --name "$RESOURCE_GROUP" -o table || echo "Resource group not found - deployment may fail"
 
-      - name: Stop Azure Web App before deployment
-        shell: bash
+      - name: Stop Azure Web App
         run: |
-          echo "Stopping app service to release file locks..."
           az webapp stop --name patientpassport-api --resource-group "$AZURE_RG" || echo "App may already be stopped"
-          sleep 5
-
-      - name: Configure Azure Web App for Node.js
-        shell: bash
-        run: |
-          echo "Configuring app service for Node.js runtime..."
-          # Set Node.js version
-          az webapp config appsettings set --name patientpassport-api \
-            --resource-group "$AZURE_RG" \
-            --settings WEBSITE_NODE_DEFAULT_VERSION="~18" \
-            SCM_DO_BUILD_DURING_DEPLOYMENT="false" \
-            WEBSITE_RUN_FROM_PACKAGE="1" || echo "Settings may already be configured"
-          
-          # Set startup command
-          az webapp config set --name patientpassport-api \
-            --resource-group "$AZURE_RG" \
-            --startup-file "node dist/server.js" || echo "Startup file may already be set"
-          
-          echo "✅ App service configured for Node.js"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -277,15 +142,9 @@ jobs:
           type: zip
           restart: true
           startup-command: 'node dist/server.js'
-          # ✅ NO async parameter - this caused the warning
-          # ✅ Using ./deploy.zip (file) NOT ./deploy-package (directory)
-          # ✅ This is the CORRECTED version
-          # ✅ Added startup-command for Node.js
 
       - name: Start Azure Web App
-        shell: bash
         run: |
-          echo "Starting app service..."
           az webapp start --name patientpassport-api --resource-group "$AZURE_RG"
           echo "✅ Deployment complete!"
-          echo "🌐 App URL: https://patientpassport-api.azurewebsites.net"
+          echo "🌐 URL: https://patientpassport-api.azurewebsites.net"
