@@ -382,6 +382,8 @@ export const storeOpenMRSObservation = async (
     console.log(`📝 Storing OpenMRS observation in passport:`);
     console.log(`   Type: ${observationType}`);
     console.log(`   Patient Name: ${patientName}`);
+    console.log(`   Doctor License: ${doctorLicenseNumber}`);
+    console.log(`   Hospital: ${hospitalName}`);
 
     // Find user by name
     const User = mongoose.model('User');
@@ -400,20 +402,89 @@ export const storeOpenMRSObservation = async (
       throw new CustomError(`Patient "${patientName}" not found`, 404);
     }
 
-    // Find doctor
-    const doctor = await Doctor.findOne({ 
+    // Find doctor - try multiple approaches
+    let doctor = await Doctor.findOne({ 
       licenseNumber: doctorLicenseNumber.toUpperCase() 
     });
+    
+    // If not found, try finding by username (for OpenMRS users)
     if (!doctor) {
-      throw new CustomError(`Doctor with license ${doctorLicenseNumber} not found`, 404);
+      const doctorUser = await User.findOne({
+        $or: [
+          { email: { $regex: new RegExp(doctorLicenseNumber, 'i') } },
+          { name: { $regex: new RegExp(doctorLicenseNumber, 'i') } }
+        ],
+        role: 'doctor'
+      });
+      
+      if (doctorUser) {
+        doctor = await Doctor.findOne({ user: doctorUser._id });
+      }
+    }
+    
+    // If still not found, create a placeholder doctor record
+    if (!doctor) {
+      console.warn(`⚠️ Doctor ${doctorLicenseNumber} not found - creating placeholder`);
+      
+      // Create a placeholder user for this OpenMRS doctor
+      const doctorUserPlaceholder = await User.create({
+        name: `Dr. ${doctorLicenseNumber}`,
+        email: `${doctorLicenseNumber.toLowerCase()}@openmrs.system`,
+        password: Math.random().toString(36),
+        role: 'doctor',
+        isActive: true,
+        isEmailVerified: false
+      });
+      
+      doctor = await Doctor.create({
+        user: doctorUserPlaceholder._id,
+        licenseNumber: doctorLicenseNumber.toUpperCase(),
+        specialization: 'General Practice',
+        hospital: null,
+        yearsOfExperience: 0
+      });
+      
+      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber}`);
     }
 
-    // Find hospital
-    const hospital = await Hospital.findOne({ 
+    // Find hospital - be flexible with name matching
+    let hospital = await Hospital.findOne({ 
       name: { $regex: new RegExp(`^${hospitalName}$`, 'i') } 
     });
+    
+    // Try partial match if exact match fails
     if (!hospital) {
-      throw new CustomError(`Hospital ${hospitalName} not found`, 404);
+      hospital = await Hospital.findOne({
+        name: { $regex: new RegExp(hospitalName, 'i') }
+      });
+    }
+    
+    // If still not found, create a placeholder hospital
+    if (!hospital) {
+      console.warn(`⚠️ Hospital ${hospitalName} not found - creating placeholder`);
+      
+      // Create placeholder hospital user
+      const hospitalUserPlaceholder = await User.create({
+        name: hospitalName,
+        email: `${hospitalName.toLowerCase().replace(/\s+/g, '')}@openmrs.system`,
+        password: Math.random().toString(36),
+        role: 'hospital',
+        isActive: true,
+        isEmailVerified: false
+      });
+      
+      hospital = await Hospital.create({
+        user: hospitalUserPlaceholder._id,
+        name: hospitalName,
+        registrationNumber: `OPENMRS-${Date.now()}`,
+        address: 'Address not provided',
+        phone: '000-000-0000',
+        email: hospitalUserPlaceholder.email,
+        type: 'General Hospital',
+        isApproved: true
+      });
+      
+      console.log(`✅ Created placeholder hospital: ${hospital.name}`);
     }
 
     if (observationType === 'diagnosis') {
