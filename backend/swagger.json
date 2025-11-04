@@ -1615,6 +1615,257 @@
           "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
+    },
+    "/api/openmrs/health": {
+      "get": {
+        "summary": "OpenMRS integration health check",
+        "description": "Check if OpenMRS integration is working",
+        "tags": ["OpenMRS Integration"],
+        "responses": {
+          "200": {
+            "description": "Integration is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/openmrs/patient/{patientName}/observations": {
+      "get": {
+        "summary": "Get patient observations for OpenMRS",
+        "description": "Fetch patient diagnosis and medication data using patient name",
+        "tags": ["OpenMRS Integration"],
+        "parameters": [
+          {
+            "name": "patientName",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Patient's full name"
+          },
+          {
+            "name": "hospitalId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Optional hospital ID to filter observations"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Patient observations retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "patient": {
+                          "type": "object",
+                          "properties": {
+                            "passportId": { "type": "string" },
+                            "name": { "type": "string" },
+                            "email": { "type": "string" }
+                          }
+                        },
+                        "observations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": { "type": "string", "enum": ["diagnosis", "medication"] },
+                              "data": { "type": "object" },
+                              "doctor": { "type": "object" },
+                              "hospital": { "type": "object" },
+                              "date": { "type": "string", "format": "date-time" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/openmrs/observation/store": {
+      "post": {
+        "summary": "Store observation from OpenMRS to Patient Passport",
+        "description": "Transfer diagnosis or medication observation from OpenMRS to Patient Passport system",
+        "tags": ["OpenMRS Integration"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["patientName", "observationType", "observationData", "doctorLicenseNumber", "hospitalName"],
+                "properties": {
+                  "patientName": {
+                    "type": "string",
+                    "description": "Full name of the patient"
+                  },
+                  "observationType": {
+                    "type": "string",
+                    "enum": ["diagnosis", "medication"],
+                    "description": "Type of observation being stored"
+                  },
+                  "observationData": {
+                    "type": "object",
+                    "description": "The observation data (diagnosis or medication details)"
+                  },
+                  "doctorLicenseNumber": {
+                    "type": "string",
+                    "description": "License number of the doctor who created the observation"
+                  },
+                  "hospitalName": {
+                    "type": "string",
+                    "description": "Name of the hospital where observation was made"
+                  }
+                }
+              },
+              "example": {
+                "patientName": "John Doe",
+                "observationType": "diagnosis",
+                "observationData": {
+                  "condition": "Hypertension",
+                  "severity": "moderate",
+                  "notes": "Patient needs regular monitoring"
+                },
+                "doctorLicenseNumber": "MD123456",
+                "hospitalName": "City General Hospital"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Observation stored successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "description": "The created observation record"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/openmrs/patient/sync": {
+      "post": {
+        "summary": "Sync patient mapping between OpenMRS and Patient Passport",
+        "description": "Create or update patient mapping using patient name and OpenMRS UUID",
+        "tags": ["OpenMRS Integration"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["patientName"],
+                "properties": {
+                  "patientName": {
+                    "type": "string",
+                    "description": "Patient's full name"
+                  },
+                  "openmrsPatientUuid": {
+                    "type": "string",
+                    "description": "Optional OpenMRS patient UUID"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patient mapping synced successfully"
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/openmrs/hospital/sync": {
+      "post": {
+        "summary": "Sync hospital mapping",
+        "description": "Create or update hospital mapping between systems",
+        "tags": ["OpenMRS Integration"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["hospitalName"],
+                "properties": {
+                  "hospitalName": { "type": "string" },
+                  "openmrsHospitalUuid": { "type": "string" },
+                  "passportHospitalId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Hospital mapping synced successfully" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/openmrs/doctor/sync": {
+      "post": {
+        "summary": "Sync doctor/provider mapping",
+        "description": "Create or update doctor mapping using license number",
+        "tags": ["OpenMRS Integration"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["licenseNumber"],
+                "properties": {
+                  "licenseNumber": { "type": "string" },
+                  "openmrsProviderUuid": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Doctor mapping synced successfully" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
     }
   },
   "tags": [
@@ -1653,6 +1904,10 @@
     {
       "name": "Admin Management",
       "description": "System administration endpoints for managing users, hospitals, and system operations"
+    },
+    {
+      "name": "OpenMRS Integration",
+      "description": "OpenMRS integration endpoints for bi-directional data sync. Allows OpenMRS to fetch patient observations and store new observations back to Patient Passport."
     }
   ]
 }
