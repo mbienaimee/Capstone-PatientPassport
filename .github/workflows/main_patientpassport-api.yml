@@ -165,6 +165,15 @@ jobs:
           npm ci --only=production --prefer-offline --no-audit
           echo "✅ Dependencies installed successfully"
 
+      - name: Create deployment zip
+        run: |
+          echo "Creating deployment zip file..."
+          cd deploy-package
+          zip -r ../deploy.zip . -x "*.git*" -x "node_modules/.cache/*"
+          cd ..
+          ls -lh deploy.zip
+          echo "✅ Deployment package created: $(du -h deploy.zip | cut -f1)"
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -196,9 +205,8 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'patientpassport-api'
-          package: ./deploy-package
+          package: ./deploy.zip
           type: zip
-          async: false
           restart: true
 
       - name: Start Azure Web App
