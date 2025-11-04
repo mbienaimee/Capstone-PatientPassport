@@ -3,4 +3,7 @@ org\openmrs\module\patientpassport\extension\html\GutterListExt.class
 org\openmrs\module\patientpassport\PatientPassportModuleActivator.class
 org\openmrs\module\patientpassport\service\impl\PatientPassportServiceImpl.class
 org\openmrs\module\patientpassportminimal\PatientPassportMinimalActivator.class
+org\openmrs\module\patientpassport\service\impl\PatientPassportDataServiceImpl.class
+org\openmrs\module\patientpassport\web\controller\PatientPassportDataController.class
 org\openmrs\module\patientpassport\extension\html\AdminList.class
+org\openmrs\module\patientpassport\service\PatientPassportDataService.class

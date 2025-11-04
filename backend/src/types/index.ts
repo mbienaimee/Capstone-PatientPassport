@@ -41,6 +41,7 @@ export interface IPatient extends Document {
   nationalId: string;
   universalId?: string; // Universal patient ID for federated access
   insuranceNumber?: string; // Insurance number for identification
+  openmrsUuid?: string; // OpenMRS patient UUID for integration
   dateOfBirth: Date;
   gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   contactNumber: string;
@@ -79,6 +80,7 @@ export interface IDoctor extends Document {
   specialization: string;
   hospital: any; // Reference to Hospital (ObjectId)
   patients: string[]; // References to Patient
+  openmrsProviderUuid?: string; // OpenMRS provider UUID for integration
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -97,6 +99,7 @@ export interface IHospital extends Document {
   hospitalId: string; // Unique hospital identifier for federated system
   fhirEndpoint?: string; // FHIR endpoint for data exchange
   apiKey?: string; // API key for central registry communication
+  openmrsUuid?: string; // OpenMRS location UUID for integration
   doctors: string[]; // References to Doctor
   patients: string[]; // References to Patient
   status: 'active' | 'pending' | 'inactive';

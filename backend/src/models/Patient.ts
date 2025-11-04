@@ -98,6 +98,14 @@ const patientSchema = new Schema({
     ref: 'Doctor'
   }],
   
+  // OpenMRS Integration
+  openmrsUuid: {
+    type: String,
+    default: null,
+    sparse: true,
+    index: true
+  },
+  
   // Temporary OTP fields for passport access
   tempOTP: {
     type: String,

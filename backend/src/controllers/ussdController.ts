@@ -13,16 +13,9 @@ import { asyncHandler } from '@/middleware/errorHandler';
 export const handleUSSDCallback = asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { sessionId, serviceCode, phoneNumber, text } = req.body;
 
-  console.log('📱 ========== USSD REQUEST ==========');
-  console.log('Session ID:', sessionId);
-  console.log('Service Code:', serviceCode);
-  console.log('Phone Number:', phoneNumber);
-  console.log('Text:', text);
-  console.log('===================================');
-
   // Validate required fields
   if (!sessionId || !phoneNumber) {
-    console.error('❌ Missing required USSD fields');
+    console.error(' Missing required USSD fields');
     res.set('Content-Type', 'text/plain');
     res.send('END Invalid request');
     return;
@@ -37,15 +30,12 @@ export const handleUSSDCallback = asyncHandler(async (req: Request, res: Respons
       text: text || ''
     });
 
-    console.log('📤 USSD Response:', response);
-    console.log('===================================\n');
-
     // Send response with proper content type
     res.set('Content-Type', 'text/plain');
     res.send(response);
 
   } catch (error: any) {
-    console.error('❌ USSD Error:', error);
+    console.error(' USSD Error:', error);
     res.set('Content-Type', 'text/plain');
     res.send('END An error occurred. Please try again later.');
   }
@@ -69,7 +59,7 @@ export const testUSSDFlow = asyncHandler(async (req: Request, res: Response, nex
     const response = await ussdService.processUSSDRequest({
       sessionId,
       phoneNumber,
-      serviceCode: '*123#',
+      serviceCode: '*384#',
       text: text || ''
     });
 
@@ -91,18 +81,7 @@ export const testUSSDFlow = asyncHandler(async (req: Request, res: Response, nex
   }
 });
 
-// @desc    Get USSD statistics
-// @route   GET /api/ussd/stats
-// @access  Private (Admin only)
 export const getUSSDStats = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  // TODO: Implement USSD usage statistics
-  // This would track:
-  // - Total USSD sessions
-  // - Successful passport retrievals
-  // - Failed attempts
-  // - Popular access methods (national ID vs email)
-  // - Language preferences
-  
   res.json({
     success: true,
     message: 'USSD statistics endpoint',
