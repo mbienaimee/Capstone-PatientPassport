@@ -426,10 +426,19 @@ export const storeOpenMRSObservation = async (
     if (!doctor) {
       console.warn(`⚠️ Doctor ${doctorLicenseNumber} not found - creating placeholder`);
       
+      // Sanitize doctor license number for email (remove spaces, special chars)
+      const sanitizedLicense = doctorLicenseNumber
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric
+        .substring(0, 30); // Limit length
+      
+      // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
+      const placeholderEmail = `${sanitizedLicense || 'doctor'}@openmrs.com`;
+      
       // Create a placeholder user for this OpenMRS doctor
       const doctorUserPlaceholder = await User.create({
         name: `Dr. ${doctorLicenseNumber}`,
-        email: `${doctorLicenseNumber.toLowerCase()}@openmrs.system`,
+        email: placeholderEmail,
         password: Math.random().toString(36),
         role: 'doctor',
         isActive: true,
@@ -444,7 +453,7 @@ export const storeOpenMRSObservation = async (
         yearsOfExperience: 0
       });
       
-      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber}`);
+      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber} with email: ${placeholderEmail}`);
     }
 
     // Find hospital - be flexible with name matching
@@ -463,10 +472,19 @@ export const storeOpenMRSObservation = async (
     if (!hospital) {
       console.warn(`⚠️ Hospital ${hospitalName} not found - creating placeholder`);
       
+      // Sanitize hospital name for email (remove spaces, special chars)
+      const sanitizedHospital = hospitalName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric
+        .substring(0, 30); // Limit length
+      
+      // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
+      const placeholderEmail = `${sanitizedHospital || 'hospital'}@openmrs.com`;
+      
       // Create placeholder hospital user
       const hospitalUserPlaceholder = await User.create({
         name: hospitalName,
-        email: `${hospitalName.toLowerCase().replace(/\s+/g, '')}@openmrs.system`,
+        email: placeholderEmail,
         password: Math.random().toString(36),
         role: 'hospital',
         isActive: true,
@@ -479,11 +497,12 @@ export const storeOpenMRSObservation = async (
         registrationNumber: `OPENMRS-${Date.now()}`,
         address: 'Address not provided',
         phone: '000-000-0000',
-        email: hospitalUserPlaceholder.email,
+        email: placeholderEmail,
         type: 'General Hospital',
         isApproved: true
       });
       
+      console.log(`✅ Created placeholder hospital: ${hospital.name} with email: ${placeholderEmail}`);
       console.log(`✅ Created placeholder hospital: ${hospital.name}`);
     }
 
