@@ -435,15 +435,23 @@ export const storeOpenMRSObservation = async (
       // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
       const placeholderEmail = `${sanitizedLicense || 'doctor'}@openmrs.com`;
       
-      // Create a placeholder user for this OpenMRS doctor
-      const doctorUserPlaceholder = await User.create({
-        name: `Dr. ${doctorLicenseNumber}`,
-        email: placeholderEmail,
-        password: Math.random().toString(36),
-        role: 'doctor',
-        isActive: true,
-        isEmailVerified: false
-      });
+      // Check if user with this email already exists
+      let doctorUserPlaceholder = await User.findOne({ email: placeholderEmail });
+      
+      if (!doctorUserPlaceholder) {
+        // Create a placeholder user for this OpenMRS doctor
+        doctorUserPlaceholder = await User.create({
+          name: `Dr. ${doctorLicenseNumber}`,
+          email: placeholderEmail,
+          password: Math.random().toString(36),
+          role: 'doctor',
+          isActive: true,
+          isEmailVerified: false
+        });
+        console.log(`✅ Created placeholder user with email: ${placeholderEmail}`);
+      } else {
+        console.log(`ℹ️ Found existing user with email: ${placeholderEmail}`);
+      }
       
       doctor = await Doctor.create({
         user: doctorUserPlaceholder._id,
@@ -453,7 +461,7 @@ export const storeOpenMRSObservation = async (
         yearsOfExperience: 0
       });
       
-      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber} with email: ${placeholderEmail}`);
+      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber}`);
     }
 
     // Find hospital - be flexible with name matching
@@ -481,15 +489,23 @@ export const storeOpenMRSObservation = async (
       // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
       const placeholderEmail = `${sanitizedHospital || 'hospital'}@openmrs.com`;
       
-      // Create placeholder hospital user
-      const hospitalUserPlaceholder = await User.create({
-        name: hospitalName,
-        email: placeholderEmail,
-        password: Math.random().toString(36),
-        role: 'hospital',
-        isActive: true,
-        isEmailVerified: false
-      });
+      // Check if user with this email already exists
+      let hospitalUserPlaceholder = await User.findOne({ email: placeholderEmail });
+      
+      if (!hospitalUserPlaceholder) {
+        // Create placeholder hospital user
+        hospitalUserPlaceholder = await User.create({
+          name: hospitalName,
+          email: placeholderEmail,
+          password: Math.random().toString(36),
+          role: 'hospital',
+          isActive: true,
+          isEmailVerified: false
+        });
+        console.log(`✅ Created placeholder hospital user with email: ${placeholderEmail}`);
+      } else {
+        console.log(`ℹ️ Found existing hospital user with email: ${placeholderEmail}`);
+      }
       
       hospital = await Hospital.create({
         user: hospitalUserPlaceholder._id,
