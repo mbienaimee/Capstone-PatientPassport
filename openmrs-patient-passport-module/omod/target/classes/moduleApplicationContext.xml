@@ -4,15 +4,21 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans
            http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
-    <!-- Define the Observation Save Advice -->
+    <!-- ========================================== -->
+    <!-- ENHANCED AOP WITH MULTIPLE BEAN PATTERNS   -->
+    <!-- ========================================== -->
+
+    <!-- Define the Observation Save Advice (AOP approach) -->
     <bean id="observationSaveAdvice" 
           class="org.openmrs.module.patientpassport.advice.ObservationSaveAdvice"/>
 
-    <!-- Auto-proxy creator to intercept obsService bean -->
+    <!-- Auto-proxy creator to intercept obsService bean (AOP approach) -->
     <bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
         <property name="beanNames">
             <list>
                 <value>obsService</value>
+                <value>org.openmrs.api.ObsService</value>
+                <value>*obsService*</value>
             </list>
         </property>
         <property name="interceptorNames">

@@ -25,10 +25,21 @@ public class ObservationSaveAdvice implements AfterReturningAdvice {
     
     public ObservationSaveAdvice() {
         this.dataService = new PatientPassportDataServiceImpl();
+        log.info("═══════════════════════════════════════════════════════════════");
+        log.info("🎯 ObservationSaveAdvice CONSTRUCTOR CALLED - AOP ADVICE CREATED!");
+        log.info("═══════════════════════════════════════════════════════════════");
+        System.out.println("🎯 ObservationSaveAdvice created - AOP ready!");
     }
     
     @Override
     public void afterReturning(Object returnValue, Method method, Object[] args, Object target) throws Throwable {
+        
+        log.info("═══════════════════════════════════════════════════════════════");
+        log.info("🚀 AOP INTERCEPTED! afterReturning() called!");
+        log.info("Method: " + method.getName());
+        log.info("Return type: " + (returnValue != null ? returnValue.getClass().getName() : "null"));
+        log.info("═══════════════════════════════════════════════════════════════");
+        System.out.println("🚀 AOP INTERCEPTED: " + method.getName());
         
         // Check if the return value is an Obs object
         if (returnValue instanceof Obs) {
