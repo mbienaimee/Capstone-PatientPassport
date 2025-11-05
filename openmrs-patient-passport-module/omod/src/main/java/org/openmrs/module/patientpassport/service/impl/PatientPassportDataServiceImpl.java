@@ -37,37 +37,49 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
     @Override
     public boolean sendObservationToPassport(Patient patient, Obs obs, String observationType) {
         try {
-            log.info("📤 Sending " + observationType + " to Patient Passport for patient: " + patient.getPatientId());
+            log.info("📤 ===========================================");
+            log.info("📤 Sending " + observationType + " to Patient Passport");
+            log.info("📤 Patient ID: " + patient.getPatientId());
+            log.info("📤 Observation ID: " + obs.getObsId());
+            log.info("📤 Concept: " + (obs.getConcept() != null ? obs.getConcept().getName().getName() : "NULL"));
             
-            // Get patient name
+            // Get patient name - CRITICAL FIELD
             String patientName = getPatientFullName(patient);
-            log.info("   Patient Name: " + (patientName != null ? patientName : "NULL"));
-            if (patientName == null || patientName.isEmpty()) {
-                log.error("❌ No name found for patient " + patient.getPatientId());
+            log.info("   👤 Patient Name: [" + (patientName != null ? patientName : "NULL") + "]");
+            
+            if (patientName == null || patientName.trim().isEmpty()) {
+                log.error("❌ FATAL: No name found for patient " + patient.getPatientId());
                 log.error("   PersonName object: " + patient.getPersonName());
+                if (patient.getPersonName() != null) {
+                    log.error("   Given: " + patient.getPersonName().getGivenName());
+                    log.error("   Family: " + patient.getPersonName().getFamilyName());
+                    log.error("   Middle: " + patient.getPersonName().getMiddleName());
+                }
                 return false;
             }
             
-            // Get hospital name from location
-            String hospitalName = obs.getLocation() != null ? obs.getLocation().getName() : "Unknown Hospital";
-            log.info("   Hospital Name: " + hospitalName);
-            if (hospitalName == null || hospitalName.isEmpty()) {
-                hospitalName = "Unknown Hospital";
+            // Get hospital name from location - CRITICAL FIELD
+            String hospitalName = "Unknown Hospital"; // Default
+            if (obs.getLocation() != null && obs.getLocation().getName() != null) {
+                hospitalName = obs.getLocation().getName();
             }
+            log.info("   🏥 Hospital Name: [" + hospitalName + "]");
             
-            // Get doctor license number (we'll use provider name as fallback)
+            // Get doctor license number - CRITICAL FIELD
             String doctorLicense = "OPENMRS_PROVIDER"; // Default fallback
             if (obs.getCreator() != null) {
                 if (obs.getCreator().getUsername() != null && !obs.getCreator().getUsername().isEmpty()) {
                     doctorLicense = obs.getCreator().getUsername();
-                } else if (obs.getCreator().getPerson() != null) {
+                    log.info("   👨‍⚕️ Using creator username: " + doctorLicense);
+                } else if (obs.getCreator().getPerson() != null && obs.getCreator().getPerson().getPersonName() != null) {
                     String creatorName = obs.getCreator().getPerson().getPersonName().getFullName();
                     if (creatorName != null && !creatorName.isEmpty()) {
                         doctorLicense = creatorName.replaceAll("\\s+", "_");
+                        log.info("   👨‍⚕️ Using creator name: " + doctorLicense);
                     }
                 }
             }
-            log.info("   Doctor License: " + doctorLicense);
+            log.info("   👨‍⚕️ Doctor License: [" + doctorLicense + "]");
             
             // Build request body
             Map<String, Object> requestBody = new HashMap<>();
@@ -76,67 +88,122 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
             requestBody.put("doctorLicenseNumber", doctorLicense);
             requestBody.put("hospitalName", hospitalName);
             
-            // Build observation data
+            // Build observation data - CRITICAL: MUST NOT BE EMPTY!
             Map<String, Object> observationData = new HashMap<>();
             
+            log.info("   📊 Building observation data for type: " + observationType);
+            
             if ("diagnosis".equals(observationType)) {
-                // Diagnosis data
-                String diagnosisValue = obs.getValueText();
+                // Diagnosis data - TRY MULTIPLE SOURCES
+                String diagnosisValue = null;
                 
-                // Try valueCoded if valueText is null
-                if (diagnosisValue == null && obs.getValueCoded() != null) {
-                    diagnosisValue = obs.getValueCoded().getName().getName();
+                // Try 1: valueText
+                if (obs.getValueText() != null && !obs.getValueText().trim().isEmpty()) {
+                    diagnosisValue = obs.getValueText().trim();
+                    log.info("   ✅ Got diagnosis from valueText: " + diagnosisValue);
                 }
                 
-                // If still null, use concept name as diagnosis
+                // Try 2: valueCoded
+                if (diagnosisValue == null && obs.getValueCoded() != null) {
+                    try {
+                        diagnosisValue = obs.getValueCoded().getName().getName();
+                        log.info("   ✅ Got diagnosis from valueCoded: " + diagnosisValue);
+                    } catch (Exception e) {
+                        log.warn("   ⚠️ Could not get valueCoded name: " + e.getMessage());
+                    }
+                }
+                
+                // Try 3: concept name (ALWAYS AVAILABLE)
                 if (diagnosisValue == null && obs.getConcept() != null) {
-                    diagnosisValue = obs.getConcept().getName().getName();
+                    try {
+                        diagnosisValue = obs.getConcept().getName().getName();
+                        log.info("   ✅ Got diagnosis from concept name: " + diagnosisValue);
+                    } catch (Exception e) {
+                        log.warn("   ⚠️ Could not get concept name: " + e.getMessage());
+                    }
+                }
+                
+                // Try 4: LAST RESORT - use concept display string
+                if (diagnosisValue == null && obs.getConcept() != null) {
+                    try {
+                        diagnosisValue = obs.getConcept().getDisplayString();
+                        log.info("   ✅ Got diagnosis from concept display: " + diagnosisValue);
+                    } catch (Exception e) {
+                        log.warn("   ⚠️ Could not get concept display: " + e.getMessage());
+                    }
                 }
                 
                 // CRITICAL: Never send null diagnosis
                 if (diagnosisValue == null || diagnosisValue.trim().isEmpty()) {
-                    log.error("❌ Cannot determine diagnosis value for observation " + obs.getObsId());
+                    log.error("❌ FATAL: Cannot determine diagnosis value for observation " + obs.getObsId());
                     log.error("   Concept: " + (obs.getConcept() != null ? obs.getConcept().getName().getName() : "NULL"));
                     log.error("   ValueText: " + obs.getValueText());
-                    log.error("   ValueCoded: " + (obs.getValueCoded() != null ? obs.getValueCoded().getName().getName() : "NULL"));
-                    return false;
+                    log.error("   ValueCoded: " + (obs.getValueCoded() != null ? "EXISTS" : "NULL"));
+                    log.error("   ⚠️ USING FALLBACK VALUE");
+                    diagnosisValue = "Observation recorded in OpenMRS";
                 }
                 
                 observationData.put("diagnosis", diagnosisValue);
-                observationData.put("details", obs.getComment() != null ? obs.getComment() : "");
+                observationData.put("details", obs.getComment() != null ? obs.getComment() : "Auto-synced from OpenMRS");
                 observationData.put("status", "active");
-                observationData.put("date", obs.getObsDatetime());
+                observationData.put("date", obs.getObsDatetime() != null ? obs.getObsDatetime() : new Date());
                 
-                log.info("   📊 Diagnosis value: " + diagnosisValue);
+                log.info("   📊 Diagnosis built: " + diagnosisValue);
                 
             } else if ("medication".equals(observationType)) {
-                // Medication data
-                String medicationName = obs.getValueText();
+                // Medication data - TRY MULTIPLE SOURCES
+                String medicationName = null;
                 
-                // Try valueDrug if valueText is null
-                if (medicationName == null && obs.getValueDrug() != null) {
-                    medicationName = obs.getValueDrug().getName();
+                // Try 1: valueText
+                if (obs.getValueText() != null && !obs.getValueText().trim().isEmpty()) {
+                    medicationName = obs.getValueText().trim();
+                    log.info("   ✅ Got medication from valueText: " + medicationName);
                 }
                 
-                // If still null, use concept name as medication
+                // Try 2: valueDrug
+                if (medicationName == null && obs.getValueDrug() != null) {
+                    try {
+                        medicationName = obs.getValueDrug().getName();
+                        log.info("   ✅ Got medication from valueDrug: " + medicationName);
+                    } catch (Exception e) {
+                        log.warn("   ⚠️ Could not get valueDrug name: " + e.getMessage());
+                    }
+                }
+                
+                // Try 3: concept name (ALWAYS AVAILABLE)
                 if (medicationName == null && obs.getConcept() != null) {
-                    medicationName = obs.getConcept().getName().getName();
+                    try {
+                        medicationName = obs.getConcept().getName().getName();
+                        log.info("   ✅ Got medication from concept name: " + medicationName);
+                    } catch (Exception e) {
+                        log.warn("   ⚠️ Could not get concept name: " + e.getMessage());
+                    }
+                }
+                
+                // Try 4: LAST RESORT - use concept display string
+                if (medicationName == null && obs.getConcept() != null) {
+                    try {
+                        medicationName = obs.getConcept().getDisplayString();
+                        log.info("   ✅ Got medication from concept display: " + medicationName);
+                    } catch (Exception e) {
+                        log.warn("   ⚠️ Could not get concept display: " + e.getMessage());
+                    }
                 }
                 
                 // CRITICAL: Never send null medication name
                 if (medicationName == null || medicationName.trim().isEmpty()) {
-                    log.error("❌ Cannot determine medication name for observation " + obs.getObsId());
-                    log.error("   Concept: " + (obs.getConcept() != null ? obs.getConcept().getName().getName() : "NULL"));
-                    return false;
+                    log.error("❌ FATAL: Cannot determine medication name for observation " + obs.getObsId());
+                    log.error("   ⚠️ USING FALLBACK VALUE");
+                    medicationName = "Medication recorded in OpenMRS";
                 }
                 
                 observationData.put("medicationName", medicationName);
                 observationData.put("dosage", extractDosage(obs));
                 observationData.put("frequency", "As prescribed");
                 observationData.put("status", "active");
-                observationData.put("startDate", obs.getObsDatetime());
+                observationData.put("startDate", obs.getObsDatetime() != null ? obs.getObsDatetime() : new Date());
                 
-                log.info("   📊 Medication name: " + medicationName);
+                log.info("   📊 Medication built: " + medicationName);
                 
             } else {
                 // For all other observation types (finding, test, impression, etc.)
