@@ -77,22 +77,31 @@ public class ObservationSaveAdvice implements AfterReturningAdvice {
     
     /**
      * Determine if the observation is a diagnosis or medication
+     * Enhanced to handle more observation types
      */
     private String determineObservationType(Obs obs) {
         if (obs.getConcept() == null) {
+            log.debug("⏭️ Observation has no concept - skipping");
             return null;
         }
         
         String conceptName = obs.getConcept().getName().getName().toLowerCase();
+        log.debug("🔍 Analyzing concept: " + conceptName);
         
-        // Check for diagnosis-related concepts
+        // Check for diagnosis-related concepts (BROAD matching)
         if (conceptName.contains("diagnosis") || 
             conceptName.contains("condition") ||
             conceptName.contains("problem") ||
             conceptName.contains("disease") ||
             conceptName.contains("malaria") ||
             conceptName.contains("fever") ||
-            conceptName.contains("infection")) {
+            conceptName.contains("infection") ||
+            conceptName.contains("smear") ||      // For "Malaria smear"
+            conceptName.contains("test") ||       // Lab tests often indicate diagnoses
+            conceptName.contains("impression") || // Clinical impressions
+            conceptName.contains("finding") ||    // Clinical findings
+            obs.getValueCoded() != null) {        // Coded values often diagnoses
+            log.info("✅ Detected as DIAGNOSIS: " + conceptName);
             return "diagnosis";
         }
         
@@ -101,13 +110,40 @@ public class ObservationSaveAdvice implements AfterReturningAdvice {
             conceptName.contains("drug") ||
             conceptName.contains("prescription") ||
             conceptName.contains("treatment") ||
-            conceptName.contains("paract") ||
+            conceptName.contains("paract") ||     // paractmol/paracetamol
             conceptName.contains("aspirin") ||
             conceptName.contains("medicine") ||
-            obs.getValueDrug() != null) {
+            conceptName.contains("tablet") ||
+            conceptName.contains("capsule") ||
+            conceptName.contains("syrup") ||
+            obs.getValueDrug() != null) {         // Has drug value
+            log.info("✅ Detected as MEDICATION: " + conceptName);
             return "medication";
         }
         
+        // If observation has a text value and not clearly vital signs/other
+        if (obs.getValueText() != null && !obs.getValueText().isEmpty()) {
+            String valueText = obs.getValueText().toLowerCase();
+            
+            // Check value text for medication indicators
+            if (valueText.contains("mg") || valueText.contains("ml") || 
+                valueText.contains("tablet") || valueText.contains("dose")) {
+                log.info("✅ Detected as MEDICATION from value: " + valueText);
+                return "medication";
+            }
+            
+            // If it has a coded concept, probably a diagnosis
+            if (obs.getValueCoded() != null) {
+                log.info("✅ Detected as DIAGNOSIS (has coded value)");
+                return "diagnosis";
+            }
+            
+            // Default to diagnosis for text observations
+            log.info("✅ Defaulting to DIAGNOSIS for text observation");
+            return "diagnosis";
+        }
+        
+        log.debug("⏭️ Could not determine type for: " + conceptName);
         return null;
     }
 }

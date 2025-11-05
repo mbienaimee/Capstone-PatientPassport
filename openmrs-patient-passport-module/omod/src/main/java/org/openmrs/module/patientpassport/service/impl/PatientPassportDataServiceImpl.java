@@ -73,7 +73,12 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
                     diagnosisValue = obs.getValueCoded().getName().getName();
                 }
                 
-                observationData.put("diagnosis", diagnosisValue);
+                // If still null, use concept name as diagnosis
+                if (diagnosisValue == null && obs.getConcept() != null) {
+                    diagnosisValue = obs.getConcept().getName().getName();
+                }
+                
+                observationData.put("diagnosis", diagnosisValue != null ? diagnosisValue : "Unknown diagnosis");
                 observationData.put("details", obs.getComment() != null ? obs.getComment() : "");
                 observationData.put("status", "active");
                 observationData.put("date", obs.getObsDatetime());
@@ -85,7 +90,12 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
                     medicationName = obs.getValueDrug().getName();
                 }
                 
-                observationData.put("medicationName", medicationName);
+                // If still null, use concept name as medication
+                if (medicationName == null && obs.getConcept() != null) {
+                    medicationName = obs.getConcept().getName().getName();
+                }
+                
+                observationData.put("medicationName", medicationName != null ? medicationName : "Unknown medication");
                 observationData.put("dosage", extractDosage(obs));
                 observationData.put("frequency", "As prescribed");
                 observationData.put("status", "active");
