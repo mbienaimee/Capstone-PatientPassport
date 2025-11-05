@@ -449,16 +449,13 @@ export const storeOpenMRSObservation = async (
       hospital = await Hospital.create({
         user: hospitalUserPlaceholder._id,
         name: hospitalName,
-        registrationNumber: `OPENMRS-${Date.now()}`,
-        address: 'Address not provided',
-        phone: '000-000-0000',
-        email: placeholderEmail,
-        type: 'General Hospital',
-        isApproved: true
+        licenseNumber: `OPENMRS-${Date.now()}`, // REQUIRED field
+        address: 'Address not provided from OpenMRS',
+        contact: '000-000-0000', // REQUIRED field
+        status: 'active'
       });
       
-      console.log(`✅ Created placeholder hospital: ${hospital.name} with email: ${placeholderEmail}`);
-      console.log(`✅ Created placeholder hospital: ${hospital.name}`);
+      console.log(`✅ Created placeholder hospital: ${hospital.name} with license: ${hospital.licenseNumber}`);
     }
 
     // STEP 2: Find or create DOCTOR (using hospital reference)
