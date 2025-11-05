@@ -36,6 +36,18 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
      */
     @Override
     public boolean sendObservationToPassport(Patient patient, Obs obs, String observationType) {
+        
+        // CRITICAL FIX: Ensure we have OpenMRS Context
+        if (!Context.isSessionOpen()) {
+            log.warn("⚠️ No OpenMRS session - opening one now");
+            try {
+                Context.openSession();
+            } catch (Exception e) {
+                log.error("❌ Failed to open OpenMRS session", e);
+                return false;
+            }
+        }
+        
         try {
             log.info("📤 ===========================================");
             log.info("📤 Sending " + observationType + " to Patient Passport");
