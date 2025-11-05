@@ -528,7 +528,7 @@ export const storeOpenMRSObservation = async (
         patient: patient._id,
         doctor: doctor._id,
         name: observationData.diagnosis,
-        details: observationData.details || '',
+        details: observationData.details || 'Diagnosis recorded in OpenMRS without additional details',
         diagnosed: observationData.date || new Date(),
         status: observationData.status || 'active',
         notes: `Added from OpenMRS - Hospital: ${hospitalName}`
@@ -549,7 +549,7 @@ export const storeOpenMRSObservation = async (
         doctor: doctor._id,
         hospital: hospital._id,
         name: observationData.medicationName,
-        dosage: observationData.dosage,
+        dosage: observationData.dosage || 'See prescription',
         frequency: observationData.frequency || 'As needed',
         startDate: observationData.startDate || new Date(),
         endDate: observationData.endDate,
