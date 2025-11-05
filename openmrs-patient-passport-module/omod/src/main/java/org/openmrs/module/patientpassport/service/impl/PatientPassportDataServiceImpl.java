@@ -82,6 +82,8 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
             if ("diagnosis".equals(observationType)) {
                 // Diagnosis data
                 String diagnosisValue = obs.getValueText();
+                
+                // Try valueCoded if valueText is null
                 if (diagnosisValue == null && obs.getValueCoded() != null) {
                     diagnosisValue = obs.getValueCoded().getName().getName();
                 }
@@ -91,14 +93,27 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
                     diagnosisValue = obs.getConcept().getName().getName();
                 }
                 
-                observationData.put("diagnosis", diagnosisValue != null ? diagnosisValue : "Unknown diagnosis");
+                // CRITICAL: Never send null diagnosis
+                if (diagnosisValue == null || diagnosisValue.trim().isEmpty()) {
+                    log.error("❌ Cannot determine diagnosis value for observation " + obs.getObsId());
+                    log.error("   Concept: " + (obs.getConcept() != null ? obs.getConcept().getName().getName() : "NULL"));
+                    log.error("   ValueText: " + obs.getValueText());
+                    log.error("   ValueCoded: " + (obs.getValueCoded() != null ? obs.getValueCoded().getName().getName() : "NULL"));
+                    return false;
+                }
+                
+                observationData.put("diagnosis", diagnosisValue);
                 observationData.put("details", obs.getComment() != null ? obs.getComment() : "");
                 observationData.put("status", "active");
                 observationData.put("date", obs.getObsDatetime());
                 
+                log.info("   📊 Diagnosis value: " + diagnosisValue);
+                
             } else if ("medication".equals(observationType)) {
                 // Medication data
                 String medicationName = obs.getValueText();
+                
+                // Try valueDrug if valueText is null
                 if (medicationName == null && obs.getValueDrug() != null) {
                     medicationName = obs.getValueDrug().getName();
                 }
@@ -108,11 +123,21 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
                     medicationName = obs.getConcept().getName().getName();
                 }
                 
-                observationData.put("medicationName", medicationName != null ? medicationName : "Unknown medication");
+                // CRITICAL: Never send null medication name
+                if (medicationName == null || medicationName.trim().isEmpty()) {
+                    log.error("❌ Cannot determine medication name for observation " + obs.getObsId());
+                    log.error("   Concept: " + (obs.getConcept() != null ? obs.getConcept().getName().getName() : "NULL"));
+                    return false;
+                }
+                
+                observationData.put("medicationName", medicationName);
                 observationData.put("dosage", extractDosage(obs));
                 observationData.put("frequency", "As prescribed");
                 observationData.put("status", "active");
                 observationData.put("startDate", obs.getObsDatetime());
+                
+                log.info("   📊 Medication name: " + medicationName);
+                
             } else {
                 // For all other observation types (finding, test, impression, etc.)
                 String observationValue = obs.getValueText();
