@@ -41,20 +41,33 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
             
             // Get patient name
             String patientName = getPatientFullName(patient);
+            log.info("   Patient Name: " + (patientName != null ? patientName : "NULL"));
             if (patientName == null || patientName.isEmpty()) {
-                log.warn("❌ No name found for patient " + patient.getPatientId());
+                log.error("❌ No name found for patient " + patient.getPatientId());
+                log.error("   PersonName object: " + patient.getPersonName());
                 return false;
             }
             
             // Get hospital name from location
             String hospitalName = obs.getLocation() != null ? obs.getLocation().getName() : "Unknown Hospital";
+            log.info("   Hospital Name: " + hospitalName);
+            if (hospitalName == null || hospitalName.isEmpty()) {
+                hospitalName = "Unknown Hospital";
+            }
             
             // Get doctor license number (we'll use provider name as fallback)
             String doctorLicense = "OPENMRS_PROVIDER"; // Default fallback
-            if (obs.getCreator() != null && obs.getCreator().getPerson() != null) {
-                // Try to get license from provider attributes or use username
-                doctorLicense = obs.getCreator().getUsername();
+            if (obs.getCreator() != null) {
+                if (obs.getCreator().getUsername() != null && !obs.getCreator().getUsername().isEmpty()) {
+                    doctorLicense = obs.getCreator().getUsername();
+                } else if (obs.getCreator().getPerson() != null) {
+                    String creatorName = obs.getCreator().getPerson().getPersonName().getFullName();
+                    if (creatorName != null && !creatorName.isEmpty()) {
+                        doctorLicense = creatorName.replaceAll("\\s+", "_");
+                    }
+                }
             }
+            log.info("   Doctor License: " + doctorLicense);
             
             // Build request body
             Map<String, Object> requestBody = new HashMap<>();
@@ -100,9 +113,76 @@ public class PatientPassportDataServiceImpl implements PatientPassportDataServic
                 observationData.put("frequency", "As prescribed");
                 observationData.put("status", "active");
                 observationData.put("startDate", obs.getObsDatetime());
+            } else {
+                // For all other observation types (finding, test, impression, etc.)
+                String observationValue = obs.getValueText();
+                if (observationValue == null && obs.getValueCoded() != null) {
+                    observationValue = obs.getValueCoded().getName().getName();
+                }
+                
+                // If still null, use concept name
+                if (observationValue == null && obs.getConcept() != null) {
+                    observationValue = obs.getConcept().getName().getName();
+                }
+                
+                observationData.put("observationType", observationType);
+                observationData.put("value", observationValue != null ? observationValue : "No value recorded");
+                observationData.put("conceptName", obs.getConcept() != null ? obs.getConcept().getName().getName() : "Unknown");
+                observationData.put("details", obs.getComment() != null ? obs.getComment() : "");
+                observationData.put("date", obs.getObsDatetime());
             }
             
+            log.info("   📊 Observation Data built: " + observationData.toString());
+            log.info("   📊 Data size: " + observationData.size() + " fields");
+            
             requestBody.put("observationData", observationData);
+            
+            // Validate all required fields before sending
+            log.info("🔍 Validating required fields...");
+            boolean isValid = true;
+            
+            if (patientName == null || patientName.trim().isEmpty()) {
+                log.error("❌ VALIDATION FAILED: patientName is null or empty: [" + patientName + "]");
+                isValid = false;
+            } else {
+                log.info("   ✅ patientName: " + patientName);
+            }
+            
+            if (hospitalName == null || hospitalName.trim().isEmpty()) {
+                log.error("❌ VALIDATION FAILED: hospitalName is null or empty: [" + hospitalName + "]");
+                isValid = false;
+            } else {
+                log.info("   ✅ hospitalName: " + hospitalName);
+            }
+            
+            if (doctorLicense == null || doctorLicense.trim().isEmpty()) {
+                log.error("❌ VALIDATION FAILED: doctorLicense is null or empty: [" + doctorLicense + "]");
+                isValid = false;
+            } else {
+                log.info("   ✅ doctorLicense: " + doctorLicense);
+            }
+            
+            if (observationType == null || observationType.trim().isEmpty()) {
+                log.error("❌ VALIDATION FAILED: observationType is null or empty: [" + observationType + "]");
+                isValid = false;
+            } else {
+                log.info("   ✅ observationType: " + observationType);
+            }
+            
+            if (observationData == null || observationData.isEmpty()) {
+                log.error("❌ VALIDATION FAILED: observationData is null or empty");
+                isValid = false;
+            } else {
+                log.info("   ✅ observationData: " + observationData.size() + " fields");
+            }
+            
+            if (!isValid) {
+                log.error("❌ Request validation failed. Not sending to Patient Passport.");
+                return false;
+            }
+            
+            log.info("✅ All validations passed!");
+            log.info("📦 Full request body: " + requestBody.toString());
             
             // Send to Passport API
             String url = PASSPORT_API_BASE_URL + "/openmrs/observation/store";
