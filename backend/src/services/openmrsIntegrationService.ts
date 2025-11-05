@@ -402,68 +402,7 @@ export const storeOpenMRSObservation = async (
       throw new CustomError(`Patient "${patientName}" not found`, 404);
     }
 
-    // Find doctor - try multiple approaches
-    let doctor = await Doctor.findOne({ 
-      licenseNumber: doctorLicenseNumber.toUpperCase() 
-    });
-    
-    // If not found, try finding by username (for OpenMRS users)
-    if (!doctor) {
-      const doctorUser = await User.findOne({
-        $or: [
-          { email: { $regex: new RegExp(doctorLicenseNumber, 'i') } },
-          { name: { $regex: new RegExp(doctorLicenseNumber, 'i') } }
-        ],
-        role: 'doctor'
-      });
-      
-      if (doctorUser) {
-        doctor = await Doctor.findOne({ user: doctorUser._id });
-      }
-    }
-    
-    // If still not found, create a placeholder doctor record
-    if (!doctor) {
-      console.warn(`⚠️ Doctor ${doctorLicenseNumber} not found - creating placeholder`);
-      
-      // Sanitize doctor license number for email (remove spaces, special chars)
-      const sanitizedLicense = doctorLicenseNumber
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric
-        .substring(0, 30); // Limit length
-      
-      // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
-      const placeholderEmail = `${sanitizedLicense || 'doctor'}@openmrs.com`;
-      
-      // Check if user with this email already exists
-      let doctorUserPlaceholder = await User.findOne({ email: placeholderEmail });
-      
-      if (!doctorUserPlaceholder) {
-        // Create a placeholder user for this OpenMRS doctor
-        doctorUserPlaceholder = await User.create({
-          name: `Dr. ${doctorLicenseNumber}`,
-          email: placeholderEmail,
-          password: Math.random().toString(36),
-          role: 'doctor',
-          isActive: true,
-          isEmailVerified: false
-        });
-        console.log(`✅ Created placeholder user with email: ${placeholderEmail}`);
-      } else {
-        console.log(`ℹ️ Found existing user with email: ${placeholderEmail}`);
-      }
-      
-      doctor = await Doctor.create({
-        user: doctorUserPlaceholder._id,
-        licenseNumber: doctorLicenseNumber.toUpperCase(),
-        specialization: 'General Practice',
-        hospital: null,
-        yearsOfExperience: 0
-      });
-      
-      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber}`);
-    }
-
+    // STEP 1: Find or create HOSPITAL FIRST (required for doctor)
     // Find hospital - be flexible with name matching
     let hospital = await Hospital.findOne({ 
       name: { $regex: new RegExp(`^${hospitalName}$`, 'i') } 
@@ -522,6 +461,70 @@ export const storeOpenMRSObservation = async (
       console.log(`✅ Created placeholder hospital: ${hospital.name}`);
     }
 
+    // STEP 2: Find or create DOCTOR (using hospital reference)
+    let doctor = await Doctor.findOne({ 
+      licenseNumber: doctorLicenseNumber.toUpperCase() 
+    });
+    
+    // If not found, try finding by username (for OpenMRS users)
+    if (!doctor) {
+      const doctorUser = await User.findOne({
+        $or: [
+          { email: { $regex: new RegExp(doctorLicenseNumber, 'i') } },
+          { name: { $regex: new RegExp(doctorLicenseNumber, 'i') } }
+        ],
+        role: 'doctor'
+      });
+      
+      if (doctorUser) {
+        doctor = await Doctor.findOne({ user: doctorUser._id });
+      }
+    }
+    
+    // If still not found, create a placeholder doctor record
+    if (!doctor) {
+      console.warn(`⚠️ Doctor ${doctorLicenseNumber} not found - creating placeholder`);
+      
+      // Sanitize doctor license number for email (remove spaces, special chars)
+      const sanitizedLicense = doctorLicenseNumber
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric
+        .substring(0, 30); // Limit length
+      
+      // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
+      const placeholderEmail = `${sanitizedLicense || 'doctor'}@openmrs.com`;
+      
+      // Check if user with this email already exists
+      let doctorUserPlaceholder = await User.findOne({ email: placeholderEmail });
+      
+      if (!doctorUserPlaceholder) {
+        // Create a placeholder user for this OpenMRS doctor
+        doctorUserPlaceholder = await User.create({
+          name: `Dr. ${doctorLicenseNumber}`,
+          email: placeholderEmail,
+          password: Math.random().toString(36),
+          role: 'doctor',
+          isActive: true,
+          isEmailVerified: false
+        });
+        console.log(`✅ Created placeholder user with email: ${placeholderEmail}`);
+      } else {
+        console.log(`ℹ️ Found existing user with email: ${placeholderEmail}`);
+      }
+      
+      // Create doctor with hospital reference (REQUIRED)
+      doctor = await Doctor.create({
+        user: doctorUserPlaceholder._id,
+        licenseNumber: doctorLicenseNumber.toUpperCase(),
+        specialization: 'General Practice',
+        hospital: hospital._id, // Use the hospital we found/created above
+        yearsOfExperience: 0
+      });
+      
+      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber} at hospital: ${hospital.name}`);
+    }
+
+    // STEP 3: Store the observation
     if (observationType === 'diagnosis') {
       // Create medical condition
       const condition = await MedicalCondition.create({
