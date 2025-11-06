@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="1.0.0" configVersion="2.0" xmlns="http://openmrs.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://openmrs.org http://openmrs.org/xsd/module.xsd">
+
+<id>patientpassport</id>
+<package>org.openmrs.module.patientpassport</package>
+<name>Patient Passport Module</name>
+<description>OpenMRS module for Patient Passport integration - Secure medical records management system with automatic observation synchronization</description>
+<author>Patient Passport Team</author>
+<version>1.0.0</version>
+
+<require_version>2.5.0</require_version>
+
+<activator>org.openmrs.module.patientpassport.PatientPassportActivator</activator>
+
+<!-- Required privileges for Patient Passport functionality -->
+<privilege>
+    <name>View Patient Passport</name>
+    <description>Allows user to view Patient Passport information</description>
+</privilege>
+
+<privilege>
+    <name>Manage Patient Passport Sync</name>
+    <description>Allows user to configure Patient Passport synchronization settings</description>
+</privilege>
+
+<!-- Global properties for configuration -->
+<globalProperty>
+    <property>patientpassport.api.baseUrl</property>
+    <defaultValue>https://patientpassport-api.azurewebsites.net/api</defaultValue>
+    <description>Base URL for Patient Passport API - used for syncing observations and patient data</description>
+</globalProperty>
+
+<globalProperty>
+    <property>patientpassport.frontend.url</property>
+    <defaultValue>https://patient-passpo.netlify.app/</defaultValue>
+    <description>Frontend URL for Patient Passport web application</description>
+</globalProperty>
+
+<globalProperty>
+    <property>patientpassport.sync.enabled</property>
+    <defaultValue>true</defaultValue>
+    <description>Enable/disable automatic synchronization of observations to Patient Passport (true/false)</description>
+</globalProperty>
+
+</module>
+

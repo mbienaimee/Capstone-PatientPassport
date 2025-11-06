@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module configVersion="1.2">
+    
+    <id>patientpassport</id>
+    <name>Patient Passport Module</name>
+    <version>1.0.0</version>
+    <package>org.openmrs.module.patientpassport</package>
+    <author>Patient Passport Team</author>
+    <description>OpenMRS module for Patient Passport integration - Secure medical records management system</description>
+    <updateURL>https://patient-passpo.netlify.app/</updateURL>
+    
+    <activator>org.openmrs.module.patientpassport.PatientPassportActivator</activator>
+
+    <!-- Required OpenMRS version -->
+    <require_version>2.5.0</require_version>
+
+    <!-- Aware of Legacy UI module (use it if available for admin extensions) -->
+    <aware_of_modules>
+        <aware_of_module>org.openmrs.module.legacyui</aware_of_module>
+    </aware_of_modules>
+
+    <!-- Add link to administration page -->
+    <extension>
+        <point>org.openmrs.admin.list</point>
+        <class>org.openmrs.module.patientpassport.extension.html.AdminList</class>
+    </extension>
+
+    <!-- Add link to main navigation gutter -->
+    <extension>
+        <point>org.openmrs.gutter.tools</point>
+        <class>org.openmrs.module.patientpassport.extension.html.GutterListExt</class>
+    </extension>
+
+    <!-- Global Properties -->
+    <globalProperty>
+        <property>patientpassport.api.baseUrl</property>
+        <defaultValue>https://patientpassport-api.azurewebsites.net/api</defaultValue>
+        <description>Base URL for Patient Passport API</description>
+    </globalProperty>
+
+    <globalProperty>
+        <property>patientpassport.frontend.url</property>
+        <defaultValue>https://patient-passpo.netlify.app/</defaultValue>
+        <description>Frontend URL for Patient Passport</description>
+    </globalProperty>
+
+    <globalProperty>
+        <property>patientpassport.api.timeout</property>
+        <defaultValue>30000</defaultValue>
+        <description>API timeout in milliseconds</description>
+    </globalProperty>
+
+    <globalProperty>
+        <property>patientpassport.enable.otp</property>
+        <defaultValue>true</defaultValue>
+        <description>Enable OTP verification for passport access</description>
+    </globalProperty>
+
+    <globalProperty>
+        <property>patientpassport.audit.logging</property>
+        <defaultValue>true</defaultValue>
+        <description>Enable audit logging for passport access</description>
+    </globalProperty>
+
+    <!-- Privileges -->
+    <privilege id="Patient Passport: View Patient Passport" 
+               description="View patient passport data"/>
+    
+    <privilege id="Patient Passport: Update Patient Passport" 
+               description="Update patient passport data"/>
+    
+    <privilege id="Patient Passport: Access Emergency Override" 
+               description="Access patient passport in emergency situations"/>
+
+    <!-- Roles -->
+    <role id="Patient Passport User" 
+          description="Basic user with passport viewing rights">
+        <privileges>
+            <privilege ref="Patient Passport: View Patient Passport"/>
+        </privileges>
+    </role>
+
+    <role id="Patient Passport Manager" 
+          description="User with passport management rights">
+        <privileges>
+            <privilege ref="Patient Passport: View Patient Passport"/>
+            <privilege ref="Patient Passport: Update Patient Passport"/>
+        </privileges>
+    </role>
+
+    <role id="Patient Passport Emergency" 
+          description="Emergency access role">
+        <privileges>
+            <privilege ref="Patient Passport: View Patient Passport"/>
+            <privilege ref="Patient Passport: Access Emergency Override"/>
+        </privileges>
+    </role>
+
+    <!-- Messages -->
+    <message>
+        <locale>en</locale>
+        <code>patientpassport.title</code>
+        <text>Patient Passport</text>
+    </message>
+
+    <message>
+        <locale>en</locale>
+        <code>patientpassport.description</code>
+        <text>Secure medical records management system</text>
+    </message>
+
+    <message>
+        <locale>en</locale>
+        <code>patientpassport.access.denied</code>
+        <text>Access denied. You don't have permission to view this patient's passport.</text>
+    </message>
+
+    <message>
+        <locale>en</locale>
+        <code>patientpassport.otp.required</code>
+        <text>OTP verification required to access patient passport.</text>
+    </message>
+
+    <message>
+        <locale>en</locale>
+        <code>patientpassport.api.error</code>
+        <text>Error connecting to Patient Passport API. Please try again later.</text>
+    </message>
+
+    <message>
+        <locale>en</locale>
+        <code>patientpassport.patient.not.found</code>
+        <text>Patient passport not found for this patient.</text>
+    </message>
+
+    <message>
+        <locale>en</locale>
+        <code>patientpassport.emergency.access</code>
+        <text>Emergency access granted. All access is being logged.</text>
+    </message>
+
+</module>
