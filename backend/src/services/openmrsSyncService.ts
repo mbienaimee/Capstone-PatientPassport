@@ -1,0 +1,773 @@
+/**
+ * OpenMRS Database Sync Service
+ * 
+ * Purpose: Automatically retrieve observations from OpenMRS databases
+ * across multiple hospitals and sync them to Patient Passport
+ * 
+ * Features:
+ * - Direct database-to-database synchronization
+ * - Multi-hospital support
+ * - Real-time observation sync
+ * - Automatic patient matching
+ * - No manual doctor entry required
+ */
+
+import mysql from 'mysql2/promise';
+import mongoose from 'mongoose';
+import Patient from '@/models/Patient';
+import MedicalRecord from '@/models/MedicalRecord';
+import Doctor from '@/models/Doctor';
+import Hospital from '@/models/Hospital';
+import User from '@/models/User';
+import AuditLog from '@/models/AuditLog';
+
+// OpenMRS Database Connection Configuration
+interface OpenMRSConnection {
+  hospitalId: string;
+  hospitalName: string;
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}
+
+// OpenMRS Observation Structure
+interface OpenMRSObservation {
+  obs_id: number;
+  person_id: number;
+  concept_id: number;
+  encounter_id: number;
+  obs_datetime: Date;
+  location_id: number;
+  value_coded: number | null;
+  value_text: string | null;
+  value_numeric: number | null;
+  comments: string | null;
+  creator: number;
+  date_created: Date;
+  voided: boolean;
+}
+
+// Processed Observation
+interface ProcessedObservation {
+  type: 'condition' | 'medication' | 'test' | 'visit';
+  conceptName: string;
+  value: string;
+  dateRecorded: Date;
+  providerName: string;
+  locationName: string;
+  notes: string;
+}
+
+class OpenMRSSyncService {
+  private connections: Map<string, mysql.Pool> = new Map();
+  private syncInterval: NodeJS.Timeout | null = null;
+  private isRunning: boolean = false;
+
+  /**
+   * Initialize connections to all OpenMRS databases
+   */
+  async initializeConnections(hospitals: OpenMRSConnection[]): Promise<void> {
+    console.log(`🔌 Initializing OpenMRS database connections for ${hospitals.length} hospitals...`);
+
+    for (const hospital of hospitals) {
+      try {
+        const pool = mysql.createPool({
+          host: hospital.host,
+          port: hospital.port,
+          user: hospital.user,
+          password: hospital.password,
+          database: hospital.database,
+          waitForConnections: true,
+          connectionLimit: 10,
+          queueLimit: 0,
+          enableKeepAlive: true,
+          keepAliveInitialDelay: 0
+        });
+
+        // Test connection
+        await pool.query('SELECT 1');
+        this.connections.set(hospital.hospitalId, pool);
+        
+        console.log(`✅ Connected to ${hospital.hospitalName} OpenMRS database`);
+      } catch (error) {
+        console.error(`❌ Failed to connect to ${hospital.hospitalName}:`, error);
+      }
+    }
+
+    console.log(`✅ Initialized ${this.connections.size} database connections`);
+  }
+
+  /**
+   * Start automatic synchronization
+   */
+  startAutoSync(intervalMinutes: number = 5): void {
+    if (this.isRunning) {
+      console.log('⚠️ Sync already running');
+      return;
+    }
+
+    console.log(`🔄 Starting automatic sync every ${intervalMinutes} minutes...`);
+    this.isRunning = true;
+
+    // Initial sync
+    this.syncAllHospitals();
+
+    // Schedule periodic sync
+    this.syncInterval = setInterval(() => {
+      this.syncAllHospitals();
+    }, intervalMinutes * 60 * 1000);
+  }
+
+  /**
+   * Stop automatic synchronization
+   */
+  stopAutoSync(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+      this.isRunning = false;
+      console.log('⏹️ Stopped automatic sync');
+    }
+  }
+
+  /**
+   * Sync observations from all hospitals
+   */
+  async syncAllHospitals(): Promise<void> {
+    console.log('\n🔄 ═══════════════════════════════════════════════════════');
+    console.log('🔄 Starting Multi-Hospital Observation Sync');
+    console.log('🔄 ═══════════════════════════════════════════════════════\n');
+
+    const syncResults: any[] = [];
+
+    for (const [hospitalId, connection] of this.connections.entries()) {
+      try {
+        const result = await this.syncHospital(hospitalId, connection);
+        syncResults.push(result);
+      } catch (error) {
+        console.error(`❌ Error syncing hospital ${hospitalId}:`, error);
+        syncResults.push({ hospitalId, error: (error as Error).message });
+      }
+    }
+
+    console.log('\n✅ ═══════════════════════════════════════════════════════');
+    console.log('✅ Sync Complete - Summary:');
+    syncResults.forEach(result => {
+      console.log(`   Hospital ${result.hospitalName}: ${result.syncedCount || 0} observations`);
+    });
+    console.log('✅ ═══════════════════════════════════════════════════════\n');
+  }
+
+  /**
+   * Sync observations from a single hospital
+   */
+  private async syncHospital(hospitalId: string, connection: mysql.Pool): Promise<any> {
+    console.log(`\n🏥 Syncing hospital: ${hospitalId}`);
+
+    // Get hospital from Patient Passport database
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) {
+      throw new Error(`Hospital ${hospitalId} not found in Patient Passport database`);
+    }
+
+    // Get last sync timestamp for this hospital
+    const lastSyncTime = await this.getLastSyncTimestamp(hospitalId);
+    console.log(`   Last sync: ${lastSyncTime || 'Never'}`);
+
+    // Query new/updated observations
+    const observations = await this.fetchObservationsFromOpenMRS(
+      connection,
+      lastSyncTime
+    );
+
+    console.log(`   Found ${observations.length} new observations`);
+
+    let syncedCount = 0;
+    let errorCount = 0;
+
+    // Process each observation
+    for (const obs of observations) {
+      try {
+        await this.processObservation(obs, hospitalId, connection);
+        syncedCount++;
+      } catch (error) {
+        console.error(`   ❌ Error processing observation ${obs.obs_id}:`, error);
+        errorCount++;
+      }
+    }
+
+    // Update last sync timestamp
+    await this.updateLastSyncTimestamp(hospitalId);
+
+    console.log(`   ✅ Synced: ${syncedCount}, Errors: ${errorCount}`);
+
+    return {
+      hospitalId,
+      hospitalName: hospital.name,
+      syncedCount,
+      errorCount,
+      timestamp: new Date()
+    };
+  }
+
+  /**
+   * Fetch observations from OpenMRS database
+   */
+  private async fetchObservationsFromOpenMRS(
+    connection: mysql.Pool,
+    since: Date | null
+  ): Promise<OpenMRSObservation[]> {
+    const sinceClause = since 
+      ? `AND o.date_created > ?`
+      : '';
+
+    const query = `
+      SELECT 
+        o.obs_id,
+        o.person_id,
+        o.concept_id,
+        o.encounter_id,
+        o.obs_datetime,
+        o.location_id,
+        o.value_coded,
+        o.value_text,
+        o.value_numeric,
+        o.comments,
+        o.creator,
+        o.date_created,
+        o.voided
+      FROM obs o
+      WHERE o.voided = 0
+        ${sinceClause}
+      ORDER BY o.date_created ASC
+      LIMIT 1000
+    `;
+
+    const params = since ? [since] : [];
+    const [rows] = await connection.query(query, params);
+
+    return rows as OpenMRSObservation[];
+  }
+
+  /**
+   * Process a single observation
+   */
+  private async processObservation(
+    obs: OpenMRSObservation,
+    hospitalId: string,
+    connection: mysql.Pool
+  ): Promise<void> {
+    // Get concept name
+    const conceptName = await this.getConceptName(connection, obs.concept_id);
+    
+    // Get provider information
+    const provider = await this.getProviderInfo(connection, obs.creator);
+    
+    // Get location name
+    const locationName = await this.getLocationName(connection, obs.location_id);
+    
+    // Get patient by person_id (OpenMRS person_id)
+    const patient = await this.findPatientByOpenMRSPersonId(obs.person_id, connection);
+    
+    if (!patient) {
+      console.log(`   ⚠️ Patient not found for person_id ${obs.person_id}, skipping...`);
+      return;
+    }
+
+    // Determine observation type and extract value
+    const processed = await this.categorizeObservation(
+      obs,
+      conceptName,
+      provider,
+      locationName,
+      connection
+    );
+
+    // Get or create doctor
+    const doctor = await this.getOrCreateDoctor(
+      provider.name,
+      provider.identifier,
+      hospitalId
+    );
+
+    // Store in Patient Passport
+    await this.storeMedicalRecord(patient._id.toString(), processed, doctor._id.toString(), hospitalId);
+
+    console.log(`   ✅ Synced: ${conceptName} for patient ${patient.nationalId}`);
+  }
+
+  /**
+   * Get concept name from OpenMRS
+   */
+  private async getConceptName(connection: mysql.Pool, conceptId: number): Promise<string> {
+    const query = `
+      SELECT cn.name
+      FROM concept_name cn
+      WHERE cn.concept_id = ?
+        AND cn.locale = 'en'
+        AND cn.concept_name_type = 'FULLY_SPECIFIED'
+      LIMIT 1
+    `;
+
+    const [rows] = await connection.query(query, [conceptId]) as any;
+    return rows.length > 0 ? rows[0].name : `Unknown Concept (${conceptId})`;
+  }
+
+  /**
+   * Get provider information
+   */
+  private async getProviderInfo(connection: mysql.Pool, userId: number): Promise<any> {
+    const query = `
+      SELECT 
+        u.username,
+        COALESCE(pn.given_name, '') as given_name,
+        COALESCE(pn.family_name, '') as family_name,
+        p.identifier
+      FROM users u
+      LEFT JOIN person_name pn ON u.person_id = pn.person_id AND pn.voided = 0
+      LEFT JOIN provider p ON u.person_id = p.person_id AND p.retired = 0
+      WHERE u.user_id = ?
+      LIMIT 1
+    `;
+
+    const [rows] = await connection.query(query, [userId]) as any;
+    
+    if (rows.length === 0) {
+      return {
+        name: `Provider ${userId}`,
+        identifier: `PROVIDER_${userId}`
+      };
+    }
+
+    const row = rows[0];
+    return {
+      name: `${row.given_name} ${row.family_name}`.trim() || row.username,
+      identifier: row.identifier || `PROVIDER_${userId}`
+    };
+  }
+
+  /**
+   * Get location name
+   */
+  private async getLocationName(connection: mysql.Pool, locationId: number): Promise<string> {
+    const query = `
+      SELECT name
+      FROM location
+      WHERE location_id = ?
+      LIMIT 1
+    `;
+
+    const [rows] = await connection.query(query, [locationId]) as any;
+    return rows.length > 0 ? rows[0].name : 'Unknown Location';
+  }
+
+  /**
+   * Find patient by OpenMRS person ID
+   */
+  private async findPatientByOpenMRSPersonId(
+    personId: number,
+    connection: mysql.Pool
+  ): Promise<any> {
+    // Get national ID from OpenMRS patient_identifier table
+    const query = `
+      SELECT pi.identifier
+      FROM patient_identifier pi
+      JOIN patient_identifier_type pit ON pi.identifier_type = pit.patient_identifier_type_id
+      WHERE pi.patient_id = ?
+        AND pit.name LIKE '%National%ID%'
+        AND pi.voided = 0
+      LIMIT 1
+    `;
+
+    const [rows] = await connection.query(query, [personId]) as any;
+    
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const nationalId = rows[0].identifier;
+
+    // Find patient in Patient Passport database
+    const patient = await Patient.findOne({ nationalId }).populate('user');
+    return patient;
+  }
+
+  /**
+   * Categorize observation and extract value
+   * 
+   * OpenMRS Structure:
+   * - Question Concept (obs.concept_id) = Diagnosis/Observation name (e.g., "Malaria smear impression")
+   * - Value (obs.value_text/value_coded) = Medication/Treatment (e.g., "dgdggdf 200mg")
+   * - Creator (obs.creator) = Doctor who added it
+   */
+  private async categorizeObservation(
+    obs: OpenMRSObservation,
+    conceptName: string,
+    provider: any,
+    locationName: string,
+    connection: mysql.Pool
+  ): Promise<ProcessedObservation> {
+    const conceptUpper = conceptName.toUpperCase();
+    
+    // In OpenMRS: 
+    // - Concept Name (Question Concept) = The diagnosis/condition
+    // - Value = The medication/treatment prescribed
+    
+    let type: 'condition' | 'medication' | 'test' | 'visit' = 'condition';
+    let diagnosisName = conceptName; // This is the "Question Concept" from OpenMRS
+    let medicationValue = '';
+
+    // Extract value (medication/treatment)
+    if (obs.value_coded) {
+      medicationValue = await this.getConceptName(connection, obs.value_coded);
+    } else if (obs.value_text) {
+      medicationValue = obs.value_text;
+    } else if (obs.value_numeric !== null) {
+      medicationValue = obs.value_numeric.toString();
+    } else {
+      medicationValue = 'No medication specified';
+    }
+
+    // Determine type based on concept keywords
+    if (conceptUpper.includes('VISIT') || conceptUpper.includes('ENCOUNTER') || 
+        conceptUpper.includes('ADMISSION')) {
+      type = 'visit';
+    } else if (conceptUpper.includes('LAB') || conceptUpper.includes('TEST') || 
+               conceptUpper.includes('INVESTIGATION') || conceptUpper.includes('RESULT')) {
+      type = 'test';
+    } else if (conceptUpper.includes('MEDICATION') || conceptUpper.includes('DRUG')) {
+      type = 'medication';
+    } else {
+      // Default: treat as condition (diagnosis) with medication
+      type = 'condition';
+    }
+
+    return {
+      type,
+      conceptName: diagnosisName,
+      value: medicationValue,
+      dateRecorded: obs.obs_datetime,
+      providerName: provider.name,
+      locationName,
+      notes: obs.comments || `Synced from OpenMRS - Diagnosis: ${diagnosisName}, Treatment: ${medicationValue}`
+    };
+  }
+
+  /**
+   * Get or create doctor
+   */
+  private async getOrCreateDoctor(
+    name: string,
+    identifier: string,
+    hospitalId: string
+  ): Promise<any> {
+    // Try to find existing doctor by OpenMRS provider identifier
+    let doctor = await Doctor.findOne({ 
+      openmrsProviderUuid: identifier 
+    });
+
+    if (doctor) {
+      return doctor;
+    }
+
+    // Create placeholder user for doctor if doesn't exist
+    const email = `${identifier.toLowerCase().replace(/[^a-z0-9]/g, '')}@openmrs.auto`;
+    
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      user = await User.create({
+        name: name || `Dr. ${identifier}`,
+        email,
+        password: Math.random().toString(36).substring(7), // Random password
+        role: 'doctor',
+        isEmailVerified: true
+      });
+    }
+
+    // Create doctor record
+    doctor = await Doctor.create({
+      user: user._id,
+      specialization: 'General Practice',
+      licenseNumber: identifier,
+      hospital: hospitalId,
+      openmrsProviderUuid: identifier,
+      isActive: true
+    });
+
+    console.log(`   ℹ️ Created doctor: ${name} (${identifier})`);
+
+    return doctor;
+  }
+
+  /**
+   * Store medical record in Patient Passport
+   * 
+   * OpenMRS Structure Mapping:
+   * - Question Concept → Diagnosis name (data.name)
+   * - Value → Medication/Treatment (data.details)
+   * - Creator → Doctor (createdBy)
+   */
+  private async storeMedicalRecord(
+    patientId: string,
+    processed: ProcessedObservation,
+    doctorId: string,
+    hospitalId: string
+  ): Promise<void> {
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      throw new Error(`Patient ${patientId} not found`);
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+
+    // Prepare data based on type
+    // In OpenMRS: conceptName = Diagnosis, value = Medication
+    const data: any = {};
+
+    switch (processed.type) {
+      case 'condition':
+        // Question Concept = Diagnosis (e.g., "Malaria smear impression")
+        data.name = processed.conceptName;
+        // Value = Medication/Treatment (e.g., "dgdggdf 200mg")
+        data.details = `Treatment: ${processed.value}`;
+        data.diagnosed = processed.dateRecorded.toISOString();
+        data.procedure = `${processed.notes} | Doctor: ${processed.providerName} | Hospital: ${hospital?.name || 'Unknown'}`;
+        break;
+
+      case 'medication':
+        data.medicationName = processed.conceptName;
+        data.dosage = processed.value;
+        data.medicationStatus = 'Active';
+        break;
+
+      case 'test':
+        data.testName = processed.conceptName;
+        data.result = processed.value;
+        data.testDate = processed.dateRecorded.toISOString();
+        data.testStatus = 'Normal';
+        break;
+
+      case 'visit':
+        data.hospital = hospital?.name || 'Unknown Hospital';
+        data.reason = processed.conceptName;
+        data.visitDate = processed.dateRecorded.toISOString();
+        break;
+    }
+
+    // Check if this record already exists (prevent duplicates)
+    const existing = await MedicalRecord.findOne({
+      patientId,
+      type: processed.type,
+      'data.name': data.name || data.medicationName || data.testName,
+      'data.diagnosed': data.diagnosed,
+      'data.testDate': data.testDate,
+      'data.visitDate': data.visitDate
+    });
+
+    if (existing) {
+      console.log(`   ⚠️ Record already exists, skipping duplicate`);
+      return;
+    }
+
+    // Create medical record
+    const record = await MedicalRecord.create({
+      patientId,
+      type: processed.type,
+      data,
+      createdBy: doctorId
+    });
+
+    // Update patient's references
+    switch (processed.type) {
+      case 'condition':
+        if (!patient.medicalHistory.includes(record._id)) {
+          patient.medicalHistory.push(record._id);
+        }
+        break;
+
+      case 'medication':
+        if (!patient.medications.includes(record._id)) {
+          patient.medications.push(record._id);
+        }
+        break;
+
+      case 'test':
+        if (!patient.testResults.includes(record._id)) {
+          patient.testResults.push(record._id);
+        }
+        break;
+
+      case 'visit':
+        if (!patient.hospitalVisits.includes(record._id)) {
+          patient.hospitalVisits.push(record._id);
+        }
+        break;
+    }
+
+    await patient.save();
+
+    // Create audit log
+    await AuditLog.create({
+      action: 'openmrs_auto_sync',
+      performedBy: 'OpenMRS Sync Service',
+      targetModel: 'MedicalRecord',
+      targetId: record._id.toString(),
+      changes: {
+        type: processed.type,
+        conceptName: processed.conceptName,
+        hospitalId,
+        providerName: processed.providerName
+      }
+    });
+  }
+
+  /**
+   * Get last sync timestamp for a hospital
+   */
+  private async getLastSyncTimestamp(hospitalId: string): Promise<Date | null> {
+    const SyncStatus = mongoose.model('SyncStatus', new mongoose.Schema({
+      hospitalId: String,
+      lastSyncTime: Date
+    }), 'syncstatus');
+
+    const status = await SyncStatus.findOne({ hospitalId });
+    return status?.lastSyncTime || null;
+  }
+
+  /**
+   * Update last sync timestamp
+   */
+  private async updateLastSyncTimestamp(hospitalId: string): Promise<void> {
+    const SyncStatus = mongoose.model('SyncStatus', new mongoose.Schema({
+      hospitalId: String,
+      lastSyncTime: Date
+    }), 'syncstatus');
+
+    await SyncStatus.findOneAndUpdate(
+      { hospitalId },
+      { lastSyncTime: new Date() },
+      { upsert: true }
+    );
+  }
+
+  /**
+   * Manual sync for a specific patient
+   */
+  async syncPatient(nationalId: string): Promise<any> {
+    console.log(`🔄 Manual sync for patient: ${nationalId}`);
+
+    const patient = await Patient.findOne({ nationalId }).populate('user');
+    if (!patient) {
+      throw new Error(`Patient with national ID ${nationalId} not found`);
+    }
+
+    const results: any[] = [];
+
+    for (const [hospitalId, connection] of this.connections.entries()) {
+      try {
+        // Find person_id in this hospital's OpenMRS
+        const query = `
+          SELECT pi.patient_id as person_id
+          FROM patient_identifier pi
+          JOIN patient_identifier_type pit ON pi.identifier_type = pit.patient_identifier_type_id
+          WHERE pi.identifier = ?
+            AND pit.name LIKE '%National%ID%'
+            AND pi.voided = 0
+          LIMIT 1
+        `;
+
+        const [rows] = await connection.query(query, [nationalId]) as any;
+        
+        if (rows.length === 0) {
+          console.log(`   ⚠️ Patient not found in hospital ${hospitalId}`);
+          continue;
+        }
+
+        const personId = rows[0].person_id;
+
+        // Get all observations for this patient
+        const observations = await this.fetchPatientObservations(connection, personId);
+
+        let syncedCount = 0;
+        for (const obs of observations) {
+          try {
+            await this.processObservation(obs, hospitalId, connection);
+            syncedCount++;
+          } catch (error) {
+            console.error(`   ❌ Error: ${error}`);
+          }
+        }
+
+        results.push({
+          hospitalId,
+          syncedCount,
+          observationsFound: observations.length
+        });
+
+      } catch (error) {
+        console.error(`   ❌ Error syncing hospital ${hospitalId}:`, error);
+      }
+    }
+
+    return {
+      patientId: patient._id,
+      nationalId,
+      hospitals: results,
+      totalSynced: results.reduce((sum, r) => sum + r.syncedCount, 0)
+    };
+  }
+
+  /**
+   * Fetch all observations for a patient
+   */
+  private async fetchPatientObservations(
+    connection: mysql.Pool,
+    personId: number
+  ): Promise<OpenMRSObservation[]> {
+    const query = `
+      SELECT 
+        o.obs_id,
+        o.person_id,
+        o.concept_id,
+        o.encounter_id,
+        o.obs_datetime,
+        o.location_id,
+        o.value_coded,
+        o.value_text,
+        o.value_numeric,
+        o.comments,
+        o.creator,
+        o.date_created,
+        o.voided
+      FROM obs o
+      WHERE o.person_id = ?
+        AND o.voided = 0
+      ORDER BY o.obs_datetime DESC
+      LIMIT 500
+    `;
+
+    const [rows] = await connection.query(query, [personId]);
+    return rows as OpenMRSObservation[];
+  }
+
+  /**
+   * Close all connections
+   */
+  async closeConnections(): Promise<void> {
+    console.log('🔌 Closing all OpenMRS database connections...');
+    
+    for (const [hospitalId, pool] of this.connections.entries()) {
+      await pool.end();
+      console.log(`   ✅ Closed connection to hospital ${hospitalId}`);
+    }
+
+    this.connections.clear();
+    console.log('✅ All connections closed');
+  }
+}
+
+// Export singleton instance
+export default new OpenMRSSyncService();
