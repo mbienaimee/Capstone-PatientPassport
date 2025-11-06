@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
+import Logo from "./Logo";
+import LoadingSpinner from './ui/LoadingSpinner';
 
 const HospitalLogin = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isLoading } = useAuth();
   const { showNotification } = useNotification();
   const [formData, setFormData] = useState({
     email: '',
@@ -44,6 +46,8 @@ const HospitalLogin = () => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     setErrors(newErrors);
@@ -92,26 +96,23 @@ const HospitalLogin = () => {
         showNotification({
           type: 'success',
           title: 'Login Successful',
-          message: `Welcome back, ${userName}! Redirecting to dashboard...`
+          message: `Welcome back, ${userName}!`
         });
         
-        setTimeout(() => {
-          // Redirect based on user role
-          const userData = JSON.parse(localStorage.getItem('user') || '{}');
-          if (userData.role === 'patient') {
-            navigate('/patient-passport');
-          } else if (userData.role === 'doctor') {
-            navigate('/doctor-dashboard');
-          } else if (userData.role === 'admin') {
-            navigate('/admin-dashboard');
-          } else if (userData.role === 'hospital') {
-            navigate('/hospital-dashboard');
-          } else if (userData.role === 'receptionist') {
-            navigate('/receptionist-dashboard');
-          } else {
-            navigate('/hospital-dashboard'); // fallback
-          }
-        }, 1500);
+        // Redirect based on user role
+        if (userData.role === 'patient') {
+          navigate('/patient-passport');
+        } else if (userData.role === 'doctor') {
+          navigate('/doctor-dashboard');
+        } else if (userData.role === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (userData.role === 'hospital') {
+          navigate('/hospital-dashboard');
+        } else if (userData.role === 'receptionist') {
+          navigate('/receptionist-dashboard');
+        } else {
+          navigate('/hospital-dashboard'); // fallback
+        }
       } else {
         showNotification({
           type: 'error',
@@ -121,10 +122,34 @@ const HospitalLogin = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
+      
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error instanceof Error) {
+        // Check if it's an API error
+        if ('status' in error) {
+          const apiError = error as any;
+          
+          if (apiError.status === 500) {
+            errorMessage = 'Server error. Please try again later or contact support if the problem persists.';
+          } else if (apiError.status === 401) {
+            errorMessage = 'Invalid credentials. Please check your email and password.';
+          } else if (apiError.status === 400) {
+            errorMessage = 'Please check your input and try again.';
+          } else if (apiError.status === 0) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          } else {
+            errorMessage = apiError.message || errorMessage;
+          }
+        } else {
+          errorMessage = error.message || errorMessage;
+        }
+      }
+      
       showNotification({
         type: 'error',
         title: 'Login Error',
-        message: 'An unexpected error occurred. Please try again.'
+        message: errorMessage
       });
     }
   };
@@ -137,118 +162,137 @@ const HospitalLogin = () => {
     navigate('/hospital-register');
   };
 
+  const handleBackToHome = () => {
+    navigate('/');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <svg 
-              className="w-10 h-10 text-green-600" 
-              viewBox="0 0 24 24" 
-              fill="currentColor"
-            >
-              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 18c-3.86-1.05-6.5-4.73-6.5-8.5V8.29L12 4.65l6.5 3.64V11.5c0 3.77-2.64 7.45-6.5 8.5z"/>
-              <path d="M11 7h2v6h-2zm0 8h2v2h-2z"/>
-            </svg>
-            <h1 className="text-4xl font-bold text-green-600" style={{ fontStyle: 'italic' }}>
-              PatientPassport
-            </h1>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-6 sm:mb-8">
+          <Logo size="xl" className="justify-center mb-4" />
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Welcome Back
+          </h2>
+          <p className="text-sm sm:text-base text-gray-600">
+            Hospital staff login portal - Patients can access the patient login page
+          </p>
+        </div>
+
+        <div className="flex gap-2 mb-6 sm:mb-8 bg-gray-100 p-1 rounded-xl">
+          <button
+            onClick={() => navigate('/patient-login')}
+            className="flex-1 py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold transition-all duration-300 text-gray-600 hover:text-gray-800 hover:bg-gray-50 text-sm sm:text-base"
+          >
+            Patient Login
+          </button>
+          <div className="flex-1 py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold bg-white text-green-600 shadow-md text-sm sm:text-base">
+            Hospital Login
           </div>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-lg shadow-lg p-12 max-w-md mx-auto">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-3">
-            Hospital Login
-          </h2>
-          
-          <p className="text-center text-gray-600 mb-8">
-            Welcome back! Please enter your hospital credentials.
-          </p>
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <div className="space-y-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Hospital Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your hospital email"
+              autoComplete="username"
+              className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base ${errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 hover:border-gray-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              disabled={isLoading}
+            />
+            {errors.email && (
+              <p id="email-error" className="text-sm text-red-600">
+                {errors.email}
+              </p>
+            )}
+          </div>
 
-          <div className="space-y-6">
-            {/* Hospital Email */}
-            <div>
-              <label 
-                htmlFor="email" 
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Hospital Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Enter your hospital email"
-                autoComplete="username"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
+          <div className="space-y-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base ${errors.password ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 hover:border-gray-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              aria-describedby={errors.password ? "password-error" : undefined}
+              disabled={isLoading}
+            />
+            {errors.password && (
+              <p id="password-error" className="text-sm text-red-600">
+                {errors.password}
+              </p>
+            )}
+          </div>
 
-            {/* Password */}
-            <div>
-              <label 
-                htmlFor="password" 
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700 placeholder-gray-400"
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
-            </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-green-600 text-white py-2 sm:py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
+            aria-label="Login to Hospital Dashboard"
+          >
+            {isLoading ? (
+              <LoadingSpinner size="sm" text="" />
+            ) : (
+              'Login'
+            )}
+          </button>
+        </form>
 
-            {/* Login Button */}
+        <div className="mt-6 sm:mt-8 space-y-3 text-center">
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4">
             <button
-              onClick={handleSubmit}
-              className="w-full bg-green-600 text-white py-3 rounded-md font-medium hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              onClick={handleForgotPassword}
+              className="text-xs sm:text-sm text-gray-600 hover:text-green-600 transition-colors"
+              disabled={isLoading}
             >
-              Login
+              Forgot Password?
             </button>
-
-            {/* Links */}
-            <div className="text-center space-y-2">
-              <button
-                onClick={handleForgotPassword}
-                className="block w-full text-gray-600 hover:text-green-600 transition-colors text-sm"
-              >
-                Forgot Password?
-              </button>
-              <button
-                onClick={handleRegister}
-                className="block w-full text-gray-600 hover:text-green-600 transition-colors text-sm"
-              >
-                Need to Register?
-              </button>
-              <button
-                onClick={() => navigate('/verify-email')}
-                className="block w-full text-blue-600 hover:text-blue-700 transition-colors text-sm mt-2"
-              >
-                Resend Verification
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="block w-full text-gray-500 hover:text-green-600 transition-colors text-sm mt-4"
-              >
-                ← Back to Home
-              </button>
-            </div>
+            <span className="text-gray-300 hidden sm:inline">|</span>
+            <button
+              onClick={() => navigate('/verify-email')}
+              className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              disabled={isLoading}
+            >
+              Resend Verification
+            </button>
+          </div>
+          
+          <div className="pt-2 border-t border-gray-200">
+            <p className="text-xs sm:text-sm text-gray-600 mb-2">
+              Don't have an account?
+            </p>
+            <button
+              onClick={handleRegister}
+              className="text-xs sm:text-sm text-green-600 hover:text-green-700 font-semibold transition-colors"
+              disabled={isLoading}
+            >
+              Register Hospital
+            </button>
+          </div>
+          
+          <div className="pt-2">
+            <button
+              onClick={handleBackToHome}
+              className="text-xs sm:text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center justify-center space-x-1"
+              disabled={isLoading}
+            >
+              <span>←</span>
+              <span>Back to Home</span>
+            </button>
           </div>
         </div>
       </div>
