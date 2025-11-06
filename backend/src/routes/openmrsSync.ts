@@ -6,52 +6,52 @@
 
 import express from 'express';
 import * as openmrsSyncController from '@/controllers/openmrsSyncController';
-import { authenticateToken, authorizeRoles } from '@/middleware/auth';
+import { authenticate, authorize } from '@/middleware/auth';
 
 const router = express.Router();
 
 // All routes require authentication and admin role
-router.use(authenticateToken);
+router.use(authenticate);
 
 // Initialize sync connections (Admin only)
 router.post(
   '/initialize',
-  authorizeRoles('admin'),
+  authorize('admin'),
   openmrsSyncController.initializeSync
 );
 
 // Start automatic synchronization (Admin only)
 router.post(
   '/start',
-  authorizeRoles('admin'),
+  authorize('admin'),
   openmrsSyncController.startAutoSync
 );
 
 // Stop automatic synchronization (Admin only)
 router.post(
   '/stop',
-  authorizeRoles('admin'),
+  authorize('admin'),
   openmrsSyncController.stopAutoSync
 );
 
 // Trigger manual sync for all hospitals (Admin only)
 router.post(
   '/sync-all',
-  authorizeRoles('admin'),
+  authorize('admin'),
   openmrsSyncController.syncAllHospitals
 );
 
 // Sync specific patient (Doctor/Admin)
 router.post(
   '/sync-patient/:nationalId',
-  authorizeRoles('doctor', 'admin'),
+  authorize('doctor', 'admin'),
   openmrsSyncController.syncPatient
 );
 
 // Get sync status (Admin only)
 router.get(
   '/status',
-  authorizeRoles('admin'),
+  authorize('admin'),
   openmrsSyncController.getSyncStatus
 );
 

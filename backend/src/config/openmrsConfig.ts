@@ -43,40 +43,52 @@ export const getOpenMRSConfigurations = (): OpenMRSHospitalConfig[] => {
     }
   }
 
-  // Default configurations (for development/testing)
-  // IMPORTANT: Replace these with your actual hospital configurations
-  return [
-    {
-      hospitalId: process.env.HOSPITAL_1_ID || '60a7c2f5e4b0c1a2d3e4f5a6',
-      hospitalName: process.env.HOSPITAL_1_NAME || 'Central Hospital',
+  // Only return configurations that are explicitly enabled in .env
+  const configs: OpenMRSHospitalConfig[] = [];
+
+  // Hospital 1
+  if (process.env.HOSPITAL_1_ENABLED === 'true' && process.env.HOSPITAL_1_ID) {
+    configs.push({
+      hospitalId: process.env.HOSPITAL_1_ID,
+      hospitalName: process.env.HOSPITAL_1_NAME || 'Hospital 1',
       host: process.env.HOSPITAL_1_DB_HOST || 'localhost',
       port: parseInt(process.env.HOSPITAL_1_DB_PORT || '3306'),
       database: process.env.HOSPITAL_1_DB_NAME || 'openmrs',
       user: process.env.HOSPITAL_1_DB_USER || 'openmrs_readonly',
-      password: process.env.HOSPITAL_1_DB_PASSWORD || 'password123',
-      enabled: process.env.HOSPITAL_1_ENABLED !== 'false'
-    },
-    {
-      hospitalId: process.env.HOSPITAL_2_ID || '60a7c2f5e4b0c1a2d3e4f5a7',
-      hospitalName: process.env.HOSPITAL_2_NAME || 'District Hospital',
+      password: process.env.HOSPITAL_1_DB_PASSWORD || '',
+      enabled: true
+    });
+  }
+
+  // Hospital 2
+  if (process.env.HOSPITAL_2_ENABLED === 'true' && process.env.HOSPITAL_2_ID) {
+    configs.push({
+      hospitalId: process.env.HOSPITAL_2_ID,
+      hospitalName: process.env.HOSPITAL_2_NAME || 'Hospital 2',
       host: process.env.HOSPITAL_2_DB_HOST || 'localhost',
-      port: parseInt(process.env.HOSPITAL_2_DB_PORT || '3307'),
+      port: parseInt(process.env.HOSPITAL_2_DB_PORT || '3306'),
       database: process.env.HOSPITAL_2_DB_NAME || 'openmrs',
       user: process.env.HOSPITAL_2_DB_USER || 'openmrs_readonly',
-      password: process.env.HOSPITAL_2_DB_PASSWORD || 'password123',
-      enabled: process.env.HOSPITAL_2_ENABLED !== 'false'
-    },
-    {
-      hospitalId: process.env.HOSPITAL_3_ID || '60a7c2f5e4b0c1a2d3e4f5a8',
-      hospitalName: process.env.HOSPITAL_3_NAME || 'Regional Hospital',
+      password: process.env.HOSPITAL_2_DB_PASSWORD || '',
+      enabled: true
+    });
+  }
+
+  // Hospital 3
+  if (process.env.HOSPITAL_3_ENABLED === 'true' && process.env.HOSPITAL_3_ID) {
+    configs.push({
+      hospitalId: process.env.HOSPITAL_3_ID,
+      hospitalName: process.env.HOSPITAL_3_NAME || 'Hospital 3',
       host: process.env.HOSPITAL_3_DB_HOST || 'localhost',
-      port: parseInt(process.env.HOSPITAL_3_DB_PORT || '3308'),
+      port: parseInt(process.env.HOSPITAL_3_DB_PORT || '3306'),
       database: process.env.HOSPITAL_3_DB_NAME || 'openmrs',
       user: process.env.HOSPITAL_3_DB_USER || 'openmrs_readonly',
-      password: process.env.HOSPITAL_3_DB_PASSWORD || 'password123',
-      enabled: process.env.HOSPITAL_3_ENABLED !== 'false'
-    }
-  ].filter(config => config.enabled);
+      password: process.env.HOSPITAL_3_DB_PASSWORD || '',
+      enabled: true
+    });
+  }
+
+  return configs;
 };
 
 /**

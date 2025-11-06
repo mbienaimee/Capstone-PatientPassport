@@ -203,7 +203,8 @@ export const getSyncStatus = asyncHandler(async (req: Request, res: Response, ne
     action: { $in: ['openmrs_auto_sync', 'openmrs_manual_sync_all', 'openmrs_patient_sync'] }
   })
     .sort({ createdAt: -1 })
-    .limit(10);
+    .limit(10)
+    .populate('user', 'name email');
 
   const response: ApiResponse = {
     success: true,
@@ -212,8 +213,8 @@ export const getSyncStatus = asyncHandler(async (req: Request, res: Response, ne
       recentSyncs: recentSyncs.map(log => ({
         action: log.action,
         timestamp: log.createdAt,
-        performedBy: log.performedBy,
-        details: log.changes
+        performedBy: log.user,
+        details: log.details
       }))
     }
   };
