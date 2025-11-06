@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write  # Required to upload artifacts
+      actions: write
 
     defaults:
       run:
-        working-directory: ./backend  # Make sure npm runs in your backend folder
+        working-directory: ./backend
 
     steps:
       - name: Checkout repository
@@ -32,88 +32,30 @@ jobs:
       - name: Build project
         run: npm run build --if-present
 
-      - name: Skip tests (optional)
-        run: echo "Skipping tests to avoid workflow failure"
-
       - name: Prepare deployment package
         run: |
           echo "Creating deployment package..."
-          echo "Current directory: $(pwd)"
-          echo "Working directory context: ./backend"
-          
-          # Create deploy-package directory
           mkdir -p deploy-package
           
-          # Verify dist exists
-          if [ ! -d "dist" ]; then
-            echo "❌ Error: dist directory not found!"
-            echo "Contents of current directory:"
-            ls -la
-            exit 1
-          fi
+          # Copy built application
+          cp -r dist deploy-package/
           
-          # Copy essential files only (exclude node_modules and source files)
-          echo "Copying dist directory..."
-          cp -r dist deploy-package/ || exit 1
+          # Copy package files
+          cp package*.json deploy-package/
           
-          echo "Copying package files..."
-          cp package*.json deploy-package/ || exit 1
+          # Copy web.config for Windows IIS
+          [ -f web.config ] && cp web.config deploy-package/
           
-          [ -f tsconfig.json ] && cp tsconfig.json deploy-package/ || true
+          # Copy swagger documentation (CRITICAL for API docs)
+          [ -f swagger.json ] && cp swagger.json deploy-package/
           
-          # Copy necessary config files
-          [ -f .env.example ] && cp .env.example deploy-package/ || true
-          [ -f README.md ] && cp README.md deploy-package/ || true
+          # Copy optional files
+          [ -f tsconfig.json ] && cp tsconfig.json deploy-package/
+          [ -f .env.example ] && cp .env.example deploy-package/
+          [ -f README.md ] && cp README.md deploy-package/
           
-          # Copy scripts folder if exists
-          [ -d scripts ] && cp -r scripts deploy-package/ || true
-          
-          # Show package size and contents
-          echo "Package contents:"
-          ls -lah deploy-package/
-          echo "Package size:"
-          du -sh deploy-package
           echo "✅ Deployment package prepared"
-
-      - name: Verify deployment package exists
-        run: |
-          echo "Verifying deployment package..."
-          echo "Current directory: $(pwd)"
-          if [ ! -d "deploy-package" ]; then
-            echo "❌ Error: deploy-package directory not found!"
-            echo "Contents of current directory:"
-            ls -la
-            exit 1
-          fi
-          if [ ! -f "deploy-package/package.json" ]; then
-            echo "❌ Error: package.json not found in deploy-package!"
-            echo "Contents of deploy-package:"
-            ls -la deploy-package/
-            exit 1
-          fi
-          if [ ! -d "deploy-package/dist" ]; then
-            echo "❌ Error: dist directory not found in deploy-package!"
-            echo "Contents of deploy-package:"
-            ls -la deploy-package/
-            exit 1
-          fi
-          echo "✅ Deployment package verified"
-
-      - name: Verify path from repository root
-        run: |
-          echo "Checking path from repository root..."
-          cd ${{ github.workspace }}
-          echo "Repository root: $(pwd)"
-          echo "Checking for backend/deploy-package:"
-          if [ -d "backend/deploy-package" ]; then
-            echo "✅ Found: backend/deploy-package"
-            ls -lah backend/deploy-package/
-            echo "File count: $(find backend/deploy-package -type f | wc -l)"
-          else
-            echo "❌ backend/deploy-package not found from repo root!"
-            echo "Contents of backend/:"
-            ls -la backend/ 2>/dev/null || echo "backend directory not found"
-          fi
+          ls -la deploy-package/
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -121,16 +63,13 @@ jobs:
           name: node-app
           path: backend/deploy-package
           retention-days: 1
-          if-no-files-found: error
-          compression-level: 6
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write
+      id-token: write  # Required for OIDC authentication
       contents: read
-      actions: read  # Required to download artifacts
 
     steps:
       - name: Download artifact from build job
@@ -138,64 +77,63 @@ jobs:
         with:
           name: node-app
           path: ./deploy-package
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify artifact download
-        run: |
-          echo "Verifying downloaded artifact..."
-          if [ ! -d "deploy-package" ]; then
-            echo "❌ Error: deploy-package not found after download!"
-            exit 1
-          fi
-          echo "Artifact contents:"
-          ls -lah deploy-package/
-          echo "✅ Artifact verified"
 
       - name: Setup Node.js for deployment
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
 
-      - name: Install production dependencies in deployment package
+      - name: Install production dependencies
         run: |
           cd deploy-package
-          echo "Installing production dependencies..."
-          echo "Current directory: $(pwd)"
-          echo "Package.json exists: $([ -f package.json ] && echo 'yes' || echo 'no')"
           npm ci --only=production --prefer-offline --no-audit
-          echo "✅ Dependencies installed successfully"
 
+      - name: Create deployment zip
+        run: |
+          cd deploy-package
+          zip -r ../deploy.zip . -x "*.git*" -x "node_modules/.cache/*"
+          cd ..
+          ls -lh deploy.zip
+          echo "✅ Deployment zip created"
+
+      # Azure Login with OIDC (OpenID Connect) - Most secure method
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_91056519DD7F4A2F986CBC49EEBF8553 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EF97F0EC5FF346DDA6A50509B60EC278 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_5003280868E84F909999D3A50199FDCA }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Stop Azure Web App before deployment
-        run: |
-          echo "Stopping app service to release file locks..."
-          az webapp stop --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv) || echo "App may already be stopped"
-          sleep 5
+      - name: Set Azure subscription
+        run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Clean previous deployment files
+      - name: Define resource group
         run: |
-          echo "Cleaning previous deployment artifacts..."
-          RESOURCE_GROUP=$(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
-          az webapp deployment source delete --name patientpassport-api --resource-group $RESOURCE_GROUP --manual-integration || echo "No previous deployments to clean"
-          sleep 3
+          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
+          if [ -z "$RESOURCE_GROUP" ]; then
+            RESOURCE_GROUP="passportpatient_group-364"
+            echo "⚠️ Using default resource group: $RESOURCE_GROUP"
+          fi
+          echo "AZURE_RG=$RESOURCE_GROUP" >> $GITHUB_ENV
+
+      - name: Configure Node.js version (Windows App)
+        run: |
+          az webapp config appsettings set \
+            --name patientpassport-api \
+            --resource-group "$AZURE_RG" \
+            --settings WEBSITE_NODE_DEFAULT_VERSION="~18"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'patientpassport-api'
-          package: ./deploy-package
-          type: zip
-          async: false
-          restart: true
+          package: ./deploy.zip
 
-      - name: Start Azure Web App
+      - name: Verify deployment
         run: |
-          echo "Starting app service..."
-          az webapp start --name patientpassport-api --resource-group $(az webapp show --name patientpassport-api --query resourceGroup -o tsv)
-          echo "Deployment complete!"
+          echo "✅ Deployment complete!"
+          echo "🌐 URL: https://patientpassport-api.azurewebsites.net"
+          echo "Waiting for app to start..."
+          sleep 10
+          curl -I https://patientpassport-api.azurewebsites.net || echo "App is starting up..."
+

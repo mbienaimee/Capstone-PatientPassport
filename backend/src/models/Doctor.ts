@@ -57,6 +57,13 @@ const doctorSchema = new Schema<IDoctor>({
     type: Schema.Types.ObjectId,
     ref: 'Patient'
   }],
+  // OpenMRS Integration
+  openmrsProviderUuid: {
+    type: String,
+    default: null,
+    sparse: true,
+    index: true
+  },
   isActive: {
     type: Boolean,
     default: true

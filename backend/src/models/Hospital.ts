@@ -56,6 +56,13 @@ const HospitalSchema = new Schema<IHospital>({
     type: Schema.Types.ObjectId,
     ref: 'Patient'
   }],
+  // OpenMRS Integration
+  openmrsUuid: {
+    type: String,
+    default: null,
+    sparse: true,
+    index: true
+  },
   status: {
     type: String,
     enum: ['active', 'pending', 'inactive'],
