@@ -274,7 +274,7 @@ class OpenMRSSyncService {
     const patient = await this.findPatientByOpenMRSPersonId(obs.person_id, connection);
     
     if (!patient) {
-      console.log(`   ⚠️ Patient not found for person_id ${obs.person_id}, skipping...`);
+      // Silent skip - patient not found
       return;
     }
 
@@ -296,8 +296,6 @@ class OpenMRSSyncService {
 
     // Store in Patient Passport
     await this.storeMedicalRecord(patient._id.toString(), processed, obs, doctor._id.toString(), hospitalId);
-
-    console.log(`   ✅ Synced: ${conceptName} for patient ${patient.nationalId}`);
   }
 
   /**
@@ -397,7 +395,7 @@ class OpenMRSSyncService {
     const [rows] = await connection.query(query, [personId]) as any;
     
     if (rows.length === 0) {
-      console.log(`   ⚠️ Cannot auto-register: Person ${personId} not found in OpenMRS`);
+      // console.log(`   ⚠️ Cannot auto-register: Person ${personId} not found in OpenMRS`);
       return null;
     }
 
@@ -407,7 +405,7 @@ class OpenMRSSyncService {
     const familyName = row.family_name || '';
     const fullName = `${givenName} ${middleName} ${familyName}`.replace(/\s+/g, ' ').trim();
     
-    console.log(`   🆕 Auto-registering patient: ${fullName} from OpenMRS...`);
+    // console.log(`   🆕 Auto-registering patient: ${fullName} from OpenMRS...`);
 
     const User = (await import('../models/User')).default;
     const bcrypt = await import('bcryptjs');
@@ -429,7 +427,7 @@ class OpenMRSSyncService {
         updatedAt: new Date()
       });
 
-      console.log(`   ✅ Created User account: ${user.email}`);
+      // console.log(`   ✅ Created User account: ${user.email}`);
 
       // Create Patient record
       const patient = await Patient.create({
@@ -458,13 +456,13 @@ class OpenMRSSyncService {
         updatedAt: new Date()
       });
 
-      console.log(`   ✅ Created Patient record: ${patient.nationalId}`);
-      console.log(`   📧 Login: ${email} | Password: ${temporaryPassword}`);
+      // console.log(`   ✅ Created Patient record: ${patient.nationalId}`);
+      // console.log(`   📧 Login: ${email} | Password: ${temporaryPassword}`);
 
       return Patient.findById(patient._id).populate('user');
 
     } catch (error: any) {
-      console.error(`   ❌ Failed to auto-register patient ${fullName}:`, error.message);
+      // console.error(`   ❌ Failed to auto-register patient ${fullName}:`, error.message);
       return null;
     }
   }
@@ -511,13 +509,13 @@ class OpenMRSSyncService {
     // Build full name (given name + middle name + family name)
     const fullName = `${givenName} ${middleName} ${familyName}`.replace(/\s+/g, ' ').trim();
 
-    console.log(`   🔍 Searching for patient: ${fullName} (OpenMRS person_id: ${personId})`);
+    // console.log(`   🔍 Searching for patient: ${fullName} (OpenMRS person_id: ${personId})`);
 
     // Strategy 1: Try National ID first (if available)
     if (nationalId) {
       const patient = await Patient.findOne({ nationalId }).populate('user');
       if (patient) {
-        console.log(`   ✅ Patient matched by National ID: ${nationalId}`);
+        // console.log(`   ✅ Patient matched by National ID: ${nationalId}`);
         return patient;
       }
     }
@@ -553,23 +551,23 @@ class OpenMRSSyncService {
     if (user) {
       const patient = await Patient.findOne({ user: user._id }).populate('user');
       if (patient) {
-        console.log(`   ✅ Patient matched by name: ${fullName} → ${user.name}`);
+        // console.log(`   ✅ Patient matched by name: ${fullName} → ${user.name}`);
         return patient;
       }
     }
 
     // Strategy 3: AUTO-REGISTER patient from OpenMRS
-    console.log(`   ❌ Patient "${fullName}" not found in Patient Passport database`);
-    console.log(`   🆕 Attempting auto-registration from OpenMRS...`);
+    // console.log(`   ❌ Patient "${fullName}" not found in Patient Passport database`);
+    // console.log(`   🆕 Attempting auto-registration from OpenMRS...`);
     
     const autoRegisteredPatient = await this.autoRegisterPatient(personId, connection);
     
     if (autoRegisteredPatient) {
-      console.log(`   ✅ Successfully auto-registered: ${fullName}`);
+      // console.log(`   ✅ Successfully auto-registered: ${fullName}`);
       return autoRegisteredPatient;
     }
 
-    console.log(`   ❌ Auto-registration failed for: ${fullName}`);
+    // console.log(`   ❌ Auto-registration failed for: ${fullName}`);
     return null;
   }
 
@@ -757,7 +755,7 @@ class OpenMRSSyncService {
     });
 
     if (existingByObsId) {
-      console.log(`   ⚠️ Record already exists (OpenMRS obs_id: ${obs.obs_id}, Record ID: ${existingByObsId._id}), skipping duplicate`);
+      // Silent skip - duplicate already exists
       return;
     }
 
@@ -775,16 +773,16 @@ class OpenMRSSyncService {
     if (data.testDate) duplicateQuery['data.testDate'] = data.testDate;
     if (data.visitDate) duplicateQuery['data.visitDate'] = data.visitDate;
 
-    console.log(`   🔍 Duplicate check query:`, JSON.stringify(duplicateQuery));
+    // console.log(`   🔍 Duplicate check query:`, JSON.stringify(duplicateQuery));
 
     const existing = await MedicalRecord.findOne(duplicateQuery);
 
     if (existing) {
-      console.log(`   ⚠️ Record already exists (ID: ${existing._id}), skipping duplicate`);
+      // Silent skip - duplicate already exists
       return;
     }
 
-    console.log(`   ✅ No duplicate found, creating new record...`);
+    // console.log(`   ✅ No duplicate found, creating new record...`);
 
     // Create medical record with OpenMRS metadata
     const record = await MedicalRecord.create({
@@ -805,7 +803,7 @@ class OpenMRSSyncService {
       }
     });
 
-    console.log(`   ✅ Created record ID: ${record._id} (OpenMRS obs_id: ${obs.obs_id})`);
+    // console.log(`   ✅ Created record ID: ${record._id} (OpenMRS obs_id: ${obs.obs_id})`);
 
     // Update patient's references
     switch (processed.type) {
