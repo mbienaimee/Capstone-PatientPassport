@@ -213,6 +213,7 @@ class OpenMRSSyncService {
 
   /**
    * Fetch observations from OpenMRS database
+   * Strategy: Fetch observations from multiple patients (not just one patient's old data)
    */
   private async fetchObservationsFromOpenMRS(
     connection: mysql.Pool,
@@ -222,6 +223,8 @@ class OpenMRSSyncService {
       ? `AND o.date_created > ?`
       : '';
 
+    // Modified query to get observations from ALL patients more evenly
+    // Uses a subquery to limit observations per patient
     const query = `
       SELECT 
         o.obs_id,
@@ -240,8 +243,8 @@ class OpenMRSSyncService {
       FROM obs o
       WHERE o.voided = 0
         ${sinceClause}
-      ORDER BY o.date_created ASC
-      LIMIT 1000
+      ORDER BY o.person_id ASC, o.date_created ASC
+      LIMIT 5000
     `;
 
     const params = since ? [since] : [];
@@ -292,7 +295,7 @@ class OpenMRSSyncService {
     );
 
     // Store in Patient Passport
-    await this.storeMedicalRecord(patient._id.toString(), processed, doctor._id.toString(), hospitalId);
+    await this.storeMedicalRecord(patient._id.toString(), processed, obs, doctor._id.toString(), hospitalId);
 
     console.log(`   ✅ Synced: ${conceptName} for patient ${patient.nationalId}`);
   }
@@ -363,7 +366,111 @@ class OpenMRSSyncService {
   }
 
   /**
-   * Find patient by OpenMRS person ID
+   * Auto-register patient from OpenMRS to Patient Passport
+   */
+  private async autoRegisterPatient(
+    personId: number,
+    connection: mysql.Pool
+  ): Promise<any> {
+    // Get complete patient information from OpenMRS
+    const query = `
+      SELECT 
+        p.person_id,
+        pn.given_name,
+        pn.family_name,
+        pn.middle_name,
+        p.gender,
+        p.birthdate,
+        pi.identifier as national_id,
+        pa.address1,
+        pa.city_village as city,
+        pa.state_province as province,
+        pa.country
+      FROM person p
+      JOIN person_name pn ON pn.person_id = p.person_id AND pn.voided = 0 AND pn.preferred = 1
+      LEFT JOIN patient_identifier pi ON pi.patient_id = p.person_id AND pi.voided = 0
+      LEFT JOIN person_address pa ON pa.person_id = p.person_id AND pa.voided = 0 AND pa.preferred = 1
+      WHERE p.person_id = ? AND p.voided = 0
+      LIMIT 1
+    `;
+
+    const [rows] = await connection.query(query, [personId]) as any;
+    
+    if (rows.length === 0) {
+      console.log(`   ⚠️ Cannot auto-register: Person ${personId} not found in OpenMRS`);
+      return null;
+    }
+
+    const row = rows[0];
+    const givenName = row.given_name || '';
+    const middleName = row.middle_name || '';
+    const familyName = row.family_name || '';
+    const fullName = `${givenName} ${middleName} ${familyName}`.replace(/\s+/g, ' ').trim();
+    
+    console.log(`   🆕 Auto-registering patient: ${fullName} from OpenMRS...`);
+
+    const User = (await import('../models/User')).default;
+    const bcrypt = await import('bcryptjs');
+
+    // Generate unique email and temporary password
+    const email = `patient.${personId}@openmrs.sync`;
+    const temporaryPassword = `OpenMRS${personId}!`;
+    const hashedPassword = await bcrypt.default.hash(temporaryPassword, 12);
+
+    try {
+      // Create User account
+      const user = await User.create({
+        name: fullName,
+        email: email,
+        password: hashedPassword,
+        role: 'patient',
+        isVerified: true, // Auto-verified for synced patients
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      console.log(`   ✅ Created User account: ${user.email}`);
+
+      // Create Patient record
+      const patient = await Patient.create({
+        user: user._id,
+        nationalId: row.national_id || `OPENMRS_${personId}`,
+        dateOfBirth: row.birthdate || new Date('1990-01-01'),
+        gender: row.gender === 'M' ? 'Male' : row.gender === 'F' ? 'Female' : 'Other',
+        bloodType: 'Unknown',
+        address: row.address1 || 'N/A',
+        city: row.city || 'N/A',
+        province: row.province || 'N/A',
+        country: row.country || 'Rwanda',
+        emergencyContact: {
+          name: 'Not specified',
+          relationship: 'N/A',
+          phone: 'N/A'
+        },
+        medicalHistory: [],
+        currentMedications: [],
+        allergies: [],
+        chronicConditions: [],
+        medications: [],
+        testResults: [],
+        hospitalVisits: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      console.log(`   ✅ Created Patient record: ${patient.nationalId}`);
+      console.log(`   📧 Login: ${email} | Password: ${temporaryPassword}`);
+
+      return Patient.findById(patient._id).populate('user');
+
+    } catch (error: any) {
+      console.error(`   ❌ Failed to auto-register patient ${fullName}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Find patient by OpenMRS person ID (with auto-registration)
    */
   private async findPatientByOpenMRSPersonId(
     personId: number,
@@ -451,8 +558,18 @@ class OpenMRSSyncService {
       }
     }
 
+    // Strategy 3: AUTO-REGISTER patient from OpenMRS
     console.log(`   ❌ Patient "${fullName}" not found in Patient Passport database`);
-    console.log(`   💡 Please register patient "${fullName}" in Patient Passport first`);
+    console.log(`   🆕 Attempting auto-registration from OpenMRS...`);
+    
+    const autoRegisteredPatient = await this.autoRegisterPatient(personId, connection);
+    
+    if (autoRegisteredPatient) {
+      console.log(`   ✅ Successfully auto-registered: ${fullName}`);
+      return autoRegisteredPatient;
+    }
+
+    console.log(`   ❌ Auto-registration failed for: ${fullName}`);
     return null;
   }
 
@@ -580,6 +697,7 @@ class OpenMRSSyncService {
   private async storeMedicalRecord(
     patientId: string,
     processed: ProcessedObservation,
+    obs: OpenMRSObservation,
     doctorId: string,
     hospitalId: string
   ): Promise<void> {
@@ -593,6 +711,14 @@ class OpenMRSSyncService {
     // Prepare data based on type
     // In OpenMRS: conceptName = Diagnosis, value = Medication
     const data: any = {};
+
+    // Determine value type for OpenMRS metadata
+    let valueType: 'text' | 'numeric' | 'coded' = 'text';
+    if (obs.value_coded) {
+      valueType = 'coded';
+    } else if (obs.value_numeric !== null) {
+      valueType = 'numeric';
+    }
 
     switch (processed.type) {
       case 'condition':
@@ -625,6 +751,16 @@ class OpenMRSSyncService {
     }
 
     // Check if this record already exists (prevent duplicates)
+    // First check by OpenMRS obs_id for exact match
+    const existingByObsId = await MedicalRecord.findOne({
+      'openmrsData.obsId': obs.obs_id
+    });
+
+    if (existingByObsId) {
+      console.log(`   ⚠️ Record already exists (OpenMRS obs_id: ${obs.obs_id}, Record ID: ${existingByObsId._id}), skipping duplicate`);
+      return;
+    }
+
     // Build query dynamically to avoid matching on undefined fields
     const duplicateQuery: any = {
       patientId,
@@ -650,15 +786,26 @@ class OpenMRSSyncService {
 
     console.log(`   ✅ No duplicate found, creating new record...`);
 
-    // Create medical record
+    // Create medical record with OpenMRS metadata
     const record = await MedicalRecord.create({
       patientId,
       type: processed.type,
       data,
-      createdBy: doctorId
+      createdBy: doctorId,
+      openmrsData: {
+        obsId: obs.obs_id,
+        conceptId: obs.concept_id,
+        personId: obs.person_id,
+        obsDatetime: obs.obs_datetime,
+        dateCreated: obs.date_created,
+        creatorName: processed.providerName,
+        locationName: processed.locationName,
+        encounterUuid: obs.encounter_id ? obs.encounter_id.toString() : undefined,
+        valueType: valueType
+      }
     });
 
-    console.log(`   ✅ Created record ID: ${record._id}`);
+    console.log(`   ✅ Created record ID: ${record._id} (OpenMRS obs_id: ${obs.obs_id})`);
 
     // Update patient's references
     switch (processed.type) {

@@ -569,13 +569,25 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
       .populate('createdBy', 'name email role')
       .sort({ createdAt: -1 });
 
+    // Transform records to include OpenMRS metadata
+    const transformedRecords = medicalRecords.map(record => ({
+      _id: record._id,
+      type: record.type,
+      data: record.data,
+      createdBy: record.createdBy,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      // Include OpenMRS metadata if available
+      openmrsData: record.openmrsData || null
+    }));
+
     // Group records by type
     const groupedRecords = {
-      conditions: medicalRecords.filter(record => record.type === 'condition'),
-      medications: medicalRecords.filter(record => record.type === 'medication'),
-      tests: medicalRecords.filter(record => record.type === 'test'),
-      visits: medicalRecords.filter(record => record.type === 'visit'),
-      images: medicalRecords.filter(record => record.type === 'image')
+      conditions: transformedRecords.filter(record => record.type === 'condition'),
+      medications: transformedRecords.filter(record => record.type === 'medication'),
+      tests: transformedRecords.filter(record => record.type === 'test'),
+      visits: transformedRecords.filter(record => record.type === 'visit'),
+      images: transformedRecords.filter(record => record.type === 'image')
     };
 
     const response: ApiResponse = {

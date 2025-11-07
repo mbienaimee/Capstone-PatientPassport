@@ -34,6 +34,21 @@ export interface IMedicalRecord extends mongoose.Document {
     description?: string;
   };
   createdBy: string; // Doctor ID who created this record
+  
+  // OpenMRS metadata (for synced records)
+  openmrsData?: {
+    obsId?: number;           // OpenMRS obs_id
+    conceptId?: number;        // OpenMRS concept_id
+    personId?: number;         // OpenMRS person_id
+    obsDatetime?: Date;        // When observation was taken
+    dateCreated?: Date;        // When entered into OpenMRS
+    creatorName?: string;      // Doctor/user who entered in OpenMRS
+    locationName?: string;     // Hospital/Location name from OpenMRS
+    encounterUuid?: string;    // OpenMRS encounter UUID
+    providerUuid?: string;     // OpenMRS provider UUID
+    valueType?: 'text' | 'numeric' | 'coded'; // Type of value stored
+  };
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,6 +103,22 @@ const medicalRecordSchema = new Schema<IMedicalRecord>({
     type: String,
     required: [true, 'Created by is required'],
     ref: 'User'
+  },
+  // OpenMRS metadata for synced records
+  openmrsData: {
+    obsId: Number,
+    conceptId: Number,
+    personId: Number,
+    obsDatetime: Date,
+    dateCreated: Date,
+    creatorName: String,
+    locationName: String,
+    encounterUuid: String,
+    providerUuid: String,
+    valueType: {
+      type: String,
+      enum: ['text', 'numeric', 'coded']
+    }
   }
 }, {
   timestamps: true

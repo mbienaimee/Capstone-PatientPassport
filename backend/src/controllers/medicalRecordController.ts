@@ -34,13 +34,25 @@ export const getPatientMedicalRecords = asyncHandler(async (req: Request, res: R
     .populate('createdBy', 'name email role')
     .sort({ createdAt: -1 });
 
+  // Transform records to include OpenMRS metadata
+  const transformedRecords = records.map(record => ({
+    _id: record._id,
+    type: record.type,
+    data: record.data,
+    createdBy: record.createdBy,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    // Include OpenMRS metadata if available
+    openmrsData: record.openmrsData || null
+  }));
+
   // Group records by type
   const groupedRecords = {
-    conditions: records.filter(record => record.type === 'condition'),
-    medications: records.filter(record => record.type === 'medication'),
-    tests: records.filter(record => record.type === 'test'),
-    visits: records.filter(record => record.type === 'visit'),
-    images: records.filter(record => record.type === 'image')
+    conditions: transformedRecords.filter(record => record.type === 'condition'),
+    medications: transformedRecords.filter(record => record.type === 'medication'),
+    tests: transformedRecords.filter(record => record.type === 'test'),
+    visits: transformedRecords.filter(record => record.type === 'visit'),
+    images: transformedRecords.filter(record => record.type === 'image')
   };
 
   res.json({
