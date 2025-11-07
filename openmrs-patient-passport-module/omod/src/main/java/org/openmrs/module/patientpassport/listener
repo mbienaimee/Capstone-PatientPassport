@@ -1,0 +1,208 @@
+package org.openmrs.module.patientpassport.listener;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.openmrs.Obs;
+import org.openmrs.Patient;
+import org.openmrs.api.context.Context;
+import org.openmrs.event.Event;
+import org.openmrs.event.Event.Action;
+import org.openmrs.event.EventListener;
+import org.openmrs.module.patientpassport.service.PatientPassportDataService;
+
+import javax.jms.Message;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Event listener for OpenMRS observations
+ * Automatically syncs new observations to Patient Passport API
+ */
+public class ObservationEventListener implements EventListener {
+    
+    private static final Log log = LogFactory.getLog(ObservationEventListener.class);
+    
+    private PatientPassportDataService dataService;
+    
+    /**
+     * Spring setter injection for the data service
+     */
+    public void setDataService(PatientPassportDataService dataService) {
+        this.dataService = dataService;
+        log.info("✅ PatientPassportDataService injected into ObservationEventListener");
+    }
+    
+    @Override
+    public void onMessage(Message message) {
+        try {
+            log.info("========================================");
+            log.info("🎯 PATIENT PASSPORT - Observation event received!");
+            log.info("========================================");
+            
+            String action = Event.getAction(message);
+            String uuid = Event.getUuid(message);
+            
+            if (Action.CREATED.name().equals(action) || Action.UPDATED.name().equals(action)) {
+                log.info("📝 Processing " + action + " observation: " + uuid);
+                
+                // Get the observation
+                Obs observation = Context.getObsService().getObsByUuid(uuid);
+                
+                if (observation != null) {
+                    // Check if this is a patient observation
+                    Patient patient = null;
+                    if (observation.getPerson() != null) {
+                        try {
+                            patient = Context.getPatientService().getPatient(observation.getPerson().getPersonId());
+                        } catch (Exception e) {
+                            log.debug("⚠️ Person is not a patient: " + e.getMessage());
+                        }
+                    }
+                    
+                    if (patient != null) {
+                        log.info("👤 Patient found: " + patient.getPersonName().getFullName() + 
+                                " (ID: " + patient.getPatientId() + ")");
+                        log.info("📊 Observation concept: " + observation.getConcept().getName().getName());
+                        
+                        // Async sync to avoid blocking OpenMRS
+                        syncObservationAsync(observation, patient, uuid);
+                    } else {
+                        log.debug("⏭️ Skipping non-patient observation: " + uuid);
+                    }
+                } else {
+                    log.warn("⚠️ Observation not found for UUID: " + uuid);
+                }
+            }
+        } catch (Exception e) {
+            log.error("========================================");
+            log.error("❌ ERROR processing observation event: " + e.getMessage(), e);
+            log.error("========================================");
+        }
+    }
+    
+    /**
+     * Sync observation to Patient Passport asynchronously
+     */
+    private void syncObservationAsync(final Obs observation, final Patient patient, final String uuid) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                log.info("🔄 Starting async sync for observation: " + uuid);
+                
+                // Check if data service is available
+                if (dataService == null) {
+                    log.error("❌ PatientPassportDataService is null - cannot sync!");
+                    log.error("   This likely means Spring dependency injection failed");
+                    return;
+                }
+                
+                // Determine observation type
+                String obsType = determineObservationType(observation);
+                log.info("📋 Observation type determined: " + obsType);
+                
+                // Convert to API format ("diagnosis" or "medication")
+                String apiObsType = convertToApiObservationType(obsType);
+                
+                // Call the sync service
+                boolean success = dataService.sendObservationToPassport(patient, observation, apiObsType);
+                
+                if (success) {
+                    log.info("========================================");
+                    log.info("✅ SUCCESS! Synced observation " + uuid + " to Patient Passport");
+                    log.info("========================================");
+                } else {
+                    log.error("========================================");
+                    log.error("❌ FAILED to sync observation " + uuid + " to Patient Passport");
+                    log.error("========================================");
+                }
+            } catch (Exception e) {
+                log.error("========================================");
+                log.error("❌ ERROR during async sync for " + uuid + ": " + e.getMessage(), e);
+                log.error("========================================");
+            }
+        });
+    }
+    
+    /**
+     * Determine observation type from concept name
+     */
+    private String determineObservationType(Obs obs) {
+        try {
+            if (obs.getConcept() == null) {
+                return "OTHER";
+            }
+            
+            String conceptName = obs.getConcept().getName().getName().toUpperCase();
+            
+            if (conceptName.contains("DIAGNOSIS") || conceptName.contains("CONDITION")) {
+                return "DIAGNOSIS";
+            } else if (conceptName.contains("MEDICATION") || conceptName.contains("DRUG")) {
+                return "MEDICATION";
+            } else if (conceptName.contains("ALLERG")) {
+                return "ALLERGY";
+            } else if (conceptName.contains("LAB") || conceptName.contains("TEST") || 
+                       conceptName.contains("SMEAR") || conceptName.contains("MALARIA")) {
+                return "LAB_RESULT";
+            } else if (conceptName.contains("VITAL") || conceptName.contains("WEIGHT") || 
+                       conceptName.contains("HEIGHT") || conceptName.contains("TEMPERATURE") ||
+                       conceptName.contains("PRESSURE") || conceptName.contains("PULSE")) {
+                return "VITAL_SIGN";
+            } else if (conceptName.contains("PROCEDURE") || conceptName.contains("SURGERY")) {
+                return "PROCEDURE";
+            } else if (conceptName.contains("IMMUN") || conceptName.contains("VACCIN")) {
+                return "IMMUNIZATION";
+            } else {
+                return "OTHER";
+            }
+        } catch (Exception e) {
+            log.error("❌ Error determining observation type: " + e.getMessage(), e);
+            return "OTHER";
+        }
+    }
+    
+    /**
+     * Convert internal observation type to API format
+     */
+    private String convertToApiObservationType(String obsType) {
+        if (obsType == null) {
+            return "diagnosis"; // Default
+        }
+        
+        switch (obsType.toUpperCase()) {
+            case "DIAGNOSIS":
+            case "LAB_RESULT":
+            case "VITAL_SIGN":
+            case "PROCEDURE":
+            case "IMMUNIZATION":
+            case "OTHER":
+                return "diagnosis";
+            case "MEDICATION":
+            case "ALLERGY":
+                return "medication";
+            default:
+                return "diagnosis";
+        }
+    }
+    
+    @Override
+    public void subscribeToObjects() {
+        log.info("========================================");
+        log.info("PATIENT PASSPORT - Subscribing to Observation events");
+        log.info("========================================");
+        Event.subscribe(Obs.class, Action.CREATED, this);
+        Event.subscribe(Obs.class, Action.UPDATED, this);
+        log.info("========================================");
+        log.info("SUCCESS! Subscribed to observation CREATED and UPDATED events");
+        log.info("========================================");
+    }
+    
+    @Override
+    public void unsubscribeFromObjects() {
+        log.info("========================================");
+        log.info("PATIENT PASSPORT - Unsubscribing from Observation events");
+        log.info("========================================");
+        Event.unsubscribe(Obs.class, Action.CREATED, this);
+        Event.unsubscribe(Obs.class, Action.UPDATED, this);
+        log.info("========================================");
+        log.info("SUCCESS! Unsubscribed from observation events");
+        log.info("========================================");
+    }
+}

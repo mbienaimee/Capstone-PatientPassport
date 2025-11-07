@@ -5,23 +5,17 @@
            http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
     <!-- ========================================== -->
-    <!-- ENHANCED AOP WITH MULTIPLE BEAN PATTERNS   -->
+    <!-- EVENT LISTENER APPROACH (SAFER THAN AOP)  -->
     <!-- ========================================== -->
 
-    <!-- Define the Observation Save Advice (AOP approach) -->
-    <!-- Observation AOP advice temporarily disabled due to interference with OpenMRS Hibernate event interceptor.
-       This module previously proxied the core ObsService which caused a NullPointerException inside
-       org.openmrs.event.api.db.hibernate.HibernateEventInterceptor.onSave when the ThreadLocal used by
-       OpenMRS event system was not initialized by our advice. To avoid crashing OpenMRS, the proxy is
-       disabled here. Re-enable only after implementing a safe post-save listener or ensuring proper
-       initialization of OpenMRS authentication stack in the interceptor. -->
-    <!--
-    <bean id="observationSaveAdvice" 
-        class="org.openmrs.module.patientpassport.advice.ObservationSaveAdvice"/>
-    -->
+    <!-- Patient Passport Data Service -->
+    <bean id="patientPassportDataService" 
+        class="org.openmrs.module.patientpassport.service.impl.PatientPassportDataServiceImpl"/>
 
-    <!-- AOP proxying of the core ObsService removed to prevent NullPointerException during Hibernate events.
-         If you need to run logic after an observation is saved, implement a dedicated OpenMRS event listener
-         or use a safe post-commit mechanism rather than proxying ObsService directly. -->
+    <!-- Observation Event Listener - listens to OpenMRS events -->
+    <bean id="observationEventListener" 
+        class="org.openmrs.module.patientpassport.listener.ObservationEventListener">
+        <property name="dataService" ref="patientPassportDataService"/>
+    </bean>
 
 </beans>
