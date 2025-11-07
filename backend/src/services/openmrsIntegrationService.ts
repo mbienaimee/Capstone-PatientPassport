@@ -522,14 +522,66 @@ export const storeOpenMRSObservation = async (
     }
 
     // STEP 3: Store the observation
+    
+    // CRITICAL FIX: Handle both old format and new format from OpenMRS
+    console.log(`📊 Processing observation data:`, JSON.stringify(observationData, null, 2));
+    
     if (observationType === 'diagnosis') {
+      // Extract diagnosis name - support multiple formats
+      let diagnosisName = observationData.diagnosis || 
+                          observationData.concept || 
+                          observationData.name || 
+                          'Unknown diagnosis';
+      
+      let diagnosisDetails = observationData.details || 
+                             observationData.value || 
+                             observationData.comment ||
+                             'Diagnosis recorded in OpenMRS';
+      
+      // If concept and value exist, combine them properly
+      if (observationData.concept && observationData.value) {
+        // Use concept as diagnosis name
+        diagnosisName = observationData.concept;
+        // Use value as details/result
+        diagnosisDetails = `Result: ${observationData.value}`;
+        if (observationData.comment) {
+          diagnosisDetails += ` - ${observationData.comment}`;
+        }
+      }
+      
+      // Ensure we have non-empty strings
+      if (!diagnosisName || diagnosisName.trim().length === 0) {
+        diagnosisName = 'Observation from OpenMRS';
+      }
+      if (!diagnosisDetails || diagnosisDetails.trim().length === 0) {
+        diagnosisDetails = 'Recorded in OpenMRS';
+      }
+      
+      // Parse diagnosis date - ensure it's not in the future
+      let diagnosisDate = new Date();
+      if (observationData.date) {
+        const parsedDate = new Date(observationData.date);
+        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
+          diagnosisDate = parsedDate;
+        }
+      } else if (observationData.obsDatetime) {
+        const parsedDate = new Date(observationData.obsDatetime);
+        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
+          diagnosisDate = parsedDate;
+        }
+      }
+      
+      console.log(`   📋 Creating diagnosis: ${diagnosisName}`);
+      console.log(`   📝 Details: ${diagnosisDetails}`);
+      console.log(`   📅 Date: ${diagnosisDate.toISOString()}`);
+      
       // Create medical condition
       const condition = await MedicalCondition.create({
         patient: patient._id,
         doctor: doctor._id,
-        name: observationData.diagnosis,
-        details: observationData.details || 'Diagnosis recorded in OpenMRS without additional details',
-        diagnosed: observationData.date || new Date(),
+        name: diagnosisName,
+        details: diagnosisDetails,
+        diagnosed: diagnosisDate,
         status: observationData.status || 'active',
         notes: `Added from OpenMRS - Hospital: ${hospitalName}`
       });
@@ -540,18 +592,62 @@ export const storeOpenMRSObservation = async (
         await patient.save();
       }
 
-      console.log(`✅ Diagnosis stored in passport system from OpenMRS`);
+      console.log(`✅ Diagnosis stored in passport system from OpenMRS - ID: ${condition._id}`);
       return condition;
+      
     } else if (observationType === 'medication') {
+      // Extract medication name - support multiple formats
+      let medicationName = observationData.medicationName || 
+                           observationData.concept || 
+                           observationData.name || 
+                           observationData.value ||
+                           'Unknown medication';
+      
+      let medicationDosage = observationData.dosage || 
+                             observationData.value ||
+                             'See prescription';
+      
+      // If concept and value exist, use them appropriately
+      if (observationData.concept && observationData.value) {
+        medicationName = observationData.concept;
+        medicationDosage = observationData.value;
+      }
+      
+      // Ensure we have non-empty strings
+      if (!medicationName || medicationName.trim().length === 0) {
+        medicationName = 'Medication from OpenMRS';
+      }
+      if (!medicationDosage || medicationDosage.trim().length === 0) {
+        medicationDosage = 'As prescribed';
+      }
+      
+      // Parse medication start date - ensure it's not in the future
+      let startDate = new Date();
+      if (observationData.startDate) {
+        const parsedDate = new Date(observationData.startDate);
+        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
+          startDate = parsedDate;
+        }
+      } else if (observationData.obsDatetime) {
+        const parsedDate = new Date(observationData.obsDatetime);
+        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
+          startDate = parsedDate;
+        }
+      }
+      
+      console.log(`   💊 Creating medication: ${medicationName}`);
+      console.log(`   📝 Dosage: ${medicationDosage}`);
+      console.log(`   📅 Start Date: ${startDate.toISOString()}`);
+      
       // Create medication
       const medication = await Medication.create({
         patient: patient._id,
         doctor: doctor._id,
         hospital: hospital._id,
-        name: observationData.medicationName,
-        dosage: observationData.dosage || 'See prescription',
+        name: medicationName,
+        dosage: medicationDosage,
         frequency: observationData.frequency || 'As needed',
-        startDate: observationData.startDate || new Date(),
+        startDate: startDate,
         endDate: observationData.endDate,
         status: observationData.status || 'active',
         notes: `Added from OpenMRS - Hospital: ${hospitalName}`
@@ -563,7 +659,7 @@ export const storeOpenMRSObservation = async (
         await patient.save();
       }
 
-      console.log(`✅ Medication stored in passport system from OpenMRS`);
+      console.log(`✅ Medication stored in passport system from OpenMRS - ID: ${medication._id}`);
       return medication;
     }
     

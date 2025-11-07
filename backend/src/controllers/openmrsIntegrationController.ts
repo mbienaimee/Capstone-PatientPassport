@@ -180,17 +180,28 @@ export const storeObservationFromOpenMRS = asyncHandler(async (req: Request, res
     hospitalName 
   } = req.body;
 
+  console.log(`💾 ========================================`);
   console.log(`💾 Storing observation from OpenMRS:`);
   console.log(`   Patient Name: ${patientName}`);
   console.log(`   Type: ${observationType}`);
   console.log(`   Doctor License: ${doctorLicenseNumber}`);
   console.log(`   Hospital: ${hospitalName}`);
+  console.log(`   Observation Data:`, JSON.stringify(observationData, null, 2));
+  console.log(`💾 ========================================`);
 
   if (!patientName || !observationType || !observationData || !doctorLicenseNumber || !hospitalName) {
+    console.error('❌ Missing required fields:', {
+      hasPatientName: !!patientName,
+      hasObservationType: !!observationType,
+      hasObservationData: !!observationData,
+      hasDoctorLicense: !!doctorLicenseNumber,
+      hasHospitalName: !!hospitalName
+    });
     throw new CustomError('All fields are required: patientName, observationType, observationData, doctorLicenseNumber, hospitalName', 400);
   }
 
   if (!['diagnosis', 'medication'].includes(observationType)) {
+    console.error('❌ Invalid observation type:', observationType);
     throw new CustomError('Observation type must be either "diagnosis" or "medication"', 400);
   }
 
@@ -201,6 +212,8 @@ export const storeObservationFromOpenMRS = asyncHandler(async (req: Request, res
     doctorLicenseNumber,
     hospitalName
   );
+
+  console.log(`✅ Observation stored successfully - Result ID: ${result?._id}`);
 
   // Log the sync
   try {
@@ -213,7 +226,8 @@ export const storeObservationFromOpenMRS = asyncHandler(async (req: Request, res
         patientName,
         observationType,
         doctorLicenseNumber,
-        hospitalName
+        hospitalName,
+        observationDataKeys: Object.keys(observationData)
       },
       ipAddress: req.ip,
       userAgent: req.get('user-agent')
