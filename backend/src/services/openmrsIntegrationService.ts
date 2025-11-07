@@ -5,17 +5,18 @@ import MedicalCondition from '@/models/MedicalCondition';
 import Medication from '@/models/Medication';
 import mongoose from 'mongoose';
 import { CustomError } from '@/middleware/errorHandler';
+import OPENMRS_CONFIG from '@/config/openmrsIntegrationConfig';
 
 /**
  * OpenMRS Integration Service
  * Handles bidirectional sync between Patient Passport and OpenMRS systems
- * Uses PATIENT NAME as the common identifier (not National ID)
+ * Uses PATIENT NAME as the common identifier
  */
 
 interface PatientMapping {
   passportPatientId: string;
   openmrsPatientUuid: string;
-  patientName: string; // Changed from nationalId to patientName
+  patientName: string;
   syncedAt: Date;
 }
 
@@ -25,6 +26,50 @@ interface HospitalMapping {
   hospitalName: string;
   syncedAt: Date;
 }
+
+/**
+ * Helper: Generate safe email from text
+ */
+const generateSafeEmail = (text: string, domain: string = OPENMRS_CONFIG.PLACEHOLDER_EMAIL_DOMAIN): string => {
+  const sanitized = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .substring(0, OPENMRS_CONFIG.MAX_EMAIL_LENGTH);
+  
+  return `${sanitized || 'user'}@${domain}`;
+};
+
+/**
+ * Helper: Extract field value with fallback chain
+ */
+const extractFieldValue = (data: any, fieldNames: string[], fallback: string = ''): string => {
+  for (const fieldName of fieldNames) {
+    const value = data[fieldName];
+    if (value && typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return fallback;
+};
+
+/**
+ * Helper: Parse date safely, ensuring it's not in the future
+ */
+const parseSafeDate = (data: any, fieldNames: string[]): Date => {
+  const now = new Date();
+  
+  for (const fieldName of fieldNames) {
+    const value = data[fieldName];
+    if (value) {
+      const parsedDate = new Date(value);
+      if (!isNaN(parsedDate.getTime()) && parsedDate <= now) {
+        return parsedDate;
+      }
+    }
+  }
+  
+  return now;
+};
 
 /**
  * Get or create patient mapping between systems using PATIENT NAME
@@ -402,8 +447,7 @@ export const storeOpenMRSObservation = async (
       throw new CustomError(`Patient "${patientName}" not found`, 404);
     }
 
-    // STEP 1: Find or create HOSPITAL FIRST (required for doctor)
-    // Find hospital - be flexible with name matching
+    // STEP 1: Find or create HOSPITAL
     let hospital = await Hospital.findOne({ 
       name: { $regex: new RegExp(`^${hospitalName}$`, 'i') } 
     });
@@ -415,25 +459,17 @@ export const storeOpenMRSObservation = async (
       });
     }
     
-    // If still not found, create a placeholder hospital
+    // Create placeholder hospital if not found
     if (!hospital) {
       console.warn(`⚠️ Hospital ${hospitalName} not found - creating placeholder`);
       
-      // Sanitize hospital name for email (remove spaces, special chars)
-      const sanitizedHospital = hospitalName
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric
-        .substring(0, 30); // Limit length
-      
-      // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
-      const placeholderEmail = `${sanitizedHospital || 'hospital'}@openmrs.com`;
+      const placeholderEmail = generateSafeEmail(hospitalName);
       
       // Check if user with this email already exists
-      let hospitalUserPlaceholder = await User.findOne({ email: placeholderEmail });
+      let hospitalUser = await User.findOne({ email: placeholderEmail });
       
-      if (!hospitalUserPlaceholder) {
-        // Create placeholder hospital user
-        hospitalUserPlaceholder = await User.create({
+      if (!hospitalUser) {
+        hospitalUser = await User.create({
           name: hospitalName,
           email: placeholderEmail,
           password: Math.random().toString(36),
@@ -441,29 +477,29 @@ export const storeOpenMRSObservation = async (
           isActive: true,
           isEmailVerified: false
         });
-        console.log(`✅ Created placeholder hospital user with email: ${placeholderEmail}`);
+        console.log(`✅ Created placeholder hospital user: ${placeholderEmail}`);
       } else {
-        console.log(`ℹ️ Found existing hospital user with email: ${placeholderEmail}`);
+        console.log(`ℹ️ Found existing hospital user: ${placeholderEmail}`);
       }
       
       hospital = await Hospital.create({
-        user: hospitalUserPlaceholder._id,
+        user: hospitalUser._id,
         name: hospitalName,
-        licenseNumber: `OPENMRS-${Date.now()}`, // REQUIRED field
-        address: 'Address not provided from OpenMRS',
-        contact: '000-000-0000', // REQUIRED field
+        licenseNumber: `${OPENMRS_CONFIG.HOSPITAL_LICENSE_PREFIX}-${Date.now()}`,
+        address: OPENMRS_CONFIG.DEFAULT_HOSPITAL_ADDRESS,
+        contact: OPENMRS_CONFIG.DEFAULT_HOSPITAL_CONTACT,
         status: 'active'
       });
       
-      console.log(`✅ Created placeholder hospital: ${hospital.name} with license: ${hospital.licenseNumber}`);
+      console.log(`✅ Created placeholder hospital: ${hospital.name}`);
     }
 
-    // STEP 2: Find or create DOCTOR (using hospital reference)
+    // STEP 2: Find or create DOCTOR
     let doctor = await Doctor.findOne({ 
       licenseNumber: doctorLicenseNumber.toUpperCase() 
     });
     
-    // If not found, try finding by username (for OpenMRS users)
+    // Try finding by username for OpenMRS users
     if (!doctor) {
       const doctorUser = await User.findOne({
         $or: [
@@ -478,25 +514,17 @@ export const storeOpenMRSObservation = async (
       }
     }
     
-    // If still not found, create a placeholder doctor record
+    // Create placeholder doctor if not found
     if (!doctor) {
       console.warn(`⚠️ Doctor ${doctorLicenseNumber} not found - creating placeholder`);
       
-      // Sanitize doctor license number for email (remove spaces, special chars)
-      const sanitizedLicense = doctorLicenseNumber
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric
-        .substring(0, 30); // Limit length
-      
-      // Generate valid email format that matches regex: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
-      const placeholderEmail = `${sanitizedLicense || 'doctor'}@openmrs.com`;
+      const placeholderEmail = generateSafeEmail(doctorLicenseNumber);
       
       // Check if user with this email already exists
-      let doctorUserPlaceholder = await User.findOne({ email: placeholderEmail });
+      let doctorUser = await User.findOne({ email: placeholderEmail });
       
-      if (!doctorUserPlaceholder) {
-        // Create a placeholder user for this OpenMRS doctor
-        doctorUserPlaceholder = await User.create({
+      if (!doctorUser) {
+        doctorUser = await User.create({
           name: `Dr. ${doctorLicenseNumber}`,
           email: placeholderEmail,
           password: Math.random().toString(36),
@@ -504,72 +532,50 @@ export const storeOpenMRSObservation = async (
           isActive: true,
           isEmailVerified: false
         });
-        console.log(`✅ Created placeholder user with email: ${placeholderEmail}`);
+        console.log(`✅ Created placeholder doctor user: ${placeholderEmail}`);
       } else {
-        console.log(`ℹ️ Found existing user with email: ${placeholderEmail}`);
+        console.log(`ℹ️ Found existing doctor user: ${placeholderEmail}`);
       }
       
-      // Create doctor with hospital reference (REQUIRED)
       doctor = await Doctor.create({
-        user: doctorUserPlaceholder._id,
+        user: doctorUser._id,
         licenseNumber: doctorLicenseNumber.toUpperCase(),
-        specialization: 'General Practice',
-        hospital: hospital._id, // Use the hospital we found/created above
-        yearsOfExperience: 0
+        specialization: OPENMRS_CONFIG.DEFAULT_DOCTOR_SPECIALIZATION,
+        hospital: hospital._id,
+        yearsOfExperience: OPENMRS_CONFIG.DEFAULT_DOCTOR_EXPERIENCE
       });
       
-      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber} at hospital: ${hospital.name}`);
+      console.log(`✅ Created placeholder doctor: ${doctor.licenseNumber} at ${hospital.name}`);
     }
 
     // STEP 3: Store the observation
-    
-    // CRITICAL FIX: Handle both old format and new format from OpenMRS
     console.log(`📊 Processing observation data:`, JSON.stringify(observationData, null, 2));
     
     if (observationType === 'diagnosis') {
-      // Extract diagnosis name - support multiple formats
-      let diagnosisName = observationData.diagnosis || 
-                          observationData.concept || 
-                          observationData.name || 
-                          'Unknown diagnosis';
+      // Extract diagnosis information using flexible field mapping
+      let diagnosisName = extractFieldValue(
+        observationData,
+        OPENMRS_CONFIG.DIAGNOSIS_FIELD_NAMES,
+        OPENMRS_CONFIG.DEFAULT_DIAGNOSIS_FALLBACK
+      );
       
-      let diagnosisDetails = observationData.details || 
-                             observationData.value || 
-                             observationData.comment ||
-                             'Diagnosis recorded in OpenMRS';
+      let diagnosisDetails = extractFieldValue(
+        observationData,
+        OPENMRS_CONFIG.DETAILS_FIELD_NAMES,
+        OPENMRS_CONFIG.DEFAULT_DETAILS_FALLBACK
+      );
       
-      // If concept and value exist, combine them properly
+      // Combine concept and value if both exist
       if (observationData.concept && observationData.value) {
-        // Use concept as diagnosis name
-        diagnosisName = observationData.concept;
-        // Use value as details/result
-        diagnosisDetails = `Result: ${observationData.value}`;
+        diagnosisName = observationData.concept.trim();
+        diagnosisDetails = `Result: ${observationData.value.trim()}`;
         if (observationData.comment) {
-          diagnosisDetails += ` - ${observationData.comment}`;
+          diagnosisDetails += ` - ${observationData.comment.trim()}`;
         }
       }
       
-      // Ensure we have non-empty strings
-      if (!diagnosisName || diagnosisName.trim().length === 0) {
-        diagnosisName = 'Observation from OpenMRS';
-      }
-      if (!diagnosisDetails || diagnosisDetails.trim().length === 0) {
-        diagnosisDetails = 'Recorded in OpenMRS';
-      }
-      
-      // Parse diagnosis date - ensure it's not in the future
-      let diagnosisDate = new Date();
-      if (observationData.date) {
-        const parsedDate = new Date(observationData.date);
-        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
-          diagnosisDate = parsedDate;
-        }
-      } else if (observationData.obsDatetime) {
-        const parsedDate = new Date(observationData.obsDatetime);
-        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
-          diagnosisDate = parsedDate;
-        }
-      }
+      // Parse diagnosis date safely
+      const diagnosisDate = parseSafeDate(observationData, OPENMRS_CONFIG.DATE_FIELD_NAMES);
       
       console.log(`   📋 Creating diagnosis: ${diagnosisName}`);
       console.log(`   📝 Details: ${diagnosisDetails}`);
@@ -582,7 +588,7 @@ export const storeOpenMRSObservation = async (
         name: diagnosisName,
         details: diagnosisDetails,
         diagnosed: diagnosisDate,
-        status: observationData.status || 'active',
+        status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS,
         notes: `Added from OpenMRS - Hospital: ${hospitalName}`
       });
 
@@ -592,48 +598,31 @@ export const storeOpenMRSObservation = async (
         await patient.save();
       }
 
-      console.log(`✅ Diagnosis stored in passport system from OpenMRS - ID: ${condition._id}`);
+      console.log(`✅ Diagnosis stored - ID: ${condition._id}`);
       return condition;
       
     } else if (observationType === 'medication') {
-      // Extract medication name - support multiple formats
-      let medicationName = observationData.medicationName || 
-                           observationData.concept || 
-                           observationData.name || 
-                           observationData.value ||
-                           'Unknown medication';
+      // Extract medication information using flexible field mapping
+      let medicationName = extractFieldValue(
+        observationData,
+        OPENMRS_CONFIG.MEDICATION_FIELD_NAMES,
+        OPENMRS_CONFIG.DEFAULT_MEDICATION_FALLBACK
+      );
       
-      let medicationDosage = observationData.dosage || 
-                             observationData.value ||
-                             'See prescription';
+      let medicationDosage = extractFieldValue(
+        observationData,
+        OPENMRS_CONFIG.DOSAGE_FIELD_NAMES,
+        OPENMRS_CONFIG.DEFAULT_DOSAGE_FALLBACK
+      );
       
-      // If concept and value exist, use them appropriately
+      // Use concept and value appropriately
       if (observationData.concept && observationData.value) {
-        medicationName = observationData.concept;
-        medicationDosage = observationData.value;
+        medicationName = observationData.concept.trim();
+        medicationDosage = observationData.value.trim();
       }
       
-      // Ensure we have non-empty strings
-      if (!medicationName || medicationName.trim().length === 0) {
-        medicationName = 'Medication from OpenMRS';
-      }
-      if (!medicationDosage || medicationDosage.trim().length === 0) {
-        medicationDosage = 'As prescribed';
-      }
-      
-      // Parse medication start date - ensure it's not in the future
-      let startDate = new Date();
-      if (observationData.startDate) {
-        const parsedDate = new Date(observationData.startDate);
-        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
-          startDate = parsedDate;
-        }
-      } else if (observationData.obsDatetime) {
-        const parsedDate = new Date(observationData.obsDatetime);
-        if (!isNaN(parsedDate.getTime()) && parsedDate <= new Date()) {
-          startDate = parsedDate;
-        }
-      }
+      // Parse medication start date safely
+      const startDate = parseSafeDate(observationData, OPENMRS_CONFIG.DATE_FIELD_NAMES);
       
       console.log(`   💊 Creating medication: ${medicationName}`);
       console.log(`   📝 Dosage: ${medicationDosage}`);
@@ -646,10 +635,10 @@ export const storeOpenMRSObservation = async (
         hospital: hospital._id,
         name: medicationName,
         dosage: medicationDosage,
-        frequency: observationData.frequency || 'As needed',
+        frequency: observationData.frequency || OPENMRS_CONFIG.DEFAULT_MEDICATION_FREQUENCY,
         startDate: startDate,
         endDate: observationData.endDate,
-        status: observationData.status || 'active',
+        status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS,
         notes: `Added from OpenMRS - Hospital: ${hospitalName}`
       });
 
@@ -659,11 +648,10 @@ export const storeOpenMRSObservation = async (
         await patient.save();
       }
 
-      console.log(`✅ Medication stored in passport system from OpenMRS - ID: ${medication._id}`);
+      console.log(`✅ Medication stored - ID: ${medication._id}`);
       return medication;
     }
     
-    // If neither diagnosis nor medication type
     throw new CustomError(`Invalid observation type: ${observationType}`, 400);
   } catch (error) {
     console.error('❌ Error storing OpenMRS observation:', error);
