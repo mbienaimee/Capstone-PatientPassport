@@ -19,7 +19,6 @@ import MedicalRecord from '@/models/MedicalRecord';
 import Doctor from '@/models/Doctor';
 import Hospital from '@/models/Hospital';
 import User from '@/models/User';
-import AuditLog from '@/models/AuditLog';
 
 // OpenMRS Database Connection Configuration
 interface OpenMRSConnection {
@@ -370,28 +369,91 @@ class OpenMRSSyncService {
     personId: number,
     connection: mysql.Pool
   ): Promise<any> {
-    // Get national ID from OpenMRS patient_identifier table
+    // Get patient name from OpenMRS (since National ID might not be configured)
     const query = `
-      SELECT pi.identifier
-      FROM patient_identifier pi
-      JOIN patient_identifier_type pit ON pi.identifier_type = pit.patient_identifier_type_id
-      WHERE pi.patient_id = ?
+      SELECT 
+        pn.given_name,
+        pn.family_name,
+        pn.middle_name,
+        pi.identifier as national_id
+      FROM person_name pn
+      JOIN person p ON pn.person_id = p.person_id
+      LEFT JOIN patient_identifier pi ON pi.patient_id = p.person_id
+      LEFT JOIN patient_identifier_type pit ON pi.identifier_type = pit.patient_identifier_type_id
         AND pit.name LIKE '%National%ID%'
         AND pi.voided = 0
+      WHERE pn.person_id = ?
+        AND pn.voided = 0
+        AND pn.preferred = 1
       LIMIT 1
     `;
 
     const [rows] = await connection.query(query, [personId]) as any;
     
     if (rows.length === 0) {
+      console.log(`   ⚠️ Person ${personId} not found in OpenMRS`);
       return null;
     }
 
-    const nationalId = rows[0].identifier;
+    const row = rows[0];
+    const givenName = row.given_name || '';
+    const middleName = row.middle_name || '';
+    const familyName = row.family_name || '';
+    const nationalId = row.national_id;
+    
+    // Build full name (given name + middle name + family name)
+    const fullName = `${givenName} ${middleName} ${familyName}`.replace(/\s+/g, ' ').trim();
 
-    // Find patient in Patient Passport database
-    const patient = await Patient.findOne({ nationalId }).populate('user');
-    return patient;
+    console.log(`   🔍 Searching for patient: ${fullName} (OpenMRS person_id: ${personId})`);
+
+    // Strategy 1: Try National ID first (if available)
+    if (nationalId) {
+      const patient = await Patient.findOne({ nationalId }).populate('user');
+      if (patient) {
+        console.log(`   ✅ Patient matched by National ID: ${nationalId}`);
+        return patient;
+      }
+    }
+
+    // Strategy 2: Match by patient name (PRIMARY METHOD)
+    // Import User model
+    const User = (await import('../models/User')).default;
+    
+    // Try exact name match first
+    let user = await User.findOne({
+      name: { $regex: new RegExp(`^${fullName}$`, 'i') },
+      role: 'patient'
+    });
+
+    // If exact match not found, try partial match
+    if (!user) {
+      // Try matching given name and family name
+      const namePattern = `${givenName}.*${familyName}`;
+      user = await User.findOne({
+        name: { $regex: new RegExp(namePattern, 'i') },
+        role: 'patient'
+      });
+    }
+
+    // If still not found, try matching just family name (common scenario)
+    if (!user && familyName) {
+      user = await User.findOne({
+        name: { $regex: new RegExp(familyName, 'i') },
+        role: 'patient'
+      });
+    }
+
+    if (user) {
+      const patient = await Patient.findOne({ user: user._id }).populate('user');
+      if (patient) {
+        console.log(`   ✅ Patient matched by name: ${fullName} → ${user.name}`);
+        return patient;
+      }
+    }
+
+    console.log(`   ❌ Patient "${fullName}" not found in Patient Passport database`);
+    console.log(`   💡 Please register patient "${fullName}" in Patient Passport first`);
+    return null;
   }
 
   /**
@@ -473,15 +535,20 @@ class OpenMRSSyncService {
     }
 
     // Create placeholder user for doctor if doesn't exist
-    const email = `${identifier.toLowerCase().replace(/[^a-z0-9]/g, '')}@openmrs.auto`;
+    // Generate a valid email from identifier
+    const cleanIdentifier = identifier.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const email = `${cleanIdentifier || 'provider'}@openmrs.hospital.com`;
     
     let user = await User.findOne({ email });
     
     if (!user) {
+      // Generate a secure random password (at least 8 characters)
+      const randomPassword = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+      
       user = await User.create({
         name: name || `Dr. ${identifier}`,
         email,
-        password: Math.random().toString(36).substring(7), // Random password
+        password: randomPassword.substring(0, 16), // 16 character password
         role: 'doctor',
         isEmailVerified: true
       });
@@ -558,19 +625,30 @@ class OpenMRSSyncService {
     }
 
     // Check if this record already exists (prevent duplicates)
-    const existing = await MedicalRecord.findOne({
+    // Build query dynamically to avoid matching on undefined fields
+    const duplicateQuery: any = {
       patientId,
-      type: processed.type,
-      'data.name': data.name || data.medicationName || data.testName,
-      'data.diagnosed': data.diagnosed,
-      'data.testDate': data.testDate,
-      'data.visitDate': data.visitDate
-    });
+      type: processed.type
+    };
+
+    // Add specific field checks based on what's actually set
+    if (data.name) duplicateQuery['data.name'] = data.name;
+    if (data.medicationName) duplicateQuery['data.medicationName'] = data.medicationName;
+    if (data.testName) duplicateQuery['data.testName'] = data.testName;
+    if (data.diagnosed) duplicateQuery['data.diagnosed'] = data.diagnosed;
+    if (data.testDate) duplicateQuery['data.testDate'] = data.testDate;
+    if (data.visitDate) duplicateQuery['data.visitDate'] = data.visitDate;
+
+    console.log(`   🔍 Duplicate check query:`, JSON.stringify(duplicateQuery));
+
+    const existing = await MedicalRecord.findOne(duplicateQuery);
 
     if (existing) {
-      console.log(`   ⚠️ Record already exists, skipping duplicate`);
+      console.log(`   ⚠️ Record already exists (ID: ${existing._id}), skipping duplicate`);
       return;
     }
+
+    console.log(`   ✅ No duplicate found, creating new record...`);
 
     // Create medical record
     const record = await MedicalRecord.create({
@@ -579,6 +657,8 @@ class OpenMRSSyncService {
       data,
       createdBy: doctorId
     });
+
+    console.log(`   ✅ Created record ID: ${record._id}`);
 
     // Update patient's references
     switch (processed.type) {
@@ -609,19 +689,8 @@ class OpenMRSSyncService {
 
     await patient.save();
 
-    // Create audit log
-    await AuditLog.create({
-      action: 'openmrs_auto_sync',
-      performedBy: 'OpenMRS Sync Service',
-      targetModel: 'MedicalRecord',
-      targetId: record._id.toString(),
-      changes: {
-        type: processed.type,
-        conceptName: processed.conceptName,
-        hospitalId,
-        providerName: processed.providerName
-      }
-    });
+    // Note: Audit logs are not created for automatic sync operations
+    // Only user-initiated actions trigger audit logs
   }
 
   /**

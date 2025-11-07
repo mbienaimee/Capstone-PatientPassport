@@ -14,12 +14,12 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(MONGODB_URI, {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 30000, // Increased from 5s to 30s for Atlas
       socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000,
+      connectTimeoutMS: 30000, // Increased from 10s to 30s
       heartbeatFrequencyMS: 10000,
       compressors: ['zlib'],
-      readPreference: 'secondaryPreferred'
+      readPreference: 'primary' // Changed from secondaryPreferred to primary
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
