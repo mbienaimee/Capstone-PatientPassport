@@ -5,17 +5,11 @@
            http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
     <!-- ========================================== -->
-    <!-- EVENT LISTENER APPROACH (SAFER THAN AOP)  -->
+    <!-- PATIENT PASSPORT DATA SERVICE              -->
     <!-- ========================================== -->
 
-    <!-- Patient Passport Data Service -->
+    <!-- Patient Passport Data Service - handles API communication -->
     <bean id="patientPassportDataService" 
         class="org.openmrs.module.patientpassport.service.impl.PatientPassportDataServiceImpl"/>
-
-    <!-- Observation Event Listener - listens to OpenMRS events -->
-    <bean id="observationEventListener" 
-        class="org.openmrs.module.patientpassport.listener.ObservationEventListener">
-        <property name="dataService" ref="patientPassportDataService"/>
-    </bean>
 
 </beans>

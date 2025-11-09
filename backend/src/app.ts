@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { createServer } from 'http';
 import SocketService from './services/socketService';
 import openmrsSyncService from './services/openmrsSyncService';
+import { directDBSyncService } from './services/directDBSyncService';
 import { getOpenMRSConfigurations, syncConfig } from './config/openmrsConfig';
 
 const PORT = process.env['PORT'] || 5000;
@@ -64,6 +65,12 @@ const startServer = async () => {
       console.error('\n❌ Failed to initialize OpenMRS sync:', syncError);
       console.log('⚠️ Server will continue without OpenMRS sync capabilities.\n');
     }
+    
+    // Start scheduled observation sync service
+    console.log('\n🔄 ═══════════════════════════════════════════════════════');
+    console.log('🔄 Starting Direct Database Observation Sync Service');
+    console.log('🔄 ═══════════════════════════════════════════════════════\n');
+    directDBSyncService.start();
     
     server.listen(PORT, () => {
       console.log(`

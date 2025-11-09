@@ -22,6 +22,7 @@ import passportAccessRoutes from './routes/passportAccess';
 import ussdRoutes from './routes/ussd';
 import openmrsSyncRoutes from './routes/openmrsSync';
 import openmrsIntegrationRoutes from './routes/openmrsIntegration';
+import scheduledSyncRoutes from './routes/scheduledSync';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -216,6 +217,7 @@ app.use('/api/passport-access', passportAccessRoutes);
 app.use('/api/ussd', ussdRoutes);
 app.use('/api/openmrs-sync', openmrsSyncRoutes);
 app.use('/api/openmrs', openmrsIntegrationRoutes);
+app.use('/api/scheduled-sync', scheduledSyncRoutes);
 
 app.get('/', (_req, res) => {
   res.json({

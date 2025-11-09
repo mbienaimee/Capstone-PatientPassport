@@ -5,7 +5,7 @@
 
 export const OPENMRS_CONFIG = {
   // Placeholder email domain for auto-created records
-  PLACEHOLDER_EMAIL_DOMAIN: process.env.OPENMRS_PLACEHOLDER_EMAIL_DOMAIN || 'openmrs.system',
+  PLACEHOLDER_EMAIL_DOMAIN: process.env.OPENMRS_PLACEHOLDER_EMAIL_DOMAIN || 'openmrs-sync.com',
   
   // Default values for auto-created doctors
   DEFAULT_DOCTOR_SPECIALIZATION: process.env.OPENMRS_DEFAULT_DOCTOR_SPECIALIZATION || 'General Practice',

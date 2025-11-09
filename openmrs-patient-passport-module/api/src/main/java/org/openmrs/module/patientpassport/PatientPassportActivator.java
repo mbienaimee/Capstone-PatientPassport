@@ -9,21 +9,30 @@ public class PatientPassportActivator extends BaseModuleActivator {
 
     @Override
     public void willStart() {
+        log.info("========================================");
         log.info("PATIENT PASSPORT MODULE - STARTING...");
+        log.info("========================================");
     }
 
     @Override
     public void started() {
+        log.info("========================================");
         log.info("PATIENT PASSPORT MODULE - STARTED SUCCESSFULLY!");
+        log.info("Manual observation sync is available via REST API");
+        log.info("========================================");
     }
 
     @Override
     public void willStop() {
+        log.info("========================================");
         log.info("PATIENT PASSPORT MODULE - STOPPING...");
+        log.info("========================================");
     }
 
     @Override
     public void stopped() {
+        log.info("========================================");
         log.info("PATIENT PASSPORT MODULE - STOPPED");
+        log.info("========================================");
     }
 }

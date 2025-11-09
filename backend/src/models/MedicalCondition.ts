@@ -23,7 +23,7 @@ const medicalConditionSchema = new Schema<IMedicalCondition>({
     type: String,
     required: [true, 'Condition details are required'],
     trim: true,
-    maxlength: [1000, 'Details cannot exceed 1000 characters']
+    maxlength: [5000, 'Details cannot exceed 5000 characters']
   },
   diagnosed: {
     type: Date,
@@ -49,7 +49,7 @@ const medicalConditionSchema = new Schema<IMedicalCondition>({
   notes: {
     type: String,
     trim: true,
-    maxlength: [1000, 'Notes cannot exceed 1000 characters']
+    maxlength: [5000, 'Notes cannot exceed 5000 characters']
   }
 }, {
   timestamps: true,
