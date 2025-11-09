@@ -21,7 +21,7 @@ import {
   FiBuilding,
   FiPill
 } from 'react-icons/fi';
-import { Calendar, Stethoscope, Building as BuildingIcon, User, Pill, Activity, FileText } from 'lucide-react';
+import { Calendar, Stethoscope, Building as BuildingIcon, User, Pill, Activity, FileText, RefreshCw } from 'lucide-react';
 
 interface MedicalCondition {
   name: string;
@@ -87,6 +87,8 @@ const PatientPassport: React.FC = () => {
   });
   const [patientProfile, setPatientProfile] = useState<PatientProfile | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -97,10 +99,14 @@ const PatientPassport: React.FC = () => {
 
   // Fetch medical records and patient profile when component mounts
   useEffect(() => {
-    const fetchMedicalRecords = async () => {
+    const fetchMedicalRecords = async (isManualRefresh = false) => {
       if (isAuthenticated && user?.id) {
         try {
-          setDataLoading(true);
+          if (isManualRefresh) {
+            setIsRefreshing(true);
+          } else {
+            setDataLoading(true);
+          }
           console.log('Fetching complete patient passport data...');
           
           // Get the patient profile including emergency contact information
@@ -174,12 +180,66 @@ const PatientPassport: React.FC = () => {
           setPatientProfile(null);
         } finally {
           setDataLoading(false);
+          setIsRefreshing(false);
+          setLastRefreshTime(new Date());
         }
       }
     };
 
     fetchMedicalRecords();
+
+    // Auto-refresh medical records every 60 seconds to catch new OpenMRS synced observations
+    const refreshInterval = setInterval(() => {
+      if (isAuthenticated && user?.id) {
+        console.log('🔄 Auto-refreshing medical records...');
+        fetchMedicalRecords(false); // Auto-refresh
+      }
+    }, 60000); // Refresh every 60 seconds
+
+    // Cleanup interval on unmount
+    return () => clearInterval(refreshInterval);
   }, [isAuthenticated, user?.id]);
+
+  // Manual refresh function
+  const handleManualRefresh = async () => {
+    if (isAuthenticated && user?.id) {
+      setIsRefreshing(true);
+      try {
+        console.log('🔄 Manual refresh triggered...');
+        // Get the patient profile including emergency contact information
+        const patientResponse = await apiService.getCurrentUser();
+        
+        if (patientResponse.success && patientResponse.data) {
+          const profile = (patientResponse.data as unknown as { profile: PatientProfile }).profile;
+          setPatientProfile(profile);
+          
+          // Fetch complete passport data
+          if (profile?._id) {
+            const response = await apiService.getPatientPassport(profile._id);
+            
+            if (response.success && response.data) {
+              const passportData = response.data;
+              
+              if (passportData.medicalRecords) {
+                setMedicalData(passportData.medicalRecords);
+              }
+              
+              if (passportData.patient) {
+                setPatientProfile(passportData.patient);
+              }
+              
+              console.log('✅ Data refreshed successfully');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing data:', error);
+      } finally {
+        setIsRefreshing(false);
+        setLastRefreshTime(new Date());
+      }
+    }
+  };
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -884,14 +944,31 @@ const PatientPassport: React.FC = () => {
 
         {/* Consolidated Medical History - All in One Card */}
         <div className="mb-6">
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Activity className="h-6 w-6 mr-2 text-green-600" />
-              Medical History
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Complete medical records with diagnosis, medications, tests, and visit information
-            </p>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <Activity className="h-6 w-6 mr-2 text-green-600" />
+                Medical History
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Complete medical records with diagnosis, medications, tests, and visit information
+              </p>
+            </div>
+            
+            {/* Manual Refresh Button */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                isRefreshing 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-green-50 text-green-700 hover:bg-green-100 active:scale-95'
+              }`}
+              title={lastRefreshTime ? `Last refreshed: ${lastRefreshTime.toLocaleTimeString()}` : 'Refresh data'}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
           </div>
           
           <div className="space-y-4">
