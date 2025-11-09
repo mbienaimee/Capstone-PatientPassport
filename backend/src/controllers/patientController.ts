@@ -501,7 +501,7 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
             data: {
               name: condition.condition || '',
               details: condition.notes || '',
-              diagnosed: condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString() : '',
+              diagnosed: condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
               procedure: condition.diagnosedBy || ''
             }
           })),
@@ -516,7 +516,7 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
             data: {
               testName: test.testType || '',
               result: test.results || '',
-              date: test.testDate ? new Date(test.testDate).toLocaleDateString() : '',
+              date: test.testDate ? new Date(test.testDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
               status: test.status || 'normal'
             }
           })),
@@ -525,7 +525,7 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
               hospital: visit.hospital || '',
               doctor: visit.doctor || '',
               reason: visit.reason || '',
-              date: visit.visitDate ? new Date(visit.visitDate).toLocaleDateString() : '',
+              date: visit.visitDate ? new Date(visit.visitDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
               diagnosis: visit.diagnosis || '',
               treatment: visit.treatment || ''
             }
@@ -605,7 +605,7 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
       data: {
         name: condition.name,
         details: condition.details,
-        diagnosed: condition.diagnosed ? new Date(condition.diagnosed).toLocaleDateString() : '',
+        diagnosed: condition.diagnosed ? new Date(condition.diagnosed).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
         procedure: condition.procedure || '',
         status: condition.status || 'active'
       },
