@@ -557,17 +557,34 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
     // Fallback to legacy patient data if no passport exists
     const completePatient = await Patient.findById(patient._id)
       .populate('user', 'name email role')
-      .populate('medicalHistory')
+      .populate({
+        path: 'medicalHistory',
+        populate: {
+          path: 'doctor',
+          populate: {
+            path: 'user',
+            select: 'name'
+          }
+        }
+      })
       .populate('medications')
       .populate('testResults')
       .populate('hospitalVisits')
       .populate('assignedDoctors', 'specialization')
       .populate('assignedDoctors.user', 'name email');
 
+    console.log(`📊 Legacy data loaded:`);
+    console.log(`   Medical History (medicalHistory): ${completePatient.medicalHistory?.length || 0}`);
+    console.log(`   Medications: ${completePatient.medications?.length || 0}`);
+    console.log(`   Test Results: ${completePatient.testResults?.length || 0}`);
+    console.log(`   Hospital Visits: ${completePatient.hospitalVisits?.length || 0}`);
+
     // Get medical records
     const medicalRecords = await MedicalRecord.find({ patientId: patient._id })
       .populate('createdBy', 'name email role')
       .sort({ createdAt: -1 });
+
+    console.log(`   Medical Records: ${medicalRecords.length}`);
 
     // Transform records to include OpenMRS metadata
     const transformedRecords = medicalRecords.map(record => ({
@@ -581,14 +598,39 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
       openmrsData: record.openmrsData || null
     }));
 
+    // Add medicalHistory (OpenMRS synced conditions) to the conditions list
+    const medicalHistoryConditions = (completePatient.medicalHistory || []).map((condition: any) => ({
+      _id: condition._id,
+      type: 'condition',
+      data: {
+        name: condition.name,
+        details: condition.details,
+        diagnosed: condition.diagnosed ? new Date(condition.diagnosed).toLocaleDateString() : '',
+        procedure: condition.procedure || '',
+        status: condition.status || 'active'
+      },
+      createdBy: condition.doctor?.user || null,
+      createdAt: condition.createdAt || condition.diagnosed,
+      updatedAt: condition.updatedAt,
+      openmrsData: {
+        synced: true,
+        syncedAt: condition.createdAt
+      }
+    }));
+
     // Group records by type
     const groupedRecords = {
-      conditions: transformedRecords.filter(record => record.type === 'condition'),
+      conditions: [...transformedRecords.filter(record => record.type === 'condition'), ...medicalHistoryConditions],
       medications: transformedRecords.filter(record => record.type === 'medication'),
       tests: transformedRecords.filter(record => record.type === 'test'),
       visits: transformedRecords.filter(record => record.type === 'visit'),
       images: transformedRecords.filter(record => record.type === 'image')
     };
+
+    console.log(`📤 Returning passport data:`);
+    console.log(`   Conditions (total): ${groupedRecords.conditions.length}`);
+    console.log(`   - From MedicalRecord: ${transformedRecords.filter(r => r.type === 'condition').length}`);
+    console.log(`   - From medicalHistory (OpenMRS): ${medicalHistoryConditions.length}`);
 
     const response: ApiResponse = {
       success: true,
