@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,16 +11,10 @@ import {
   FiCalendar, 
   FiPhone, 
   FiHeart, 
-  FiActivity, 
   FiHome, 
   FiImage, 
-  FiChevronDown, 
-  FiEye, 
-  FiBell,
-  FiLogOut,
-  FiFileText,
-  FiBuilding,
-  FiPill
+  FiEye,
+  FiLogOut
 } from 'react-icons/fi';
 import { Calendar, Stethoscope, Building as BuildingIcon, User, Pill, Activity, FileText, RefreshCw } from 'lucide-react';
 
@@ -70,7 +65,6 @@ interface PatientProfile {
 const PatientPassport: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
-  const [expandedCondition, setExpandedCondition] = useState<number | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [medicalData, setMedicalData] = useState<{
     conditions: MedicalCondition[];
@@ -692,44 +686,6 @@ const PatientPassport: React.FC = () => {
   };
 
   // Empty state component
-  const isMedicationCurrentlyActive = (medication: any) => {
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-    
-    // Check if medication is active based on status and dates
-    if (medication.status !== 'active' && medication.status !== 'Active') return false;
-    
-    // Check start date
-    if (medication.startDate) {
-      const startDate = new Date(medication.startDate);
-      if (startDate > now) return false;
-    }
-    
-    // Check end date
-    if (medication.endDate) {
-      const endDate = new Date(medication.endDate);
-      if (endDate < now) return false;
-    }
-    
-    // If no time constraints, medication is active
-    if (!medication.startTime && !medication.endTime) return true;
-    
-    // Check time constraints
-    if (medication.startTime) {
-      const [startHour, startMinute] = medication.startTime.split(':').map(Number);
-      const startTimeMinutes = startHour * 60 + startMinute;
-      if (currentTime < startTimeMinutes) return false;
-    }
-    
-    if (medication.endTime) {
-      const [endHour, endMinute] = medication.endTime.split(':').map(Number);
-      const endTimeMinutes = endHour * 60 + endMinute;
-      if (currentTime > endTimeMinutes) return false;
-    }
-    
-    return true;
-  };
-
   const EmptyState = ({ title, description, icon: Icon }: { title: string; description: string; icon: React.ComponentType<{ className?: string }> }) => (
     <div className="text-center py-6">
       <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
