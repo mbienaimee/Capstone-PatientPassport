@@ -2,7 +2,6 @@ package org.openmrs.module.patientpassport.service;
 
 import org.openmrs.Patient;
 import org.openmrs.Obs;
-import java.util.Map;
 
 /**
  * Service interface for sending patient data TO Patient Passport system

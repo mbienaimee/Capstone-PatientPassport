@@ -24,9 +24,11 @@
         <openmrs.version>2.5.0</openmrs.version>
         <openmrs.api.version>2.5.0</openmrs.api.version>
         <legacyui.version>1.23.0</legacyui.version>
-        <spring.version>5.3.21</spring.version>
-        <jackson.version>2.13.3</jackson.version>
-        <httpclient.version>4.5.13</httpclient.version>
+        <!-- Updated to fix CRITICAL security vulnerabilities -->
+        <spring.version>5.3.39</spring.version>
+        <!-- Updated to fix HIGH severity vulnerabilities -->
+        <jackson.version>2.17.2</jackson.version>
+        <httpclient.version>4.5.14</httpclient.version>
         <junit.version>4.13.2</junit.version>
     </properties>
 

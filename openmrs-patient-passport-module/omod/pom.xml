@@ -56,10 +56,11 @@
             <scope>provided</scope>
         </dependency>
         
+        <!-- Updated to fix HIGH severity security vulnerabilities (CVE-2022-45688, CVE-2023-5072) -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20210307</version>
+            <version>20240303</version>
         </dependency>
 
         <!-- HTTP Client -->
@@ -79,6 +80,37 @@
 
     <build>
         <finalName>${project.parent.artifactId}-${project.parent.version}</finalName>
+
+        <pluginManagement>
+            <plugins>
+                <!-- Fix lifecycle configuration warning for m2e (Eclipse) -->
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.openmrs.maven.plugins</groupId>
+                                        <artifactId>maven-openmrs-plugin</artifactId>
+                                        <versionRange>[1.0.1,)</versionRange>
+                                        <goals>
+                                            <goal>initialize-module</goal>
+                                            <goal>package-module</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore />
+                                    </action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
 
         <plugins>
             <!-- OpenMRS Maven Plugin to create OMOD -->

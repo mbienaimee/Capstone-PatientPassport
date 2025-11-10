@@ -8,9 +8,7 @@ import org.openmrs.module.patientpassport.service.PatientPassportDataService;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
-import org.json.JSONObject;
 
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**

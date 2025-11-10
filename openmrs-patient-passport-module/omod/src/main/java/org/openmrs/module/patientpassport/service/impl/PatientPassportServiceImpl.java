@@ -20,7 +20,6 @@ import org.openmrs.module.patientpassport.model.PatientPassportSyncStatus;
 import org.openmrs.module.patientpassport.dto.*;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -75,9 +74,11 @@ public class PatientPassportServiceImpl implements PatientPassportService {
             
             if (response.getStatusLine().getStatusCode() == 200) {
                 String responseBody = EntityUtils.toString(entity);
+                @SuppressWarnings("unchecked")
                 Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
                 
                 if (responseMap.containsKey("success") && (Boolean) responseMap.get("success")) {
+                    @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) responseMap.get("data");
                     return convertToPatientPassportDTO(data);
                 } else {
@@ -115,9 +116,11 @@ public class PatientPassportServiceImpl implements PatientPassportService {
             
             if (response.getStatusLine().getStatusCode() == 200) {
                 String responseBody = EntityUtils.toString(responseEntity);
+                @SuppressWarnings("unchecked")
                 Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
                 
                 if (responseMap.containsKey("success") && (Boolean) responseMap.get("success")) {
+                    @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) responseMap.get("data");
                     PassportAccessResponseDTO responseDTO = new PassportAccessResponseDTO(true, "OTP sent successfully");
                     responseDTO.setOtpSent((String) data.get("otpSent"));
@@ -163,9 +166,11 @@ public class PatientPassportServiceImpl implements PatientPassportService {
             
             if (response.getStatusLine().getStatusCode() == 200) {
                 String responseBody = EntityUtils.toString(responseEntity);
+                @SuppressWarnings("unchecked")
                 Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
                 
                 if (responseMap.containsKey("success") && (Boolean) responseMap.get("success")) {
+                    @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) responseMap.get("data");
                     
                     // Log successful access
@@ -246,6 +251,7 @@ public class PatientPassportServiceImpl implements PatientPassportService {
             
             if (response.getStatusLine().getStatusCode() == 200) {
                 String responseBody = EntityUtils.toString(responseEntity);
+                @SuppressWarnings("unchecked")
                 Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
                 
                 if (responseMap.containsKey("success") && (Boolean) responseMap.get("success")) {
@@ -253,6 +259,7 @@ public class PatientPassportServiceImpl implements PatientPassportService {
                     syncStatus.setSyncError(null);
                     
                     // Update passport mapping if provided
+                    @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) responseMap.get("data");
                     if (data.containsKey("passportId")) {
                         updatePatientPassportMapping(patient, 

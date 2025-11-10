@@ -2,7 +2,6 @@ package org.openmrs.module.patientpassport.dto;
 
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 /**
  * DTO for Patient Passport data
