@@ -89,6 +89,10 @@ const PatientPassport: React.FC = () => {
   const [dataLoading, setDataLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  
+  // Pagination state for medical history
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 8;
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -657,6 +661,35 @@ const PatientPassport: React.FC = () => {
   };
 
   const consolidatedRecords = getConsolidatedMedicalHistory();
+  
+  // Calculate pagination values
+  const totalRecords = consolidatedRecords.length;
+  const totalPages = Math.ceil(totalRecords / recordsPerPage);
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = consolidatedRecords.slice(indexOfFirstRecord, indexOfLastRecord);
+  
+  // Pagination handlers
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      // Scroll to top of medical history section
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      // Scroll to top of medical history section
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  
+  const goToPage = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Empty state component
   const isMedicationCurrentlyActive = (medication: any) => {
@@ -973,7 +1006,24 @@ const PatientPassport: React.FC = () => {
           
           <div className="space-y-4">
             {consolidatedRecords.length > 0 ? (
-              consolidatedRecords.map((record: any, index: number) => (
+              <>
+                {/* Pagination Info */}
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                  <div className="text-sm text-gray-700">
+                    Showing <span className="font-semibold text-green-700">{indexOfFirstRecord + 1}</span> to{' '}
+                    <span className="font-semibold text-green-700">
+                      {Math.min(indexOfLastRecord, totalRecords)}
+                    </span>{' '}
+                    of <span className="font-semibold text-green-700">{totalRecords}</span> medical records
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Page <span className="font-semibold text-green-700">{currentPage}</span> of{' '}
+                    <span className="font-semibold text-green-700">{totalPages}</span>
+                  </div>
+                </div>
+
+                {/* Medical Records */}
+                {currentRecords.map((record: any, index: number) => (
                 <div 
                   key={record.id || index}
                   className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
@@ -1112,6 +1162,84 @@ const PatientPassport: React.FC = () => {
                   )}
                 </div>
               ))
+              }
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between bg-white border-2 border-green-200 rounded-lg px-6 py-4 mt-4">
+                  {/* Previous Button */}
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                      currentPage === 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-green-600 text-white hover:bg-green-700 active:scale-95'
+                    }`}
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>Previous</span>
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center space-x-2">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => {
+                      // Show all pages if total pages <= 7
+                      // Otherwise show first, last, current, and adjacent pages
+                      const shouldShow =
+                        totalPages <= 7 ||
+                        pageNumber === 1 ||
+                        pageNumber === totalPages ||
+                        (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1);
+
+                      if (!shouldShow) {
+                        // Show ellipsis for skipped pages
+                        if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+                          return (
+                            <span key={pageNumber} className="px-2 text-gray-400">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => goToPage(pageNumber)}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            currentPage === pageNumber
+                              ? 'bg-green-600 text-white shadow-md'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <button
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                      currentPage === totalPages
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-green-600 text-white hover:bg-green-700 active:scale-95'
+                    }`}
+                  >
+                    <span>Next</span>
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </>
             ) : (
               <div className="bg-gray-50 rounded-lg p-8 text-center">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
