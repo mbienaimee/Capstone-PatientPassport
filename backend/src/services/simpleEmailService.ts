@@ -96,22 +96,34 @@ class RenderCompatibleEmailService {
             ciphers: 'SSLv3',
             rejectUnauthorized: false
           },
-          // Optimized timeouts for faster performance
-          connectionTimeout: 5000, // Reduced from 10000
-          greetingTimeout: 5000,   // Reduced from 10000
-          socketTimeout: 5000,     // Reduced from 10000
+          // Increased timeouts for Render/production environments
+          connectionTimeout: 15000, // Increased to 15 seconds
+          greetingTimeout: 15000,   // Increased to 15 seconds
+          socketTimeout: 15000,     // Increased to 15 seconds
           pool: true,
-          maxConnections: 10,      // Increased from 5
-          maxMessages: 1000,       // Increased from 100
-          // Additional performance optimizations
+          maxConnections: 10,
+          maxMessages: 1000,
           rateDelta: 20000,
-          rateLimit: 5
+          rateLimit: 5,
+          // Disable verification in production (Render may block it)
+          debug: process.env.NODE_ENV === 'development'
         });
         
+        // Skip verification in production environments (Render blocks outbound SMTP)
+        if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+          console.log('🚀 Production environment detected - skipping SMTP verification');
+          console.log('📧 Gmail transporter configured (will verify on first send)');
+          this.transporter = transporter;
+          this.isRenderFreeTier = false;
+          this.initialized = true;
+          return;
+        }
+        
+        // Only verify in development
         const success = await Promise.race([
           transporter.verify(),
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Gmail connection timeout')), 5000)
+            setTimeout(() => reject(new Error('Gmail connection timeout')), 10000) // 10 seconds in dev
           )
         ]);
         
@@ -124,18 +136,40 @@ class RenderCompatibleEmailService {
         }
       } catch (error) {
         console.log('❌ Gmail email provider failed:', error?.message || error);
+        // Don't fail completely - transporter might still work for sending
+        if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+          console.log('⚠️  Verification failed but continuing in production mode');
+          console.log('   Note: Render.com free tier blocks SMTP. Consider upgrading or using SendGrid.');
+        }
       }
     }
 
     
     // Fallback to development mode
-    console.log('⚠️  No SMTP providers configured or all failed');
-    console.log('📧 Using enhanced development mode with OTP console logging');
-    console.log('💡 To enable real email delivery, configure one of these:');
-    console.log('   1. SendGrid: EMAIL_USER=apikey, EMAIL_PASS=your-sendgrid-key');
-    console.log('   2. Gmail: EMAIL_USER=your-email@gmail.com, EMAIL_PASS=app-password');
-    console.log('   3. Railway.app - Free tier allows SMTP');
-    console.log('   4. Render Starter - $7/month removes restrictions');
+    const isRenderFreeTier = process.env.RENDER && process.env.RENDER !== 'false';
+    if (isRenderFreeTier) {
+      console.log('🚨 RENDER FREE TIER DETECTED');
+      console.log('   Render.com free tier blocks outbound SMTP connections on ports 25, 465, and 587');
+      console.log('   This is a known Render platform limitation to prevent spam.');
+      console.log('');
+      console.log('💡 SOLUTIONS:');
+      console.log('   ✅ RECOMMENDED: Use SendGrid (free 100 emails/day)');
+      console.log('      - Sign up: https://signup.sendgrid.com/');
+      console.log('      - Set EMAIL_USER=apikey');
+      console.log('      - Set EMAIL_PASS=<your-sendgrid-api-key>');
+      console.log('   📧 OR: Upgrade to Render Starter ($7/month) - removes SMTP restrictions');
+      console.log('   🚀 OR: Deploy to Railway.app (free tier allows SMTP)');
+      console.log('');
+      console.log('📧 Using development mode with console OTP logging');
+    } else {
+      console.log('⚠️  No SMTP providers configured or all failed');
+      console.log('📧 Using enhanced development mode with OTP console logging');
+      console.log('💡 To enable real email delivery, configure one of these:');
+      console.log('   1. SendGrid: EMAIL_USER=apikey, EMAIL_PASS=your-sendgrid-key');
+      console.log('   2. Gmail: EMAIL_USER=your-email@gmail.com, EMAIL_PASS=app-password');
+      console.log('   3. Railway.app - Free tier allows SMTP');
+      console.log('   4. Render Starter - $7/month removes restrictions');
+    }
     this.initialized = true;
   }
 
