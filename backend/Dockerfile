@@ -34,12 +34,14 @@ COPY --from=builder /app/dist ./dist
 # Create logs directory
 RUN mkdir -p logs
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+# Create non-root user (Debian/Ubuntu syntax)
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs --shell /bin/bash --home /app nodejs
 
 # Change ownership of the app directory
 RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
 USER nodejs
 
 # Expose port
