@@ -60,8 +60,14 @@ class DirectDBSyncService {
 
       this.isRunning = true;
     } catch (error: any) {
-      console.error('❌ Failed to start direct DB sync service:', error.message);
-      console.log('   Falling back to REST API sync only');
+      if (error.message.includes('localhost not accessible')) {
+        console.log('ℹ️  Direct DB sync disabled in production');
+        console.log('   OpenMRS database access requires network configuration');
+        console.log('   Using REST API sync as fallback ✓');
+      } else {
+        console.error('❌ Failed to start direct DB sync service:', error.message);
+        console.log('   Falling back to REST API sync only');
+      }
     }
   }
 
@@ -69,6 +75,11 @@ class DirectDBSyncService {
    * Connect to OpenMRS database
    */
   private async connect() {
+    // Skip if running in Docker/production and host is localhost
+    if (this.DB_CONFIG.host === 'localhost' && process.env.NODE_ENV === 'production') {
+      throw new Error('Direct database access not available in production (localhost not accessible from Docker)');
+    }
+    
     if (!this.connection) {
       this.connection = await mysql.createConnection(this.DB_CONFIG);
     }

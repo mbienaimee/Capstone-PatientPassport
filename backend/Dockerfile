@@ -31,6 +31,9 @@ RUN npm ci --only=production
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy swagger.json for API documentation
+COPY swagger.json ./swagger.json
+
 # Create logs directory
 RUN mkdir -p logs
 
