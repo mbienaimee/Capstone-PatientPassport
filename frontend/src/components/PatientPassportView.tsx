@@ -80,6 +80,33 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
     fetchDoctorProfile();
   }, [isDoctor, user]);
 
+  // Auto-refresh passport data while the modal is open
+  useEffect(() => {
+    let intervalId: number | undefined;
+    let cancelled = false;
+
+    const fetchPassport = async () => {
+      try {
+        const resp = await apiService.getPatientPassport(patientId);
+        if (resp && resp.success && !cancelled) {
+          // Propagate updated passport to parent so the modal and parent stay in sync
+          onUpdate(resp.data);
+        }
+      } catch (err) {
+        console.error('Error refreshing passport in modal:', err);
+      }
+    };
+
+    // Initial fetch and then poll every 15 seconds while open
+    fetchPassport();
+    intervalId = window.setInterval(fetchPassport, 15000);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [patientId, onUpdate]);
+
   const handleSave = async () => {
     // Validate new records before saving
     if (newRecords.length > 0) {

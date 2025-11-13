@@ -23,6 +23,8 @@ import ussdRoutes from './routes/ussd';
 import openmrsSyncRoutes from './routes/openmrsSync';
 import openmrsIntegrationRoutes from './routes/openmrsIntegration';
 import scheduledSyncRoutes from './routes/scheduledSync';
+import { getEmailStatus } from './services/simpleEmailService';
+import openmrsSyncService from './services/openmrsSyncService';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -135,12 +137,19 @@ app.use(generalLimiter);
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
+  const emailStatus = typeof getEmailStatus === 'function' ? getEmailStatus() : { configured: false };
+  const openmrsStatus = openmrsSyncService && typeof openmrsSyncService.getStatus === 'function'
+    ? openmrsSyncService.getStatus()
+    : { connectedHospitals: 0, isRunning: false };
+
   res.status(200).json({
     success: true,
     message: 'PatientPassport API is running',
     timestamp: new Date().toISOString(),
     environment: process.env['NODE_ENV'] || 'development',
-    version: '1.0.0'
+    version: '1.0.0',
+    email: emailStatus,
+    openmrs: openmrsStatus
   });
 });
 

@@ -436,19 +436,30 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
   const { patientId } = req.params;
   const user = req.user;
 
+  console.log(`\n🔍 === getPatientPassport called ===`);
+  console.log(`   Patient ID param: ${patientId}`);
+  console.log(`   User role: ${user.role}`);
+  console.log(`   User ID: ${user.id}`);
+
   let patient;
   
   // If the patientId is actually a user ID (for patient role), find the patient by user reference
   if (user.role === 'patient' && patientId === user.id) {
+    console.log(`   Looking up patient by user ID...`);
     patient = await Patient.findOne({ user: patientId });
   } else {
     // For doctors and admins, use the patientId directly
+    console.log(`   Looking up patient by patient ID...`);
     patient = await Patient.findById(patientId);
   }
 
   if (!patient) {
+    console.log(`   ❌ Patient not found!`);
     throw new CustomError('Patient not found', 404);
   }
+
+  console.log(`   ✅ Found patient document ID: ${patient._id}`);
+  console.log(`   Patient name: ${patient.user?.name || 'Unknown'}`);
 
   // Check permissions
   if (user.role === 'patient' && patient.user.toString() !== user.id) {
@@ -473,12 +484,65 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
         .populate('accessHistory.doctor', 'user')
         .populate('accessHistory.doctor.user', 'name');
 
+      // **CRITICAL FIX**: Also fetch MedicalRecord data (where OpenMRS sync stores data)
+      console.log(`🔍 Fetching MedicalRecord collection data for patient: ${patient._id}`);
+      const medicalRecords = await MedicalRecord.find({ patientId: patient._id })
+        .populate('createdBy', 'name email role')
+        .sort({ createdAt: -1 });
+      
+      console.log(`   Found ${medicalRecords.length} medical records in MedicalRecord collection`);
+
+      // Transform MedicalRecord data
+      const medicalRecordConditions = medicalRecords
+        .filter(record => record.type === 'condition')
+        .map(record => ({
+          _id: record._id,
+          data: {
+            name: record.data.name || '',
+            details: record.data.details || '',
+            diagnosed: record.data.diagnosed || '',
+            procedure: record.data.procedure || ''
+          },
+          openmrsData: record.openmrsData || null,
+          createdAt: record.createdAt,
+          createdBy: record.createdBy
+        }));
+
+      const medicalRecordMedications = medicalRecords
+        .filter(record => record.type === 'medication')
+        .map(record => ({
+          _id: record._id,
+          data: record.data,
+          openmrsData: record.openmrsData || null,
+          createdAt: record.createdAt,
+          createdBy: record.createdBy
+        }));
+
+      const medicalRecordTests = medicalRecords
+        .filter(record => record.type === 'test')
+        .map(record => ({
+          _id: record._id,
+          data: record.data,
+          openmrsData: record.openmrsData || null,
+          createdAt: record.createdAt,
+          createdBy: record.createdBy
+        }));
+
+      const medicalRecordVisits = medicalRecords
+        .filter(record => record.type === 'visit')
+        .map(record => ({
+          _id: record._id,
+          data: record.data,
+          openmrsData: record.openmrsData || null,
+          createdAt: record.createdAt,
+          createdBy: record.createdBy
+        }));
+
       // Transform the data to match what the patient frontend expects
       console.log(`🔄 Transforming passport data for patient frontend...`);
-      console.log(`   Medical conditions: ${populatedPassport.medicalInfo.medicalConditions?.length || 0}`);
-      console.log(`   Medications: ${populatedPassport.medicalInfo.currentMedications?.length || 0}`);
-      console.log(`   Test results: ${populatedPassport.testResults?.length || 0}`);
-      console.log(`   Hospital visits: ${populatedPassport.hospitalVisits?.length || 0}`);
+      console.log(`   PatientPassport conditions: ${populatedPassport.medicalInfo.medicalConditions?.length || 0}`);
+      console.log(`   MedicalRecord conditions: ${medicalRecordConditions.length}`);
+      console.log(`   TOTAL conditions to return: ${medicalRecordConditions.length + (populatedPassport.medicalInfo.medicalConditions?.length || 0)}`);
       
       const transformedData = {
         // Patient profile data
@@ -496,40 +560,55 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
           status: 'active'
         },
         // Medical records in the format expected by frontend
+        // **MERGE** both PatientPassport data and MedicalRecord data
         medicalRecords: {
-          conditions: (populatedPassport.medicalInfo.medicalConditions || []).map(condition => ({
-            data: {
-              name: condition.condition || '',
-              details: condition.notes || '',
-              diagnosed: condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
-              procedure: condition.diagnosedBy || ''
-            }
-          })),
-          medications: (populatedPassport.medicalInfo.currentMedications || []).map(medication => ({
-            data: {
-              medicationName: medication.name || '',
-              dosage: medication.dosage || '',
-              status: 'Active'
-            }
-          })),
-          tests: (populatedPassport.testResults || []).map(test => ({
-            data: {
-              testName: test.testType || '',
-              result: test.results || '',
-              date: test.testDate ? new Date(test.testDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
-              status: test.status || 'normal'
-            }
-          })),
-          visits: (populatedPassport.hospitalVisits || []).map(visit => ({
-            data: {
-              hospital: visit.hospital || '',
-              doctor: visit.doctor || '',
-              reason: visit.reason || '',
-              date: visit.visitDate ? new Date(visit.visitDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
-              diagnosis: visit.diagnosis || '',
-              treatment: visit.treatment || ''
-            }
-          })),
+          conditions: [
+            // MedicalRecord collection (OpenMRS sync data) - PRIORITIZE THIS
+            ...medicalRecordConditions,
+            // PatientPassport legacy data
+            ...(populatedPassport.medicalInfo.medicalConditions || []).map(condition => ({
+              data: {
+                name: condition.condition || '',
+                details: condition.notes || '',
+                diagnosed: condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
+                procedure: condition.diagnosedBy || ''
+              }
+            }))
+          ],
+          medications: [
+            ...medicalRecordMedications,
+            ...(populatedPassport.medicalInfo.currentMedications || []).map(medication => ({
+              data: {
+                medicationName: medication.name || '',
+                dosage: medication.dosage || '',
+                status: 'Active'
+              }
+            }))
+          ],
+          tests: [
+            ...medicalRecordTests,
+            ...(populatedPassport.testResults || []).map(test => ({
+              data: {
+                testName: test.testType || '',
+                result: test.results || '',
+                date: test.testDate ? new Date(test.testDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
+                status: test.status || 'normal'
+              }
+            }))
+          ],
+          visits: [
+            ...medicalRecordVisits,
+            ...(populatedPassport.hospitalVisits || []).map(visit => ({
+              data: {
+                hospital: visit.hospital || '',
+                doctor: visit.doctor || '',
+                reason: visit.reason || '',
+                date: visit.visitDate ? new Date(visit.visitDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
+                diagnosis: visit.diagnosis || '',
+                treatment: visit.treatment || ''
+              }
+            }))
+          ],
           images: [] // Not implemented yet
         },
         // Passport metadata

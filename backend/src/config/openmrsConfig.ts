@@ -98,8 +98,10 @@ export const syncConfig = {
   // Automatic sync interval (in minutes)
   autoSyncInterval: parseInt(process.env.OPENMRS_SYNC_INTERVAL || '5'),
 
-  // Enable automatic sync on server start
-  autoStartSync: process.env.OPENMRS_AUTO_START_SYNC === 'true',
+  // Enable automatic sync on server start.
+  // Defaults to enabled in development for easier local testing, or can be
+  // explicitly controlled via OPENMRS_AUTO_START_SYNC env var in production.
+  autoStartSync: process.env.OPENMRS_AUTO_START_SYNC === 'true' || process.env.NODE_ENV === 'development',
 
   // Maximum records to fetch per sync
   maxRecordsPerSync: parseInt(process.env.OPENMRS_MAX_RECORDS || '1000'),

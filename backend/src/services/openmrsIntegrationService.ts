@@ -430,16 +430,50 @@ export const storeOpenMRSObservation = async (
     console.log(`   Doctor License: ${doctorLicenseNumber}`);
     console.log(`   Hospital: ${hospitalName}`);
 
-    // Find user by name
+    // Find user by name with flexible matching
     const User = mongoose.model('User');
-    const user = await User.findOne({ 
-      name: { $regex: new RegExp(`^${patientName}$`, 'i') },
+    
+    // Normalize patient name: trim, remove extra spaces, handle case
+    const normalizedPatientName = patientName.trim().replace(/\s+/g, ' ');
+    
+    // Try multiple matching strategies for better patient matching
+    let user = await User.findOne({ 
+      name: { $regex: new RegExp(`^${normalizedPatientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
       role: 'patient'
     });
 
+    // If exact match not found, try flexible matching (handles name variations)
     if (!user) {
-      throw new CustomError(`User "${patientName}" not found`, 404);
+      // Try matching with normalized spaces
+      const flexiblePattern = normalizedPatientName.split(' ').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+      user = await User.findOne({
+        $or: [
+          { name: { $regex: new RegExp(`^${flexiblePattern}$`, 'i') }, role: 'patient' },
+          { name: { $regex: new RegExp(flexiblePattern, 'i') }, role: 'patient' }
+        ]
+      });
     }
+
+    // If still not found, try matching individual name parts
+    if (!user && normalizedPatientName.includes(' ')) {
+      const nameParts = normalizedPatientName.split(' ').filter(part => part.length > 2);
+      if (nameParts.length >= 2) {
+        // Try matching first and last name
+        const firstLastPattern = `${nameParts[0]}.*${nameParts[nameParts.length - 1]}`;
+        user = await User.findOne({
+          name: { $regex: new RegExp(firstLastPattern, 'i') },
+          role: 'patient'
+        });
+      }
+    }
+
+    if (!user) {
+      console.error(`❌ Patient matching failed for: "${patientName}"`);
+      console.error(`   Tried normalized: "${normalizedPatientName}"`);
+      throw new CustomError(`User "${patientName}" not found in Patient Passport. Please ensure patient name matches exactly.`, 404);
+    }
+    
+    console.log(`✅ Patient matched: "${patientName}" → "${user.name}"`);
 
     // Find patient
     const patient = await Patient.findOne({ user: user._id });
@@ -598,7 +632,11 @@ export const storeOpenMRSObservation = async (
         await patient.save();
       }
 
-      console.log(`✅ Diagnosis stored - ID: ${condition._id}`);
+      console.log(`✅ Diagnosis stored successfully!`);
+      console.log(`   - Condition ID: ${condition._id}`);
+      console.log(`   - Patient: ${patientName}`);
+      console.log(`   - Hospital: ${hospitalName}`);
+      console.log(`   - Doctor: ${doctorLicenseNumber}`);
       return condition;
       
     } else if (observationType === 'medication') {
@@ -648,7 +686,11 @@ export const storeOpenMRSObservation = async (
         await patient.save();
       }
 
-      console.log(`✅ Medication stored - ID: ${medication._id}`);
+      console.log(`✅ Medication stored successfully!`);
+      console.log(`   - Medication ID: ${medication._id}`);
+      console.log(`   - Patient: ${patientName}`);
+      console.log(`   - Hospital: ${hospitalName}`);
+      console.log(`   - Doctor: ${doctorLicenseNumber}`);
       return medication;
     }
     

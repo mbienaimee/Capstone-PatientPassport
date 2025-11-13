@@ -520,20 +520,23 @@ class OpenMRSSyncService {
       }
     }
 
-    // Strategy 2: Match by patient name (PRIMARY METHOD)
+    // Strategy 2: Match by patient name (PRIMARY METHOD) - Enhanced matching
     // Import User model
     const User = (await import('../models/User')).default;
     
-    // Try exact name match first
+    // Normalize full name: trim and remove extra spaces
+    const normalizedFullName = fullName.trim().replace(/\s+/g, ' ');
+    
+    // Try exact name match first (case-insensitive)
     let user = await User.findOne({
-      name: { $regex: new RegExp(`^${fullName}$`, 'i') },
+      name: { $regex: new RegExp(`^${normalizedFullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
       role: 'patient'
     });
 
-    // If exact match not found, try partial match
-    if (!user) {
-      // Try matching given name and family name
-      const namePattern = `${givenName}.*${familyName}`;
+    // If exact match not found, try flexible matching with name parts
+    if (!user && givenName && familyName) {
+      // Try matching given name and family name (handles middle name variations)
+      const namePattern = `${givenName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*${familyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`;
       user = await User.findOne({
         name: { $regex: new RegExp(namePattern, 'i') },
         role: 'patient'
@@ -543,7 +546,15 @@ class OpenMRSSyncService {
     // If still not found, try matching just family name (common scenario)
     if (!user && familyName) {
       user = await User.findOne({
-        name: { $regex: new RegExp(familyName, 'i') },
+        name: { $regex: new RegExp(familyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
+        role: 'patient'
+      });
+    }
+    
+    // Try matching just given name if family name matching failed
+    if (!user && givenName) {
+      user = await User.findOne({
+        name: { $regex: new RegExp(`^${givenName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') },
         role: 'patient'
       });
     }
@@ -980,6 +991,17 @@ class OpenMRSSyncService {
 
     this.connections.clear();
     console.log('✅ All connections closed');
+  }
+
+  /**
+   * Get runtime status for health checks
+   */
+  getStatus() {
+    return {
+      connectedHospitals: this.connections.size,
+      hospitalIds: Array.from(this.connections.keys()),
+      isRunning: this.isRunning
+    };
   }
 }
 

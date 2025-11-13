@@ -8,70 +8,90 @@ import { directDBSyncService } from './services/directDBSyncService';
 import { getOpenMRSConfigurations, syncConfig } from './config/openmrsConfig';
 
 const PORT = process.env['PORT'] || 5000;
-const MONGODB_URI = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/patient-passport';
+// Accept either MONGODB_URI or MONGO_URI for compatibility
+const MONGODB_URI = process.env['MONGODB_URI'] || process.env['MONGO_URI'] || 'mongodb://localhost:27017/patient-passport';
 
-// Connect to MongoDB with optimizations
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(MONGODB_URI, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 30000, // Increased from 5s to 30s for Atlas
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 30000, // Increased from 10s to 30s
-      heartbeatFrequencyMS: 10000,
-      compressors: ['zlib'],
-      readPreference: 'primary' // Changed from secondaryPreferred to primary
-    });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error('Database connection error:', error);
-    process.exit(1);
+// Connect to MongoDB with optimizations and retry logic
+const connectDB = async (maxRetries = 3, baseDelayMs = 2000) => {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      attempt++;
+      const conn = await mongoose.connect(MONGODB_URI, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 30000, // Increased from 5s to 30s for Atlas
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 30000, // Increased from 10s to 30s
+        heartbeatFrequencyMS: 10000,
+        compressors: ['zlib'],
+        readPreference: 'primary'
+      });
+      console.log(`MongoDB Connected: ${conn.connection.host}`);
+      return true;
+    } catch (error) {
+      console.error(`Database connection attempt ${attempt} failed:`, error && (error as any).message ? (error as any).message : error);
+      if (attempt >= maxRetries) {
+        console.error('Database connection failed after multiple attempts. Continuing in degraded mode (no DB).');
+        return false;
+      }
+      const delay = baseDelayMs * Math.pow(2, attempt - 1);
+      console.log(`Retrying DB connection in ${delay}ms...`);
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(res => setTimeout(res, delay));
+    }
   }
+  return false;
 };
 
 // Start server
 const startServer = async () => {
   try {
-    await connectDB();
-    
+    const dbConnected = await connectDB();
+
     // Create HTTP server
     const server = createServer(app);
-    
-    // Initialize Socket.IO
+
+    // Initialize Socket.IO (socket functionality does not require MongoDB)
     new SocketService(server);
-    
-    // Initialize OpenMRS Sync Service
-    console.log('\n🔄 ═══════════════════════════════════════════════════════');
-    console.log('🔄 Initializing OpenMRS Auto-Sync Service');
-    console.log('🔄 ═══════════════════════════════════════════════════════\n');
-    
-    try {
-      const hospitalConfigs = getOpenMRSConfigurations();
-      
-      if (hospitalConfigs.length > 0) {
-        await openmrsSyncService.initializeConnections(hospitalConfigs);
-        
-        if (syncConfig.autoStartSync) {
-          console.log(`\n🔄 Auto-starting sync service with ${syncConfig.autoSyncInterval} minute interval...\n`);
-          openmrsSyncService.startAutoSync(syncConfig.autoSyncInterval);
+
+    // Only initialize MongoDB-dependent services if DB connection succeeded
+    if (dbConnected) {
+      // Initialize OpenMRS Sync Service
+      console.log('\n🔄 ═══════════════════════════════════════════════════════');
+      console.log('🔄 Initializing OpenMRS Auto-Sync Service');
+      console.log('🔄 ═══════════════════════════════════════════════════════\n');
+
+      try {
+        const hospitalConfigs = getOpenMRSConfigurations();
+
+        if (hospitalConfigs.length > 0) {
+          await openmrsSyncService.initializeConnections(hospitalConfigs);
+
+          if (syncConfig.autoStartSync) {
+            console.log(`\n🔄 Auto-starting sync service with ${syncConfig.autoSyncInterval} minute interval...\n`);
+            openmrsSyncService.startAutoSync(syncConfig.autoSyncInterval);
+          } else {
+            console.log('\n⏸️ Auto-sync disabled. Use API endpoints to start manual sync.\n');
+          }
         } else {
-          console.log('\n⏸️ Auto-sync disabled. Use API endpoints to start manual sync.\n');
+          console.log('\n⚠️ No OpenMRS hospital configurations found.');
+          console.log('ℹ️ Configure hospitals in .env or openmrsConfig.ts to enable sync.\n');
         }
-      } else {
-        console.log('\n⚠️ No OpenMRS hospital configurations found.');
-        console.log('ℹ️ Configure hospitals in .env or openmrsConfig.ts to enable sync.\n');
+      } catch (syncError) {
+        console.error('\n❌ Failed to initialize OpenMRS sync:', syncError);
+        console.log('⚠️ Server will continue without OpenMRS sync capabilities.\n');
       }
-    } catch (syncError) {
-      console.error('\n❌ Failed to initialize OpenMRS sync:', syncError);
-      console.log('⚠️ Server will continue without OpenMRS sync capabilities.\n');
+
+      // Start scheduled observation sync service (direct DB sync)
+      console.log('\n🔄 ═══════════════════════════════════════════════════════');
+      console.log('🔄 Starting Direct Database Observation Sync Service');
+      console.log('🔄 ═══════════════════════════════════════════════════════\n');
+      directDBSyncService.start();
+    } else {
+      console.log('\n⚠️ MongoDB not connected - running in degraded mode.');
+      console.log('   Some features (OpenMRS sync, patient/persistence endpoints) will be disabled until DB is available.\n');
     }
-    
-    // Start scheduled observation sync service
-    console.log('\n🔄 ═══════════════════════════════════════════════════════');
-    console.log('🔄 Starting Direct Database Observation Sync Service');
-    console.log('🔄 ═══════════════════════════════════════════════════════\n');
-    directDBSyncService.start();
-    
+
     server.listen(PORT, () => {
       console.log(`
  PatientPassport API Server is running!
@@ -81,6 +101,7 @@ const startServer = async () => {
  WebSocket: ws://localhost:${PORT}
  Environment: ${process.env['NODE_ENV'] || 'development'}
  OpenMRS Sync: ${syncConfig.autoStartSync ? 'ENABLED' : 'DISABLED'}
+ DB Connected: ${dbConnected ? 'YES' : 'NO'}
       `);
     });
   } catch (error) {

@@ -310,7 +310,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col overflow-hidden`}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-green-200">
           <div className="flex items-center space-x-3">
             <Logo size="sm" className="text-green-600" />
@@ -323,7 +323,7 @@ const AdminDashboard: React.FC = () => {
           </button>
         </div>
 
-        <nav className="mt-6 px-3">
+        <nav className="mt-6 px-3 flex flex-col h-full overflow-y-hidden">
           <div className="space-y-1">
             <button
               onClick={() => setActiveTab('overview')}
@@ -360,7 +360,7 @@ const AdminDashboard: React.FC = () => {
             </button>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="mt-auto pt-6 border-t border-gray-200">
             <div className="px-3">
               <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
                 <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -376,16 +376,16 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-6 px-3">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center px-3 py-2 text-xs font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-            >
-              <LogOut className="mr-3 h-5 w-5" />
-              Logout
-            </button>
+            <div className="mt-4 px-3">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center px-3 py-2 text-xs font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="mr-3 h-5 w-5" />
+                Logout
+              </button>
+            </div>
           </div>
           </nav>
         </div>

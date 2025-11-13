@@ -272,10 +272,7 @@ export const getPatientPassportForOpenMRS = asyncHandler(async (req: Request, re
     .populate('user', 'name email')
     .populate({
       path: 'medicalHistory',
-      populate: [
-        { path: 'doctor', populate: { path: 'user', select: 'name' } },
-        { path: 'hospital', select: 'name' }
-      ]
+      populate: { path: 'doctor', populate: { path: 'user', select: 'name' } }
     })
     .populate({
       path: 'medications',

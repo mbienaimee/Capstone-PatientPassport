@@ -494,6 +494,13 @@ class ApiService {
     return this.request(`/patients/passport/${patientId}`);
   }
 
+  // OpenMRS sync methods (manual trigger) - restricted to doctor/admin users
+  async syncPatient(nationalId: string): Promise<ApiResponse<any>> {
+    return this.request(`/openmrs-sync/sync-patient/${nationalId}`, {
+      method: 'POST'
+    });
+  }
+
   async updatePatientPassport(patientId: string, updateData: any): Promise<ApiResponse<any>> {
     return this.request(`/passport-access/${patientId}`, {
       method: 'PUT',

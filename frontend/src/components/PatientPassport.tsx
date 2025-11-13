@@ -133,8 +133,30 @@ const PatientPassport: React.FC = () => {
                 console.log('Visits array:', passportData.medicalRecords?.visits);
                 
                 // Set medical data from the passport response
+                // Backend may return a Passport model with different shapes depending on API
+                // Normalize to the frontend `medicalData` shape: { conditions, medications, tests, visits, images }
                 if (passportData.medicalRecords) {
                   setMedicalData(passportData.medicalRecords);
+                } else if (passportData.medicalInfo || passportData.medicalInfo?.medicalConditions || passportData.testResults || passportData.hospitalVisits) {
+                  const normalized = {
+                    conditions: passportData.medicalInfo?.medicalConditions || passportData.medicalInfo?.medicalConditions || [],
+                    medications: passportData.medicalInfo?.currentMedications || [],
+                    tests: passportData.testResults || [],
+                    visits: passportData.hospitalVisits || [],
+                    images: passportData.medicalImages || passportData.images || []
+                  };
+                  setMedicalData(normalized);
+                } else if (passportData.passport && (passportData.passport.medicalInfo || passportData.passport.testResults)) {
+                  // When the API wraps the passport under data.passport
+                  const p = passportData.passport;
+                  const normalized = {
+                    conditions: p.medicalInfo?.medicalConditions || [],
+                    medications: p.medicalInfo?.currentMedications || [],
+                    tests: p.testResults || [],
+                    visits: p.hospitalVisits || [],
+                    images: p.medicalImages || p.images || []
+                  };
+                  setMedicalData(normalized);
                 }
                 
                 // Update patient profile with complete data if available
@@ -190,7 +212,25 @@ const PatientPassport: React.FC = () => {
     const refreshInterval = setInterval(() => {
       if (isAuthenticated && user?.id) {
         console.log('🔄 Auto-refreshing medical records...');
-        fetchMedicalRecords(false); // Auto-refresh
+        (async () => {
+          // If user is a doctor or admin, attempt a patient-level sync before fetching
+          try {
+            if ((user?.role === 'doctor' || user?.role === 'admin') && patientProfile?.nationalId) {
+              console.log('🔁 Auto-triggering patient sync (doctor/admin)...');
+              try {
+                await apiService.syncPatient(patientProfile.nationalId);
+                console.log('🔁 Patient sync triggered');
+              } catch (syncErr) {
+                console.warn('Auto-sync failed or not permitted:', syncErr);
+              }
+            }
+          } catch (err) {
+            console.warn('Error during auto-sync step:', err);
+          }
+
+          // Always refresh the passport data after attempting sync
+          fetchMedicalRecords(false);
+        })();
       }
     }, 60000); // Refresh every 60 seconds
 
@@ -238,6 +278,8 @@ const PatientPassport: React.FC = () => {
       }
     }
   };
+
+  
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -497,16 +539,31 @@ const PatientPassport: React.FC = () => {
     const rawMedications = medicalData.medications || medications || [];
     const rawTests = medicalData.tests || testResults || [];
     
+    console.log('🔍 getConsolidatedMedicalHistory - Raw data counts:', {
+      visits: rawVisits.length,
+      conditions: rawConditions.length,
+      medications: rawMedications.length,
+      tests: rawTests.length
+    });
+    
     // Process hospital visits - they contain the most complete information
     const visits = rawVisits;
-    const conditions = medicalHistory.length > 0 ? medicalHistory : rawConditions.map((c: any) => ({
-      name: c.condition || c.name || '',
-      diagnosed: c.diagnosedDate || c.diagnosed || c.date || '',
-      details: c.notes || c.details || '',
-      procedure: c.diagnosedBy || c.procedure || ''
-    }));
-    const meds = medications.length > 0 ? medications : rawMedications;
-    const tests = testResults.length > 0 ? testResults : rawTests;
+    const conditions = rawConditions.map((c: any) => {
+      // Handle nested data structure from API
+      const condData = c.data || c;
+      return {
+        _id: c._id || c.id,
+        name: condData.diagnosis || condData.condition || condData.name || '',
+        diagnosed: condData.diagnosedDate || condData.diagnosed || condData.date || '',
+        details: condData.notes || condData.details || '',
+        procedure: condData.diagnosedBy || condData.procedure || '',
+        openmrsData: condData.openmrsData || c.openmrsData,
+        hospital: condData.hospital || c.hospital,
+        doctor: condData.doctor || c.doctor
+      };
+    });
+    const meds = rawMedications;
+    const tests = rawTests;
 
     // Create consolidated records from hospital visits
     visits.forEach((visit: any, index: number) => {
@@ -558,6 +615,8 @@ const PatientPassport: React.FC = () => {
         id: visit._id || visit.id || `visit-${index}`,
         date: visitDate,
         diagnosis: diagnosis,
+        // carry through openmrs metadata if present on visit
+        openmrsData: visitData.openmrsData || visit.openmrsData || visit.data?.openmrsData,
         medications: relatedMedications.map((m: any) => {
           const medData = m.data || m;
           return {
@@ -587,8 +646,8 @@ const PatientPassport: React.FC = () => {
 
     // Add standalone conditions without visits
     conditions.forEach((condition: any, index: number) => {
-      const condData = condition.data || condition;
-      const conditionDateStr = condData.diagnosed || condData.diagnosedDate || condData.date;
+      // condition already normalized above, use directly
+      const conditionDateStr = condition.diagnosed;
       const conditionDate = conditionDateStr ? (typeof conditionDateStr === 'string' ? new Date(conditionDateStr) : conditionDateStr) : new Date();
       
       const hasVisit = visits.some((visit: any) => {
@@ -614,10 +673,15 @@ const PatientPassport: React.FC = () => {
           return datesMatch(testDate, conditionDate);
         });
 
+        const hospitalName = condition.hospital?.name || condition.hospital || 'Unknown';
+        const doctorName = condition.doctor?.name || condition.doctor || condition.procedure || 'Unknown';
+
         records.push({
-          id: condition._id || condition.id || `condition-${index}`,
+          id: condition._id || `condition-${index}`,
           date: conditionDate,
-          diagnosis: condData.condition || condData.name || 'No diagnosis',
+          diagnosis: condition.name || 'No diagnosis',
+          // preserve OpenMRS metadata if present on the condition
+          openmrsData: condition.openmrsData,
           medications: relatedMedications.map((m: any) => {
             const medData = m.data || m;
             return {
@@ -638,10 +702,10 @@ const PatientPassport: React.FC = () => {
               date: testData.date || testData.testDate
             };
           }),
-          doctorName: condData.diagnosedBy || condData.procedure || 'Unknown',
-          hospitalName: 'Unknown',
+          doctorName: doctorName,
+          hospitalName: hospitalName,
           visitType: 'Diagnosis Only',
-          notes: condData.notes || condData.details || ''
+          notes: condition.details || ''
         });
       }
     });
@@ -944,20 +1008,22 @@ const PatientPassport: React.FC = () => {
               </p>
             </div>
             
-            {/* Manual Refresh Button */}
-            <button
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                isRefreshing 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                  : 'bg-green-50 text-green-700 hover:bg-green-100 active:scale-95'
-              }`}
-              title={lastRefreshTime ? `Last refreshed: ${lastRefreshTime.toLocaleTimeString()}` : 'Refresh data'}
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-            </button>
+            <div className="flex items-center">
+              {/* Manual Refresh Button */}
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isRefreshing 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                    : 'bg-green-50 text-green-700 hover:bg-green-100 active:scale-95'
+                }`}
+                title={lastRefreshTime ? `Last refreshed: ${lastRefreshTime.toLocaleTimeString()}` : 'Refresh data'}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+            </div>
           </div>
           
           <div className="space-y-4">
@@ -985,7 +1051,7 @@ const PatientPassport: React.FC = () => {
                   className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
                 >
                   {/* Header */}
-                  <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
+                    <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
@@ -1016,6 +1082,17 @@ const PatientPassport: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  {/* Show OpenMRS synced banner if present */}
+                  {((record as any).openmrsData && (record as any).openmrsData.synced) || ((record as any).data && (record as any).data.openmrsData && (record as any).data.openmrsData.synced) ? (
+                    <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-100 text-blue-800 rounded text-sm">
+                      <strong>Synced from OpenMRS</strong>
+                      <span className="ml-2 text-gray-700">{(record as any).diagnosis || (record as any).data?.name || ''}</span>
+                      {(record as any).notes || (record as any).data?.treatment ? (
+                        <div className="text-xs text-gray-600 mt-1">Treatment: {(record as any).notes || (record as any).data?.treatment}</div>
+                      ) : null}
+                      <div className="text-xs text-gray-600 mt-1">{(record as any).doctorName || (record as any).data?.doctor || ''} {(record as any).hospitalName ? `| ${ (record as any).hospitalName }` : ''}</div>
+                    </div>
+                  ) : null}
 
                   {/* Diagnosis */}
                   <div className="mb-4">
