@@ -196,3 +196,4 @@ This will show:
 
 The observation sync system is now fully implemented and ready to use. When doctors record observations in OpenMRS, they will automatically appear in Patient Passport without any manual entry required.
 
+

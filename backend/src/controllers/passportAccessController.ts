@@ -12,10 +12,9 @@ import { generateOTP, sendOTP } from '@/utils/otp';
 export const requestPassportAccessOTP = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { patientId } = req.body;
 
-  console.log(`🔐 Passport Access OTP Request:`);
-  console.log(`   Patient ID: ${patientId}`);
-  console.log(`   User ID: ${req.user._id}`);
-  console.log(`   Timestamp: ${new Date().toISOString()}`);
+  if (req.user.role === 'patient') {
+    throw new CustomError('Patients should access their passport directly at /api/patients/passport/:patientId. OTP access is only for doctors.', 403);
+  }
 
   if (!patientId) {
     throw new CustomError('Patient ID is required', 400);
@@ -298,10 +297,19 @@ export const verifyPassportAccessOTP = asyncHandler(async (req: Request, res: Re
       accessToken: 'temp-access-token', // You can implement JWT tokens for passport access
       expiresIn: '1 hour',
       doctorId: doctorId.toString(),
-      patientId: patientId,
-      grantedAt: new Date().toISOString()
+      patientId: patientId.toString(), // CRITICAL: This is the patient ID to use for passport access
+      patientName: patient.user.name, // Include patient name for frontend display
+      doctorName: doctor.user.name, // Include doctor name for frontend display
+      grantedAt: new Date().toISOString(),
+      // IMPORTANT: Frontend should use patientId (not doctorId) to access passport
+      passportUrl: `/api/patients/passport/${patientId.toString()}`
     }
   };
+
+  console.log(`📤 OTP Verification Response:`);
+  console.log(`   - patientId: ${patientId.toString()} (USE THIS for passport access)`);
+  console.log(`   - doctorId: ${doctorId.toString()} (DO NOT use this for passport access)`);
+  console.log(`   - Patient Name: ${patient.user.name}`);
 
   res.json(response);
 });

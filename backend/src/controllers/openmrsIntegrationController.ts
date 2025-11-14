@@ -213,7 +213,13 @@ export const storeObservationFromOpenMRS = asyncHandler(async (req: Request, res
     hospitalName
   );
 
-  console.log(`✅ Observation stored successfully - Result ID: ${result?._id}`);
+  // Extract the IDs from the result (now returns both old model and MedicalRecord)
+  const legacyRecord = 'condition' in result ? result.condition : result.medication;
+  const medicalRecord = result.medicalRecord;
+
+  console.log(`✅ Observation stored successfully`);
+  console.log(`   - Legacy ID: ${legacyRecord?._id}`);
+  console.log(`   - MedicalRecord ID: ${medicalRecord?._id}`);
 
   // Log the sync
   try {
@@ -221,13 +227,14 @@ export const storeObservationFromOpenMRS = asyncHandler(async (req: Request, res
       action: 'openmrs_data_sync',
       performedBy: 'OpenMRS System',
       targetModel: observationType === 'diagnosis' ? 'MedicalCondition' : 'Medication',
-      targetId: result?._id,
+      targetId: legacyRecord?._id,
       changes: {
         patientName,
         observationType,
         doctorLicenseNumber,
         hospitalName,
-        observationDataKeys: Object.keys(observationData)
+        observationDataKeys: Object.keys(observationData),
+        medicalRecordId: medicalRecord?._id
       },
       ipAddress: req.ip,
       userAgent: req.get('user-agent')

@@ -224,6 +224,14 @@ class ApiService {
   }
 
   async getCurrentUser(): Promise<ApiResponse<User>> {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.resolve({
+        success: false,
+        message: 'No token found',
+        data: null
+      } as ApiResponse<User>);
+    }
     return this.request('/auth/me');
   }
 

@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import MedicalRecord from '@/models/MedicalRecord';
 import Patient from '@/models/Patient';
 import { asyncHandler, CustomError } from '@/middleware/errorHandler';
+import { 
+  canDoctorEditObservation, 
+  checkObservationEditAccess, 
+  getObservationEditInfo,
+  updateMedicationStatusByTime 
+} from '@/utils/observationAccessControl';
 
 // @desc    Get all medical records for a patient
 // @route   GET /api/medical-records/patient/:patientId
@@ -34,17 +40,32 @@ export const getPatientMedicalRecords = asyncHandler(async (req: Request, res: R
     .populate('createdBy', 'name email role')
     .sort({ createdAt: -1 });
 
-  // Transform records to include OpenMRS metadata
-  const transformedRecords = records.map(record => ({
-    _id: record._id,
-    type: record.type,
-    data: record.data,
-    createdBy: record.createdBy,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-    // Include OpenMRS metadata if available
-    openmrsData: record.openmrsData || null
-  }));
+  // Transform records to include OpenMRS metadata and edit access info
+  const transformedRecords = records.map(record => {
+    const editInfo = getObservationEditInfo(record, user.role === 'doctor' ? user.id : undefined);
+    
+    // Update medication status if needed (for synced observations)
+    if (record.type === 'medication' && record.syncDate) {
+      updateMedicationStatusByTime(record).catch(err => {
+        console.error('Error updating medication status:', err);
+      });
+    }
+    
+    return {
+      _id: record._id,
+      type: record.type,
+      data: record.data,
+      createdBy: record.createdBy,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      // Include OpenMRS metadata if available
+      openmrsData: record.openmrsData || null,
+      // Include edit access information
+      editAccess: editInfo,
+      syncDate: record.syncDate || null,
+      editableBy: record.editableBy || []
+    };
+  });
 
   // Group records by type
   const groupedRecords = {
@@ -101,30 +122,157 @@ export const addMedicalRecord = asyncHandler(async (req: Request, res: Response)
 // @route   PUT /api/medical-records/:id
 // @access  Private (Doctor, Admin)
 export const updateMedicalRecord = asyncHandler(async (req: Request, res: Response) => {
+  console.log(`\n🔵 === UPDATE MEDICAL RECORD REQUEST ===`);
+  console.log(`   Record ID: ${req.params.id}`);
+  console.log(`   Request body keys: ${Object.keys(req.body)}`);
+  console.log(`   Data keys: ${req.body.data ? Object.keys(req.body.data) : 'NO DATA'}`);
+  
   const { id } = req.params;
   const { data } = req.body;
   const user = req.user;
 
+  if (!user) {
+    console.error(`❌ ERROR: req.user is undefined!`);
+    throw new CustomError('Authentication required', 401);
+  }
+
+  console.log(`   User role: ${user.role}`);
+  console.log(`   User ID: ${user._id || user.id}`);
+
   // Only doctors and admins can update medical records
   if (!['doctor', 'admin'].includes(user.role)) {
+    console.error(`❌ ERROR: User role '${user.role}' is not authorized`);
     throw new CustomError('Not authorized to update medical records', 403);
   }
 
   const medicalRecord = await MedicalRecord.findById(id);
   if (!medicalRecord) {
+    console.error(`❌ ERROR: Medical record ${id} not found`);
     throw new CustomError('Medical record not found', 404);
   }
 
-  // Update the record
-  medicalRecord.data = { ...medicalRecord.data, ...data };
+  console.log(`   Record found: ${medicalRecord._id}`);
+  console.log(`   Record has syncDate: ${!!medicalRecord.syncDate}`);
+  console.log(`   Record syncDate: ${medicalRecord.syncDate || 'N/A'}`);
+
+  // SPECIAL CASE: Legacy records (no syncDate) are ALWAYS editable by any doctor
+  // This check happens BEFORE any other permission checks
+  if (user.role === 'doctor' && !medicalRecord.syncDate) {
+    console.log(`✅ Legacy record detected (no syncDate) - ALLOWING EDIT FOR ANY DOCTOR`);
+    console.log(`   ⚠️ SKIPPING PERMISSION CHECK - Legacy records are always editable`);
+    // Skip permission check for legacy records - they're always editable
+  } else if (user.role === 'doctor') {
+    // Get User ID - Mongoose documents use _id, but id is a virtual getter
+    // Use _id.toString() for consistency
+    const userId = user._id ? user._id.toString() : (user.id ? user.id.toString() : '');
+    
+    console.log(`🔍 Checking edit permission for doctor on record ${id}`);
+    console.log(`   - User ID: ${userId}`);
+    console.log(`   - User _id: ${user._id}`);
+    console.log(`   - User id (virtual): ${user.id}`);
+    console.log(`   - Record has syncDate: ${!!medicalRecord.syncDate}`);
+    console.log(`   - Record syncDate: ${medicalRecord.syncDate || 'N/A'}`);
+    console.log(`   - Record editableBy: ${JSON.stringify((medicalRecord.editableBy || []).map((id: any) => id.toString()))}`);
+    console.log(`   - Record createdBy: ${medicalRecord.createdBy ? medicalRecord.createdBy.toString() : 'N/A'}`);
+    
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      console.error(`❌ ERROR: User ID is missing or invalid!`);
+      console.error(`   - user._id: ${user._id}`);
+      console.error(`   - user.id: ${user.id}`);
+      throw new CustomError('User ID not found. Please log in again.', 401);
+    }
+    
+    const canEdit = canDoctorEditObservation(medicalRecord, userId);
+    
+    if (!canEdit) {
+      console.log(`❌ Permission denied for user ${userId} on record ${id}`);
+      
+      // For synced observations, check time-based access for better error message
+      if (medicalRecord.syncDate) {
+        const editAccess = checkObservationEditAccess(medicalRecord);
+        if (!editAccess.canEdit) {
+          throw new CustomError(
+            `Cannot edit observation: ${editAccess.reason}. Observations older than 3 hours are locked.`,
+            403
+          );
+        }
+      }
+      
+      throw new CustomError('You do not have permission to edit this observation', 403);
+    }
+    
+    console.log(`✅ Doctor ${userId} has permission to edit record ${id}`);
+    
+    // Update medication status if it's a medication record
+    if (medicalRecord.type === 'medication' && medicalRecord.syncDate) {
+      await updateMedicationStatusByTime(medicalRecord);
+    }
+  }
+
+  // Update the record data
+  // Merge the new data with existing data, ensuring medications array is properly handled
+  const updatedData = { ...medicalRecord.data, ...data };
+  
+  // If medications array is provided, ensure it's properly formatted
+  if (data.medications && Array.isArray(data.medications)) {
+    updatedData.medications = data.medications.map((med: any) => ({
+      name: med.name || '',
+      dosage: med.dosage || '',
+      frequency: med.frequency || '',
+      startDate: med.startDate || '',
+      endDate: med.endDate || '',
+      prescribedBy: med.prescribedBy || '',
+      medicationStatus: med.medicationStatus || 'Active'
+    }));
+    console.log(`💊 Saving ${updatedData.medications.length} medication(s) to observation ${id}`);
+  }
+  
+  medicalRecord.data = updatedData;
+  
+  // Update lastEditedAt timestamp
+  medicalRecord.lastEditedAt = new Date();
+  
+  // If doctor is not in editableBy array, add them
+  if (user.role === 'doctor') {
+    // Use _id.toString() for consistency (Mongoose documents use _id)
+    const doctorUserId = user._id ? user._id.toString() : (user.id ? user.id.toString() : '');
+    
+    if (!doctorUserId || doctorUserId === 'undefined' || doctorUserId === 'null') {
+      console.error(`❌ ERROR: Cannot add doctor to editableBy - User ID is missing!`);
+    } else {
+      // Initialize editableBy array if it doesn't exist
+      if (!medicalRecord.editableBy) {
+        medicalRecord.editableBy = [];
+      }
+      
+      // Check if doctor is already in editableBy (compare as strings)
+      const isAlreadyInArray = medicalRecord.editableBy.some((id: any) => id.toString() === doctorUserId);
+      
+      if (!isAlreadyInArray) {
+        medicalRecord.editableBy.push(doctorUserId);
+        console.log(`✅ Added doctor ${doctorUserId} to editableBy array for record ${id}`);
+      } else {
+        console.log(`ℹ️ Doctor ${doctorUserId} is already in editableBy array for record ${id}`);
+      }
+    }
+  }
+  
+  console.log(`\n💾 Saving medical record to database...`);
   await medicalRecord.save();
+
+  console.log(`✅ Medical record ${id} updated successfully`);
+  if (updatedData.medications) {
+    console.log(`   - ${updatedData.medications.length} medication(s) saved`);
+  }
+  console.log(`🔵 === UPDATE MEDICAL RECORD COMPLETE ===\n`);
 
   await medicalRecord.populate('createdBy', 'name email role');
 
   res.json({
     success: true,
     message: 'Medical record updated successfully',
-    data: medicalRecord
+    data: medicalRecord,
+    editAccess: getObservationEditInfo(medicalRecord, user.role === 'doctor' ? user.id : undefined)
   });
 });
 
@@ -190,8 +338,42 @@ export const getMedicalRecordsByType = asyncHandler(async (req: Request, res: Re
     .populate('createdBy', 'name email role')
     .sort({ createdAt: -1 });
 
+  // Include edit access information
+  const recordsWithEditInfo = records.map(record => {
+    const editInfo = getObservationEditInfo(record, user.role === 'doctor' ? user.id : undefined);
+    return {
+      ...record.toObject(),
+      editAccess: editInfo
+    };
+  });
+
   res.json({
     success: true,
-    data: records
+    data: recordsWithEditInfo
+  });
+});
+
+// @desc    Get edit access info for a specific medical record
+// @route   GET /api/medical-records/:id/edit-access
+// @access  Private (Doctor, Admin)
+export const getMedicalRecordEditAccess = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = req.user;
+
+  // Only doctors and admins can check edit access
+  if (!['doctor', 'admin'].includes(user.role)) {
+    throw new CustomError('Not authorized', 403);
+  }
+
+  const medicalRecord = await MedicalRecord.findById(id);
+  if (!medicalRecord) {
+    throw new CustomError('Medical record not found', 404);
+  }
+
+  const editInfo = getObservationEditInfo(medicalRecord, user.role === 'doctor' ? user.id : undefined);
+
+  res.json({
+    success: true,
+    data: editInfo
   });
 });

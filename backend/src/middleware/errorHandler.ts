@@ -55,8 +55,12 @@ export const errorHandler = (
   let err = { ...error };
   err.message = error.message;
 
-  // Log error
-  console.error('Error:', error);
+  const isAuthCheck = req.originalUrl.includes('/auth/me') || req.path === '/me' || req.path.endsWith('/me');
+  const isExpected401 = err.statusCode === 401 && isAuthCheck;
+
+  if (!isExpected401) {
+    console.error('Error:', error);
+  }
 
   // MongoDB duplicate key error
   if (error.code === 11000) {

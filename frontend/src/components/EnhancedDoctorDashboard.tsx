@@ -274,18 +274,51 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
     setShowOTPModal(true);
   };
 
-  const handleOTPSuccess = (receivedPassportData: any) => {
+  const handleOTPSuccess = async (otpResponseData: any) => {
     console.log('OTP verification successful, granting access to:', selectedPatient?.user?.name);
-    console.log('Received passport data:', receivedPassportData);
-    setPassportData(receivedPassportData);
-    setShowOTPModal(false);
-    setShowPassportView(true);
+    console.log('OTP Response data:', otpResponseData);
     
-    showNotification({
-      type: 'success',
-      title: 'Access Granted!',
-      message: `You now have access to ${selectedPatient?.user?.name}'s Patient Passport.`
-    });
+    try {
+      // Extract patientId from OTP response
+      const patientId = otpResponseData.patientId || selectedPatient?._id;
+      
+      if (!patientId) {
+        console.error('No patientId found in OTP response');
+        showNotification({
+          type: 'error',
+          title: 'Error',
+          message: 'Failed to retrieve patient information. Please try again.'
+        });
+        return;
+      }
+      
+      console.log('Fetching complete passport data for patient:', patientId);
+      
+      // Fetch the complete passport data with medicalRecords
+      const passportResponse = await apiService.getPatientPassport(patientId);
+      
+      if (passportResponse.success && passportResponse.data) {
+        console.log('✅ Complete passport data fetched:', passportResponse.data);
+        setPassportData(passportResponse.data);
+        setShowOTPModal(false);
+        setShowPassportView(true);
+        
+        showNotification({
+          type: 'success',
+          title: 'Access Granted!',
+          message: `You now have access to ${selectedPatient?.user?.name}'s Patient Passport.`
+        });
+      } else {
+        throw new Error('Failed to fetch complete passport data');
+      }
+    } catch (error) {
+      console.error('Error fetching complete passport data:', error);
+      showNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to load patient passport. Please try again.'
+      });
+    }
   };
 
   const handleClosePassportView = () => {

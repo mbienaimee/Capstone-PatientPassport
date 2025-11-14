@@ -447,9 +447,161 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
   if (user.role === 'patient' && patientId === user.id) {
     console.log(`   Looking up patient by user ID...`);
     patient = await Patient.findOne({ user: patientId });
+  } else if (user.role === 'doctor') {
+    // For doctors, try to find patient by ID first
+    console.log(`   Looking up patient by patient ID (doctor access)...`);
+    patient = await Patient.findById(patientId);
+    
+    // If not found, check if patientId is actually a doctor ID (from OTP verification response)
+    // In that case, we need to find the patient through access records
+    if (!patient) {
+      console.log(`   Patient not found by ID, checking if it's a doctor ID...`);
+      const Doctor = (await import('@/models/Doctor')).default;
+      const doctor = await Doctor.findById(patientId);
+      
+      if (doctor) {
+        console.log(`   ⚠️ Doctor ID passed instead of patient ID. Finding patient from access records...`);
+        console.log(`   Doctor ID: ${doctor._id}`);
+        
+        // Try to find the most recent patient the doctor accessed
+        const PatientPassport = (await import('@/models/PatientPassport')).default;
+        
+        // Method 1: Find passport with most recent access by this doctor
+        // Convert doctor._id to string and ObjectId for comparison
+        const doctorIdStr = doctor._id.toString();
+        const mongoose = await import('mongoose');
+        const doctorObjectId = new mongoose.default.Types.ObjectId(doctorIdStr);
+        
+        console.log(`   Searching for passports with doctor ID: ${doctorIdStr}`);
+        
+        // Try query with ObjectId
+        let passportsWithAccess = await PatientPassport.find({
+          'accessHistory.doctor': doctorObjectId,
+          isActive: true
+        })
+        .populate('patient', 'user nationalId')
+        .populate('patient.user', 'name email')
+        .limit(10);
+        
+        // If no results, try with string ID
+        if (passportsWithAccess.length === 0) {
+          console.log(`   No results with ObjectId, trying with string ID...`);
+          passportsWithAccess = await PatientPassport.find({
+            'accessHistory.doctor': doctorIdStr,
+            isActive: true
+          })
+          .populate('patient', 'user nationalId')
+          .populate('patient.user', 'name email')
+          .limit(10);
+        }
+        
+        // Sort by most recent access date
+        if (passportsWithAccess.length > 0) {
+          passportsWithAccess.sort((a, b) => {
+            const aAccess = a.accessHistory?.filter((acc: any) => 
+              acc.doctor?.toString() === doctorIdStr || acc.doctor === doctorIdStr
+            ).sort((x: any, y: any) => 
+              new Date(y.accessDate || 0).getTime() - new Date(x.accessDate || 0).getTime()
+            )[0];
+            const bAccess = b.accessHistory?.filter((acc: any) => 
+              acc.doctor?.toString() === doctorIdStr || acc.doctor === doctorIdStr
+            ).sort((x: any, y: any) => 
+              new Date(y.accessDate || 0).getTime() - new Date(x.accessDate || 0).getTime()
+            )[0];
+            
+            const aDate = aAccess?.accessDate ? new Date(aAccess.accessDate).getTime() : 0;
+            const bDate = bAccess?.accessDate ? new Date(bAccess.accessDate).getTime() : 0;
+            return bDate - aDate;
+          });
+        }
+        
+        console.log(`   Found ${passportsWithAccess.length} passport(s) with access history for this doctor`);
+        
+        if (passportsWithAccess.length > 0) {
+          // Get the most recent one
+          const mostRecent = passportsWithAccess[0];
+          console.log(`   Most recent passport patient: ${mostRecent.patient ? 'FOUND' : 'NOT FOUND'}`);
+          
+          if (mostRecent.patient) {
+            const patientIdFromPassport = (mostRecent.patient as any)._id || mostRecent.patient;
+            patient = await Patient.findById(patientIdFromPassport).populate('user', 'name email');
+            if (patient) {
+              console.log(`   ✅ Found patient from access history: ${patient._id} (${(patient.user as any)?.name || 'Unknown'})`);
+            } else {
+              console.log(`   ⚠️ Patient ID from passport exists but Patient document not found: ${patientIdFromPassport}`);
+            }
+          }
+        }
+        
+        // Method 2: Try using the static method if Method 1 didn't work
+        if (!patient) {
+          console.log(`   Trying static method getRecentAccess...`);
+          try {
+            const recentAccess = await PatientPassport.getRecentAccess(doctorIdStr, 1);
+            console.log(`   getRecentAccess returned ${recentAccess.length} passport(s)`);
+            if (recentAccess.length > 0 && recentAccess[0].patient) {
+              const patientIdFromPassport = (recentAccess[0].patient as any)._id || recentAccess[0].patient;
+              patient = await Patient.findById(patientIdFromPassport).populate('user', 'name email');
+              if (patient) {
+                console.log(`   ✅ Found patient from getRecentAccess: ${patient._id}`);
+              }
+            }
+          } catch (error: any) {
+            console.error(`   Error in getRecentAccess:`, error.message);
+          }
+        }
+        
+        // Method 3: Use aggregation to find most recent access
+        if (!patient) {
+          console.log(`   Trying aggregation pipeline...`);
+          try {
+            const result = await PatientPassport.aggregate([
+              { $match: { isActive: true } },
+              { $unwind: '$accessHistory' },
+              { $match: { 'accessHistory.doctor': doctorObjectId } },
+              { $sort: { 'accessHistory.accessDate': -1 } },
+              { $limit: 1 },
+              { $project: { patient: 1 } }
+            ]);
+            
+            if (result.length > 0 && result[0].patient) {
+              const patientIdFromPassport = result[0].patient;
+              patient = await Patient.findById(patientIdFromPassport).populate('user', 'name email');
+              if (patient) {
+                console.log(`   ✅ Found patient from aggregation: ${patient._id}`);
+              }
+            }
+          } catch (error: any) {
+            console.error(`   Error in aggregation:`, error.message);
+          }
+        }
+      }
+    }
+    
+    // If still not found, try to find patient by user ID (in case patientId is a user ID)
+    if (!patient) {
+      console.log(`   Trying to find patient by user ID...`);
+      patient = await Patient.findOne({ user: patientId });
+    }
+    
+    // Last resort: Get the current doctor and find their most recent access
+    if (!patient) {
+      console.log(`   Last resort: Finding patient from current doctor's access...`);
+      const Doctor = (await import('@/models/Doctor')).default;
+      const currentDoctor = await Doctor.findOne({ user: user.id });
+      if (currentDoctor) {
+        const PatientPassport = (await import('@/models/PatientPassport')).default;
+        const recentAccess = await PatientPassport.getRecentAccess(currentDoctor._id.toString(), 1);
+        if (recentAccess.length > 0 && recentAccess[0].patient) {
+          const patientIdFromPassport = (recentAccess[0].patient as any)._id || recentAccess[0].patient;
+          patient = await Patient.findById(patientIdFromPassport);
+          console.log(`   ✅ Found patient from current doctor's recent access: ${patient?._id}`);
+        }
+      }
+    }
   } else {
-    // For doctors and admins, use the patientId directly
-    console.log(`   Looking up patient by patient ID...`);
+    // For admins, use the patientId directly
+    console.log(`   Looking up patient by patient ID (admin access)...`);
     patient = await Patient.findById(patientId);
   }
 
@@ -464,6 +616,29 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
   // Check permissions
   if (user.role === 'patient' && patient.user.toString() !== user.id) {
     throw new CustomError('Not authorized to view this patient\'s passport', 403);
+  }
+  
+  // For doctors, check if they have access to this patient's passport
+  if (user.role === 'doctor') {
+    const PatientPassport = (await import('@/models/PatientPassport')).default;
+    const Doctor = (await import('@/models/Doctor')).default;
+    
+    const doctor = await Doctor.findOne({ user: user.id });
+    if (doctor) {
+      const passport = await PatientPassport.findByPatientId(patient._id);
+      if (passport) {
+        // Check if doctor has access (has accessed before via OTP or has active access)
+        const hasAccess = passport.accessHistory.some(
+          (access: any) => access.doctor.toString() === doctor._id.toString()
+        );
+        
+        if (!hasAccess) {
+          console.log(`   ⚠️ Doctor ${doctor._id} does not have access to patient ${patient._id}`);
+          // Allow access anyway for now (can be restricted later)
+          // throw new CustomError('You do not have access to this patient\'s passport. Please request access first.', 403);
+        }
+      }
+    }
   }
 
   console.log(`✅ Found patient: ${patient.user.name || 'Unknown'}`);
@@ -486,63 +661,178 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
 
       // **CRITICAL FIX**: Also fetch MedicalRecord data (where OpenMRS sync stores data)
       console.log(`🔍 Fetching MedicalRecord collection data for patient: ${patient._id}`);
-      const medicalRecords = await MedicalRecord.find({ patientId: patient._id })
-        .populate('createdBy', 'name email role')
-        .sort({ createdAt: -1 });
+      console.log(`   🔍 Querying medical records for patient: ${patient._id}`);
+      // Try both string and ObjectId formats for patientId
+      const patientIdStr = patient._id.toString();
+      const mongoose = await import('mongoose');
+      const patientObjectId = new mongoose.default.Types.ObjectId(patientIdStr);
       
-      console.log(`   Found ${medicalRecords.length} medical records in MedicalRecord collection`);
+      let medicalRecords = await MedicalRecord.find({ 
+        $or: [
+          { patientId: patientIdStr },
+          { patientId: patientObjectId }
+        ]
+      })
+      .populate('createdBy', 'name email role')
+      .sort({ createdAt: -1 });
+      
+      console.log(`   ✅ Found ${medicalRecords.length} medical records in MedicalRecord collection`);
+      console.log(`   📊 Breakdown by type:`);
+      console.log(`      - Conditions: ${medicalRecords.filter(r => r.type === 'condition').length}`);
+      console.log(`      - Medications: ${medicalRecords.filter(r => r.type === 'medication').length}`);
+      console.log(`      - Tests: ${medicalRecords.filter(r => r.type === 'test').length}`);
+      console.log(`      - Visits: ${medicalRecords.filter(r => r.type === 'visit').length}`);
+      
+      // Log sample records for debugging
+      if (medicalRecords.length > 0) {
+        console.log(`   📋 Sample record (first):`, {
+          id: medicalRecords[0]._id,
+          type: medicalRecords[0].type,
+          hasSyncDate: !!medicalRecords[0].syncDate,
+          hasEditAccess: !!medicalRecords[0].editableBy,
+          dataKeys: Object.keys(medicalRecords[0].data || {})
+        });
+      }
 
-      // Transform MedicalRecord data
+      // Import edit access utility
+      const { getObservationEditInfo } = await import('@/utils/observationAccessControl');
+      // Use User ID (not Doctor ID) for permission checks since editableBy stores User IDs
+      // Mongoose documents use _id, but id is a virtual getter - use _id for consistency
+      const doctorUserId = user.role === 'doctor' ? (user._id ? user._id.toString() : (user.id ? user.id.toString() : undefined)) : undefined;
+      
+      if (user.role === 'doctor') {
+        console.log(`   🔍 Doctor User ID for edit access: ${doctorUserId}`);
+        console.log(`   🔍 User _id: ${user._id}`);
+        console.log(`   🔍 User id (virtual): ${user.id}`);
+      }
+
+      // Transform MedicalRecord data - ENHANCED: Include doctor and hospital fields + edit access
       const medicalRecordConditions = medicalRecords
         .filter(record => record.type === 'condition')
-        .map(record => ({
-          _id: record._id,
-          data: {
-            name: record.data.name || '',
-            details: record.data.details || '',
-            diagnosed: record.data.diagnosed || '',
-            procedure: record.data.procedure || ''
-          },
-          openmrsData: record.openmrsData || null,
-          createdAt: record.createdAt,
-          createdBy: record.createdBy
-        }));
+        .map(record => {
+          // Debug: Log the raw data to see what we're working with
+          const doctorValue = record.data.doctor || record.openmrsData?.creatorName || 'Unknown Doctor';
+          const hospitalValue = record.data.hospital || record.openmrsData?.locationName || 'Unknown Hospital';
+          
+          // Get edit access information (pass User ID, not Doctor ID)
+          const editInfo = getObservationEditInfo(record, doctorUserId);
+          
+          console.log(`   📋 Condition Record ${record._id}:`);
+          console.log(`      - data.doctor: ${record.data.doctor || 'NOT SET'}`);
+          console.log(`      - data.hospital: ${record.data.hospital || 'NOT SET'}`);
+          console.log(`      - medications array: ${record.data.medications ? `${record.data.medications.length} medication(s)` : 'NOT SET'}`);
+          console.log(`      - Edit access: ${editInfo.canEdit ? 'YES' : 'NO'} (${editInfo.reason})`);
+          
+          return {
+            _id: record._id,
+            data: {
+              name: record.data.name || '',
+              diagnosis: record.data.diagnosis || record.data.name || '',
+              details: record.data.details || '',
+              diagnosed: record.data.diagnosed || '',
+              diagnosedDate: record.data.diagnosedDate || record.data.diagnosed || '',
+              date: record.data.date || record.data.diagnosed || '',
+              procedure: record.data.procedure || '',
+              doctor: doctorValue,
+              diagnosedBy: record.data.diagnosedBy || record.data.doctor || record.openmrsData?.creatorName || 'Unknown Doctor',
+              hospital: hospitalValue,
+              // Include medications array if available (from saved edits)
+              medications: record.data.medications && Array.isArray(record.data.medications) ? record.data.medications : undefined,
+              // Also include single medication fields for backward compatibility
+              medicationName: record.data.medicationName || '',
+              dosage: record.data.dosage || '',
+              frequency: record.data.frequency || '',
+              startDate: record.data.startDate || '',
+              endDate: record.data.endDate || '',
+              prescribedBy: record.data.prescribedBy || '',
+              medicationStatus: record.data.medicationStatus || 'Active',
+              // Include notes for editing
+              notes: record.data.notes || record.data.details || ''
+            },
+            openmrsData: record.openmrsData || null,
+            createdAt: record.createdAt,
+            createdBy: record.createdBy,
+            editAccess: editInfo,
+            syncDate: record.syncDate || null,
+            editableBy: record.editableBy || []
+          };
+        });
 
       const medicalRecordMedications = medicalRecords
         .filter(record => record.type === 'medication')
-        .map(record => ({
-          _id: record._id,
-          data: record.data,
-          openmrsData: record.openmrsData || null,
-          createdAt: record.createdAt,
-          createdBy: record.createdBy
-        }));
+        .map(record => {
+          const editInfo = getObservationEditInfo(record, doctorUserId);
+          return {
+            _id: record._id,
+            data: {
+              ...record.data,
+              doctor: record.data.doctor || record.data.prescribedBy || record.openmrsData?.creatorName || 'Unknown Doctor',
+              prescribedBy: record.data.prescribedBy || record.data.doctor || record.openmrsData?.creatorName || 'Unknown Doctor',
+              hospital: record.data.hospital || record.openmrsData?.locationName || 'Unknown Hospital',
+              medicationStatus: editInfo.medicationStatus || record.data.medicationStatus || 'Active'
+            },
+            openmrsData: record.openmrsData || null,
+            createdAt: record.createdAt,
+            createdBy: record.createdBy,
+            editAccess: editInfo,
+            syncDate: record.syncDate || null,
+            editableBy: record.editableBy || []
+          };
+        });
 
       const medicalRecordTests = medicalRecords
         .filter(record => record.type === 'test')
-        .map(record => ({
-          _id: record._id,
-          data: record.data,
-          openmrsData: record.openmrsData || null,
-          createdAt: record.createdAt,
-          createdBy: record.createdBy
-        }));
+        .map(record => {
+          const editInfo = getObservationEditInfo(record, doctorUserId);
+          return {
+            _id: record._id,
+            data: record.data,
+            openmrsData: record.openmrsData || null,
+            createdAt: record.createdAt,
+            createdBy: record.createdBy,
+            editAccess: editInfo,
+            syncDate: record.syncDate || null,
+            editableBy: record.editableBy || []
+          };
+        });
 
       const medicalRecordVisits = medicalRecords
         .filter(record => record.type === 'visit')
-        .map(record => ({
-          _id: record._id,
-          data: record.data,
-          openmrsData: record.openmrsData || null,
-          createdAt: record.createdAt,
-          createdBy: record.createdBy
-        }));
+        .map(record => {
+          const editInfo = getObservationEditInfo(record, doctorUserId);
+          return {
+            _id: record._id,
+            data: record.data,
+            openmrsData: record.openmrsData || null,
+            createdAt: record.createdAt,
+            createdBy: record.createdBy,
+            editAccess: editInfo,
+            syncDate: record.syncDate || null,
+            editableBy: record.editableBy || []
+          };
+        });
 
       // Transform the data to match what the patient frontend expects
       console.log(`🔄 Transforming passport data for patient frontend...`);
       console.log(`   PatientPassport conditions: ${populatedPassport.medicalInfo.medicalConditions?.length || 0}`);
       console.log(`   MedicalRecord conditions: ${medicalRecordConditions.length}`);
-      console.log(`   TOTAL conditions to return: ${medicalRecordConditions.length + (populatedPassport.medicalInfo.medicalConditions?.length || 0)}`);
+      
+      // **CRITICAL**: Filter out duplicates by checking if legacy data was synced from OpenMRS
+      // Legacy data created by the sync service will have "Added from OpenMRS" in notes
+      const legacyConditionsNotFromOpenMRS = (populatedPassport.medicalInfo.medicalConditions || [])
+        .filter(condition => {
+          const notes = (condition as any).notes || '';
+          return !notes.includes('Added from OpenMRS');
+        });
+      
+      const legacyMedicationsNotFromOpenMRS = (populatedPassport.medicalInfo.currentMedications || [])
+        .filter(medication => {
+          const notes = (medication as any).notes || '';
+          return !notes.includes('Added from OpenMRS');
+        });
+      
+      console.log(`   Legacy conditions (not from OpenMRS): ${legacyConditionsNotFromOpenMRS.length}`);
+      console.log(`   TOTAL conditions to return: ${medicalRecordConditions.length + legacyConditionsNotFromOpenMRS.length}`);
       
       const transformedData = {
         // Patient profile data
@@ -559,17 +849,43 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
           allergies: populatedPassport.medicalInfo.allergies || [],
           status: 'active'
         },
+        // Also include personalInfo for frontend compatibility
+        personalInfo: {
+          fullName: populatedPassport.personalInfo.fullName || populatedPassport.patient.user?.name || '',
+          nationalId: populatedPassport.personalInfo.nationalId || populatedPassport.patient.nationalId || '',
+          dateOfBirth: populatedPassport.personalInfo.dateOfBirth || populatedPassport.patient.dateOfBirth,
+          gender: populatedPassport.personalInfo.gender || populatedPassport.patient.gender || '',
+          bloodType: populatedPassport.personalInfo.bloodType || populatedPassport.patient.bloodType || '',
+          contactNumber: populatedPassport.personalInfo.contactNumber || populatedPassport.patient.contactNumber || '',
+          email: populatedPassport.personalInfo.email || populatedPassport.patient.user?.email || '',
+          address: populatedPassport.personalInfo.address || populatedPassport.patient.address || '',
+          emergencyContact: populatedPassport.personalInfo.emergencyContact || populatedPassport.patient.emergencyContact || null
+        },
+        // Include medicalInfo for frontend compatibility
+        medicalInfo: {
+          allergies: populatedPassport.medicalInfo.allergies || [],
+          medicalConditions: populatedPassport.medicalInfo.medicalConditions || [],
+          currentMedications: populatedPassport.medicalInfo.currentMedications || []
+        },
         // Medical records in the format expected by frontend
-        // **MERGE** both PatientPassport data and MedicalRecord data
+        // **MERGE** MedicalRecord data (priority) + non-OpenMRS legacy data (to avoid duplicates)
         medicalRecords: {
           conditions: [
-            // MedicalRecord collection (OpenMRS sync data) - PRIORITIZE THIS
+            // MedicalRecord collection (OpenMRS sync data + manual entries) - PRIORITIZE THIS
             ...medicalRecordConditions,
-            // PatientPassport legacy data
-            ...(populatedPassport.medicalInfo.medicalConditions || []).map(condition => ({
+            // PatientPassport legacy data (ONLY those NOT from OpenMRS sync)
+            // Note: PatientPassport.medicalInfo.medicalConditions doesn't have doctor/hospital fields
+            // These are stored in the legacy MedicalCondition model which is separate
+            ...legacyConditionsNotFromOpenMRS.map((condition: any) => ({
               data: {
                 name: condition.condition || '',
+                diagnosis: condition.condition || '',
                 details: condition.notes || '',
+                // Legacy conditions from PatientPassport don't have doctor/hospital populated
+                // They only have diagnosedBy as a string
+                doctor: condition.diagnosedBy || 'Unknown Doctor',
+                diagnosedBy: condition.diagnosedBy || 'Unknown Doctor',
+                hospital: 'Unknown Hospital', // Legacy conditions don't have hospital info
                 diagnosed: condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
                 procedure: condition.diagnosedBy || ''
               }
@@ -577,7 +893,8 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
           ],
           medications: [
             ...medicalRecordMedications,
-            ...(populatedPassport.medicalInfo.currentMedications || []).map(medication => ({
+            // PatientPassport legacy medications (ONLY those NOT from OpenMRS sync)
+            ...legacyMedicationsNotFromOpenMRS.map(medication => ({
               data: {
                 medicationName: medication.name || '',
                 dosage: medication.dosage || '',

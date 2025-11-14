@@ -4,7 +4,8 @@ import {
   addMedicalRecord,
   updateMedicalRecord,
   deleteMedicalRecord,
-  getMedicalRecordsByType
+  getMedicalRecordsByType,
+  getMedicalRecordEditAccess
 } from '@/controllers/medicalRecordController';
 import { authenticate } from '@/middleware/auth';
 
@@ -27,6 +28,11 @@ router.get('/patient/:patientId/type/:type', getMedicalRecordsByType);
 // @desc    Add a new medical record
 // @access  Private (Doctor, Admin)
 router.post('/', addMedicalRecord);
+
+// @route   GET /api/medical-records/:id/edit-access
+// @desc    Get edit access info for a medical record
+// @access  Private (Doctor, Admin)
+router.get('/:id/edit-access', getMedicalRecordEditAccess);
 
 // @route   PUT /api/medical-records/:id
 // @desc    Update a medical record

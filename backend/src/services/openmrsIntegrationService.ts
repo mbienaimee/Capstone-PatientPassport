@@ -3,6 +3,7 @@ import Hospital from '@/models/Hospital';
 import Doctor from '@/models/Doctor';
 import MedicalCondition from '@/models/MedicalCondition';
 import Medication from '@/models/Medication';
+import MedicalRecord from '@/models/MedicalRecord';
 import mongoose from 'mongoose';
 import { CustomError } from '@/middleware/errorHandler';
 import OPENMRS_CONFIG from '@/config/openmrsIntegrationConfig';
@@ -615,7 +616,7 @@ export const storeOpenMRSObservation = async (
       console.log(`   📝 Details: ${diagnosisDetails}`);
       console.log(`   📅 Date: ${diagnosisDate.toISOString()}`);
       
-      // Create medical condition
+      // Create medical condition (old format - for compatibility)
       const condition = await MedicalCondition.create({
         patient: patient._id,
         doctor: doctor._id,
@@ -626,6 +627,68 @@ export const storeOpenMRSObservation = async (
         notes: `Added from OpenMRS - Hospital: ${hospitalName}`
       });
 
+      // Get doctor name - use doctorLicenseNumber if it's a name (e.g., "Jake Doctor"), otherwise get from User
+      let doctorDisplayName = doctorLicenseNumber;
+      if (doctor.user) {
+        const doctorUser = await mongoose.model('User').findById(doctor.user).select('name');
+        if (doctorUser && doctorUser.name) {
+          doctorDisplayName = doctorUser.name;
+        } else if (doctorLicenseNumber && !doctorLicenseNumber.includes('SYNC') && !doctorLicenseNumber.includes('SERVICE')) {
+          // If license number looks like a name (not a service identifier), use it
+          doctorDisplayName = doctorLicenseNumber;
+        }
+      } else if (doctorLicenseNumber && !doctorLicenseNumber.includes('SYNC') && !doctorLicenseNumber.includes('SERVICE')) {
+        // If license number looks like a name, use it directly
+        doctorDisplayName = doctorLicenseNumber;
+      } else {
+        // If doctor not found, use the provided name as-is (should be "Jake Doctor" format, NOT "Dr. Jake Doctor")
+        // The doctorLicenseNumber parameter is actually the provider name from OpenMRS
+        doctorDisplayName = doctorLicenseNumber || 'Unknown Doctor';
+        
+        // Remove "Dr." prefix if present (should not be there, but clean it up)
+        if (doctorDisplayName.startsWith('Dr. ')) {
+          doctorDisplayName = doctorDisplayName.substring(4).trim();
+        }
+        
+        console.log(`   ⚠️ Doctor not found by license, using provider name: "${doctorDisplayName}"`);
+      }
+
+      // Create MedicalRecord (new format - used by frontend)
+      // Grant doctor edit access and set sync date for time-based access control
+      const syncDate = new Date();
+      const medicalRecord = await MedicalRecord.create({
+        patientId: patient._id,
+        type: 'condition',
+        data: {
+          diagnosis: diagnosisName,
+          name: diagnosisName,
+          details: diagnosisDetails,
+          diagnosed: diagnosisDate.toISOString(),
+          diagnosedDate: diagnosisDate.toISOString(),
+          date: diagnosisDate.toISOString(),
+          hospital: hospitalName, // Use hospitalName parameter (e.g., "Site 1")
+          doctor: doctorDisplayName, // Use actual provider name (e.g., "Jake Doctor")
+          diagnosedBy: doctorDisplayName,
+          notes: `Added from OpenMRS - Hospital: ${hospitalName}`,
+          status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS
+        },
+        createdBy: doctor._id.toString(),
+        editableBy: [doctor._id.toString()], // Grant the doctor edit access
+        syncDate: syncDate, // Record when it was synced (for time-based access control)
+        openmrsData: {
+          obsId: observationData.obs_id || observationData.obsId,
+          conceptId: observationData.concept_id || observationData.conceptId,
+          personId: observationData.person_id || observationData.personId,
+          obsDatetime: diagnosisDate,
+          dateCreated: new Date(),
+          creatorName: doctorDisplayName, // Store actual provider name
+          locationName: hospitalName, // Store actual location name (e.g., "Site 1")
+          encounterUuid: observationData.encounter_uuid || observationData.encounterUuid,
+          providerUuid: observationData.provider_uuid || observationData.providerUuid,
+          valueType: observationData.value_type || (observationData.value_text ? 'text' : observationData.value_numeric ? 'numeric' : 'coded')
+        }
+      });
+
       // Add to patient's medical history
       if (!patient.medicalHistory.includes(condition._id)) {
         patient.medicalHistory.push(condition._id);
@@ -634,10 +697,11 @@ export const storeOpenMRSObservation = async (
 
       console.log(`✅ Diagnosis stored successfully!`);
       console.log(`   - Condition ID: ${condition._id}`);
+      console.log(`   - MedicalRecord ID: ${medicalRecord._id}`);
       console.log(`   - Patient: ${patientName}`);
       console.log(`   - Hospital: ${hospitalName}`);
       console.log(`   - Doctor: ${doctorLicenseNumber}`);
-      return condition;
+      return { condition, medicalRecord };
       
     } else if (observationType === 'medication') {
       // Extract medication information using flexible field mapping
@@ -666,7 +730,7 @@ export const storeOpenMRSObservation = async (
       console.log(`   📝 Dosage: ${medicationDosage}`);
       console.log(`   📅 Start Date: ${startDate.toISOString()}`);
       
-      // Create medication
+      // Create medication (old format - for compatibility)
       const medication = await Medication.create({
         patient: patient._id,
         doctor: doctor._id,
@@ -680,6 +744,70 @@ export const storeOpenMRSObservation = async (
         notes: `Added from OpenMRS - Hospital: ${hospitalName}`
       });
 
+      // Get doctor name - use doctorLicenseNumber if it's a name (e.g., "Jake Doctor"), otherwise get from User
+      let doctorDisplayName = doctorLicenseNumber;
+      if (doctor.user) {
+        const doctorUser = await mongoose.model('User').findById(doctor.user).select('name');
+        if (doctorUser && doctorUser.name) {
+          doctorDisplayName = doctorUser.name;
+        } else if (doctorLicenseNumber && !doctorLicenseNumber.includes('SYNC') && !doctorLicenseNumber.includes('SERVICE')) {
+          // If license number looks like a name (not a service identifier), use it
+          doctorDisplayName = doctorLicenseNumber;
+        }
+      } else if (doctorLicenseNumber && !doctorLicenseNumber.includes('SYNC') && !doctorLicenseNumber.includes('SERVICE')) {
+        // If license number looks like a name, use it directly
+        doctorDisplayName = doctorLicenseNumber;
+      } else {
+        // If doctor not found, use the provided name as-is (should be "Jake Doctor" format, NOT "Dr. Jake Doctor")
+        // The doctorLicenseNumber parameter is actually the provider name from OpenMRS
+        doctorDisplayName = doctorLicenseNumber || 'Unknown Doctor';
+        
+        // Remove "Dr." prefix if present (should not be there, but clean it up)
+        if (doctorDisplayName.startsWith('Dr. ')) {
+          doctorDisplayName = doctorDisplayName.substring(4).trim();
+        }
+        
+        console.log(`   ⚠️ Doctor not found by license, using provider name: "${doctorDisplayName}"`);
+      }
+
+      // Create MedicalRecord (new format - used by frontend)
+      // Grant doctor edit access and set sync date for time-based access control
+      const syncDate = new Date();
+      const medicalRecord = await MedicalRecord.create({
+        patientId: patient._id,
+        type: 'medication',
+        data: {
+          medicationName: medicationName,
+          name: medicationName,
+          dosage: medicationDosage,
+          frequency: observationData.frequency || OPENMRS_CONFIG.DEFAULT_MEDICATION_FREQUENCY,
+          startDate: startDate.toISOString(),
+          endDate: observationData.endDate ? new Date(observationData.endDate).toISOString() : undefined,
+          date: startDate.toISOString(),
+          hospital: hospitalName, // Use hospitalName parameter (e.g., "Site 1")
+          doctor: doctorDisplayName, // Use actual provider name (e.g., "Jake Doctor")
+          prescribedBy: doctorDisplayName,
+          notes: `Added from OpenMRS - Hospital: ${hospitalName}`,
+          medicationStatus: 'Active', // Initially active (will be updated based on time)
+          status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS
+        },
+        createdBy: doctor._id.toString(),
+        editableBy: [doctor._id.toString()], // Grant the doctor edit access
+        syncDate: syncDate, // Record when it was synced (for time-based access control)
+        openmrsData: {
+          obsId: observationData.obs_id || observationData.obsId,
+          conceptId: observationData.concept_id || observationData.conceptId,
+          personId: observationData.person_id || observationData.personId,
+          obsDatetime: startDate,
+          dateCreated: new Date(),
+          creatorName: doctorDisplayName, // Store actual provider name
+          locationName: hospitalName, // Store actual location name (e.g., "Site 1")
+          encounterUuid: observationData.encounter_uuid || observationData.encounterUuid,
+          providerUuid: observationData.provider_uuid || observationData.providerUuid,
+          valueType: observationData.value_type || (observationData.value_text ? 'text' : observationData.value_numeric ? 'numeric' : 'coded')
+        }
+      });
+
       // Add to patient's medications
       if (!patient.medications.includes(medication._id)) {
         patient.medications.push(medication._id);
@@ -688,10 +816,11 @@ export const storeOpenMRSObservation = async (
 
       console.log(`✅ Medication stored successfully!`);
       console.log(`   - Medication ID: ${medication._id}`);
+      console.log(`   - MedicalRecord ID: ${medicalRecord._id}`);
       console.log(`   - Patient: ${patientName}`);
       console.log(`   - Hospital: ${hospitalName}`);
       console.log(`   - Doctor: ${doctorLicenseNumber}`);
-      return medication;
+      return { medication, medicalRecord };
     }
     
     throw new CustomError(`Invalid observation type: ${observationType}`, 400);

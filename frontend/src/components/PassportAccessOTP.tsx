@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Mail, RefreshCw, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { apiService, ApiError } from '../services/api';
 
 interface PassportAccessOTPProps {
@@ -19,6 +20,7 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
   onCancel
 }) => {
   const { showNotification } = useNotification();
+  const { user } = useAuth();
   
   const [otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +28,18 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
   const [showOTP, setShowOTP] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'patient') {
+      showNotification({
+        type: 'error',
+        title: 'Access Denied',
+        message: 'This OTP flow is only for doctors. Patients should access their passport directly.'
+      });
+      onCancel();
+      return;
+    }
+  }, [user, showNotification, onCancel]);
 
   // Countdown timer
   useEffect(() => {
@@ -36,28 +50,13 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Automatically request OTP when component mounts
-  useEffect(() => {
-    handleRequestOTP();
-  }, []);
-
-  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
-    if (value.length <= 6) {
-      setOtpCode(value);
-      setError('');
-    }
-  };
-
-  const handleRequestOTP = async () => {
-    // Prevent multiple simultaneous requests
-    if (countdown > 0 || isRequestingOTP) return;
+  const handleRequestOTP = useCallback(async () => {
+    if (countdown > 0 || isRequestingOTP || user?.role === 'patient') return;
     
     setIsRequestingOTP(true);
     setError('');
     
     try {
-      console.log(`📧 Requesting OTP for patient: ${patientName} (${patientEmail})`);
       const response = await apiService.requestPassportAccessOTP(patientId);
       
       if (response.success) {
@@ -66,7 +65,6 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
         const existingOTP = response.data?.existingOTP;
         
         if (existingOTP) {
-          // Existing OTP case
           if (emailSent === true) {
             showNotification({
               type: 'info',
@@ -87,55 +85,67 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
             });
           }
         } else {
-          // New OTP case
           if (emailSent === true) {
             showNotification({
               type: 'success',
-              title: 'OTP Sent!',
-              message: `OTP has been sent to ${patientName}'s email (${patientEmail}). Please ask them to share the code with you.`
+              title: 'OTP Sent',
+              message: `An OTP has been sent to ${patientName}'s email (${patientEmail}). Please check the email and enter the code below.`
             });
           } else if (emailSent === false || emailWarning) {
             showNotification({
               type: 'warning',
               title: 'OTP Generated',
-              message: `OTP was generated but email delivery failed. Check server logs for the OTP code or ask the patient to check their email.`
-            });
-          } else {
-            showNotification({
-              type: 'info',
-              title: 'OTP Generated',
-              message: `OTP has been generated. ${emailWarning || 'Please check server logs for the OTP code.'}`
+              message: emailWarning || 'OTP was generated but email sending failed. Please check server logs for the OTP code.'
             });
           }
         }
         
-        setCountdown(30); // 30 seconds countdown to prevent spam
-        console.log('✅ OTP request successful');
-        console.log('📧 Email sent:', emailSent);
-        console.log('📋 Existing OTP:', existingOTP);
-        if (emailWarning) {
-          console.warn('⚠️ Email warning:', emailWarning);
-        }
+        setShowOTP(true);
+        setCountdown(600);
+      } else {
+        throw new Error(response.message || 'Failed to request OTP');
       }
     } catch (error) {
-      console.error('❌ Request OTP error:', error);
       if (error instanceof ApiError) {
-        setError(error.message || 'Failed to send OTP');
+        if (error.statusCode === 403 && error.message.includes('Patients should access')) {
+          showNotification({
+            type: 'error',
+            title: 'Access Denied',
+            message: 'This OTP flow is only for doctors. Patients should access their passport directly.'
+          });
+          onCancel();
+          return;
+        }
+        setError(error.message || 'Failed to request OTP. Please try again.');
         showNotification({
           type: 'error',
-          title: 'Failed to Send OTP',
-          message: error.message || 'Failed to send OTP. Please try again.'
+          title: 'OTP Request Failed',
+          message: error.message || 'Failed to request OTP. Please try again.'
         });
       } else {
-        setError('An unexpected error occurred');
+        setError('Failed to request OTP. Please try again.');
         showNotification({
           type: 'error',
-          title: 'Error',
-          message: 'An unexpected error occurred. Please try again.'
+          title: 'OTP Request Failed',
+          message: 'Failed to request OTP. Please try again.'
         });
       }
     } finally {
       setIsRequestingOTP(false);
+    }
+  }, [countdown, isRequestingOTP, user?.role, patientId, patientName, patientEmail, showNotification, onCancel]);
+
+  useEffect(() => {
+    if (user?.role !== 'patient') {
+      handleRequestOTP();
+    }
+  }, [user?.role, handleRequestOTP]);
+
+  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 6) {
+      setOtpCode(value);
+      setError('');
     }
   };
 
@@ -170,8 +180,8 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
           message: `You now have access to ${patientName}'s Patient Passport for 1 hour.`
         });
         
-        // Call success callback with passport data
-        onSuccess(response.data.passport);
+        // Call success callback with full response data (including patientId for fetching complete passport)
+        onSuccess(response.data);
       }
     } catch (error) {
       console.error('OTP verification error:', error);

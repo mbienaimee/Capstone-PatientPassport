@@ -39,13 +39,38 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
   const [editedData, setEditedData] = useState(passportData);
   const [newRecords, setNewRecords] = useState<any[]>([]); // Track newly added records
   const [doctorProfile, setDoctorProfile] = useState<{ doctorName: string; hospitalName: string } | null>(null);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null); // Track which observation is being edited
+  const [editingRecordData, setEditingRecordData] = useState<any>(null); // Store data being edited
 
-  // Doctors cannot edit existing records - they are read-only
   const isDoctor = user?.role === 'doctor';
-  const canEdit = !isDoctor; // Only non-doctors can edit
+  // Doctors can edit observations based on time-based access control (editAccess.canEdit)
+  // Non-doctors can edit personal info and add new records
+  const canEditPersonalInfo = !isDoctor; // Only non-doctors can edit personal info
 
   useEffect(() => {
-    setEditedData(passportData);
+    // Transform data structure: map patient object to personalInfo for compatibility
+    if (passportData) {
+      const transformedData = {
+        ...passportData,
+        personalInfo: passportData.personalInfo || {
+          fullName: passportData.patient?.user?.name || '',
+          nationalId: passportData.patient?.nationalId || '',
+          dateOfBirth: passportData.patient?.dateOfBirth || '',
+          gender: passportData.patient?.gender || '',
+          bloodType: passportData.patient?.bloodType || '',
+          contactNumber: passportData.patient?.contactNumber || '',
+          email: passportData.patient?.user?.email || '',
+          address: passportData.patient?.address || '',
+          emergencyContact: passportData.patient?.emergencyContact || null
+        },
+        medicalInfo: passportData.medicalInfo || {
+          allergies: passportData.patient?.allergies || [],
+          medicalConditions: [],
+          currentMedications: []
+        }
+      };
+      setEditedData(transformedData);
+    }
   }, [passportData]);
 
   // Fetch doctor profile with hospital information
@@ -80,32 +105,33 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
     fetchDoctorProfile();
   }, [isDoctor, user]);
 
-  // Auto-refresh passport data while the modal is open
-  useEffect(() => {
-    let intervalId: number | undefined;
-    let cancelled = false;
+  // Auto-refresh passport data while the modal is open - DISABLED to prevent unpredicted reloading
+  // The parent component will handle refreshing when needed
+  // useEffect(() => {
+  //   let intervalId: number | undefined;
+  //   let cancelled = false;
 
-    const fetchPassport = async () => {
-      try {
-        const resp = await apiService.getPatientPassport(patientId);
-        if (resp && resp.success && !cancelled) {
-          // Propagate updated passport to parent so the modal and parent stay in sync
-          onUpdate(resp.data);
-        }
-      } catch (err) {
-        console.error('Error refreshing passport in modal:', err);
-      }
-    };
+  //   const fetchPassport = async () => {
+  //     try {
+  //       const resp = await apiService.getPatientPassport(patientId);
+  //       if (resp && resp.success && !cancelled) {
+  //         // Propagate updated passport to parent so the modal and parent stay in sync
+  //         onUpdate(resp.data);
+  //       }
+  //     } catch (err) {
+  //       console.error('Error refreshing passport in modal:', err);
+  //     }
+  //   };
 
-    // Initial fetch and then poll every 15 seconds while open
-    fetchPassport();
-    intervalId = window.setInterval(fetchPassport, 15000);
+  //   // Initial fetch and then poll every 15 seconds while open
+  //   fetchPassport();
+  //   intervalId = window.setInterval(fetchPassport, 15000);
 
-    return () => {
-      cancelled = true;
-      if (intervalId) window.clearInterval(intervalId);
-    };
-  }, [patientId, onUpdate]);
+  //   return () => {
+  //     cancelled = true;
+  //     if (intervalId) window.clearInterval(intervalId);
+  //   };
+  // }, [patientId, onUpdate]);
 
   const handleSave = async () => {
     // Validate new records before saving
@@ -339,6 +365,238 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
     }));
   };
   
+  // Start editing an observation (for doctors)
+  const startEditingObservation = (record: any) => {
+    // Allow editing if:
+    // 1. Record has _id (is a saved record)
+    // 2. Record is editable OR is a legacy record (no syncDate) and user is a doctor
+    if (!record._id) {
+      console.error('Cannot edit: record has no _id');
+      return;
+    }
+    
+    if (!record.isEditable && record.syncDate) {
+      console.error('Cannot edit: record is not editable and has syncDate');
+      return;
+    }
+    
+    // Allow editing legacy records (no syncDate) even if isEditable is false
+    if (!record.isEditable && !record.syncDate && !isDoctor) {
+      console.error('Cannot edit: not a doctor');
+      return;
+    }
+    
+    console.log('✅ Starting to edit observation:', record._id);
+    setEditingRecordId(record.id);
+    setEditingRecordData({
+      diagnosis: record.diagnosis || '',
+      notes: record.notes || '',
+      medications: record.medications && record.medications.length > 0 
+        ? [...record.medications] 
+        : [{ name: '', dosage: '', frequency: '', startDate: new Date().toISOString().split('T')[0], endDate: '', prescribedBy: doctorProfile?.doctorName || user?.name || '' }],
+      ...record.originalData
+    });
+  };
+
+  // Cancel editing an observation
+  const cancelEditingObservation = () => {
+    setEditingRecordId(null);
+    setEditingRecordData(null);
+  };
+
+  // Save edited observation
+  const saveEditedObservation = async (record: any) => {
+    if (!record._id || !editingRecordData) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Process medications - calculate status based on start/end dates
+      console.log('💾 Saving observation with medications:', editingRecordData.medications);
+      const processedMedications = (editingRecordData.medications || []).map((med: any) => {
+        const now = new Date();
+        const startDate = med.startDate ? new Date(med.startDate) : null;
+        const endDate = med.endDate ? new Date(med.endDate) : null;
+        
+        // Determine medication status
+        let medicationStatus = 'Active';
+        if (endDate && endDate < now) {
+          medicationStatus = 'Past';
+        } else if (startDate && startDate > now) {
+          medicationStatus = 'Active'; // Future start date
+        }
+        
+        return {
+          name: med.name,
+          dosage: med.dosage,
+          frequency: med.frequency,
+          startDate: med.startDate,
+          endDate: med.endDate,
+          prescribedBy: med.prescribedBy || doctorProfile?.doctorName || user?.name || '',
+          medicationStatus: medicationStatus
+        };
+      }).filter((med: any) => med.name && med.name.trim() !== ''); // Only include medications with names
+      
+      console.log('✅ Processed medications to save:', processedMedications);
+      
+      // Prepare update data
+      const updateData: any = {
+        ...record.originalData,
+        diagnosis: editingRecordData.diagnosis,
+        notes: editingRecordData.notes,
+        details: editingRecordData.notes
+      };
+      
+      // Add medications if any
+      if (processedMedications.length > 0) {
+        console.log(`💊 Saving ${processedMedications.length} medication(s) to database`);
+        // Always store medications as an array for consistency
+        // This allows multiple medications per observation
+        updateData.medications = processedMedications;
+        
+        // Also store first medication in main fields for backward compatibility
+        if (processedMedications.length >= 1) {
+          const med = processedMedications[0];
+          updateData.medicationName = med.name;
+          updateData.dosage = med.dosage;
+          updateData.frequency = med.frequency;
+          updateData.startDate = med.startDate;
+          updateData.endDate = med.endDate;
+          updateData.prescribedBy = med.prescribedBy;
+          updateData.medicationStatus = med.medicationStatus;
+        }
+        console.log('✅ Medications prepared for save:', processedMedications);
+      } else {
+        console.log('⚠️ No medications to save (all were empty or filtered out)');
+        // If no medications, clear the medications array
+        updateData.medications = [];
+      }
+      
+      console.log('📤 Final update data being sent to backend:', {
+        ...updateData,
+        medicationsCount: updateData.medications?.length || 0
+      });
+      
+      console.log('📤 Sending update request to backend...');
+      console.log('   Record ID:', record._id);
+      console.log('   Update data keys:', Object.keys(updateData));
+      console.log('   Medications count:', updateData.medications?.length || 0);
+      
+      const response = await apiService.updateMedicalRecord(record._id, {
+        data: updateData
+      });
+
+      console.log('📥 Backend response:', {
+        success: response.success,
+        message: response.message,
+        hasData: !!response.data
+      });
+
+      if (response.success) {
+        const medCount = processedMedications.length;
+        showNotification({
+          type: 'success',
+          title: 'Observation Updated',
+          message: `The observation has been updated successfully.${medCount > 0 ? ` ${medCount} medication(s) saved.` : ''}`
+        });
+        
+        // Refresh passport data to show updated medications
+        if (patientId) {
+          console.log('🔄 Refreshing passport data after medication save...');
+          try {
+            const passportResponse = await apiService.getPatientPassport(patientId);
+            if (passportResponse.success) {
+              console.log('✅ Passport data refreshed successfully');
+              onUpdate(passportResponse.data);
+            } else {
+              console.error('⚠️ Failed to refresh passport:', passportResponse.message);
+            }
+          } catch (refreshError) {
+            console.error('❌ Error refreshing passport:', refreshError);
+            // Still show success since the save worked
+          }
+        }
+        
+        setEditingRecordId(null);
+        setEditingRecordData(null);
+      } else {
+        throw new Error(response.message || 'Failed to update observation');
+      }
+    } catch (error) {
+      console.error('Error updating observation:', error);
+      showNotification({
+        type: 'error',
+        title: 'Update Failed',
+        message: error instanceof Error ? error.message : 'Failed to update observation. Please try again.'
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Update editing record data
+  const updateEditingRecordData = (field: string, value: any) => {
+    // Handle nested medication fields
+    if (field.includes('medications.')) {
+      const [, index, child] = field.split('.');
+      const medications = [...(editingRecordData.medications || [])];
+      medications[parseInt(index)] = {
+        ...medications[parseInt(index)],
+        [child]: value
+      };
+      setEditingRecordData({
+        ...editingRecordData,
+        medications
+      });
+    } else {
+      setEditingRecordData({
+        ...editingRecordData,
+        [field]: value
+      });
+    }
+  };
+
+  // Add medication to editing observation
+  const addMedicationToEditingObservation = () => {
+    if (!editingRecordData) {
+      console.error('Cannot add medication: editingRecordData is null');
+      return;
+    }
+    console.log('➕ Adding medication to editing observation');
+    const medications = [...(editingRecordData.medications || [])];
+    const newMedication = {
+      name: '',
+      dosage: '',
+      frequency: '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: '',
+      prescribedBy: doctorProfile?.doctorName || user?.name || ''
+    };
+    medications.push(newMedication);
+    console.log('📋 Updated medications:', medications);
+    setEditingRecordData({
+      ...editingRecordData,
+      medications
+    });
+    // Show notification
+    showNotification({
+      type: 'info',
+      title: 'Medication Added',
+      message: 'Please fill in the medication details and click Save when done.'
+    });
+  };
+
+  // Remove medication from editing observation
+  const removeMedicationFromEditingObservation = (medIndex: number) => {
+    if (!editingRecordData) return;
+    const medications = [...(editingRecordData.medications || [])];
+    medications.splice(medIndex, 1);
+    setEditingRecordData({
+      ...editingRecordData,
+      medications
+    });
+  };
+
   // Add medication to new record
   const addMedicationToNewRecord = (recordId: string) => {
     setNewRecords(newRecords.map(record => {
@@ -533,7 +791,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
         followUpRequired: visit.followUpRequired,
         followUpDate: visit.followUpDate,
         isNew: false,
-        isEditable: false // Existing records cannot be edited by doctors
+        isEditable: false // Legacy records cannot be edited
       });
     });
 
@@ -587,8 +845,25 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
 
     // NEW: Process medicalRecords conditions (from OpenMRS sync)
     console.log('🔄 Processing medicalRecords conditions...');
+    
+    // Track OpenMRS observation IDs to avoid duplicates
+    const processedOpenMRSIds = new Set<number>();
+    
     medicalRecordsConditions.forEach((condition: any, index: number) => {
       const condData = condition.data || condition;
+      
+      // Check if this is from OpenMRS and if we've already processed it
+      const isFromOpenMRS = !!condition.openmrsData;
+      const openmrsObsId = condition.openmrsData?.obsId;
+      
+      if (isFromOpenMRS && openmrsObsId) {
+        // Skip if we've already processed this OpenMRS observation
+        if (processedOpenMRSIds.has(openmrsObsId)) {
+          console.log(`⚠️ Skipping duplicate OpenMRS observation ID: ${openmrsObsId}`);
+          return;
+        }
+        processedOpenMRSIds.add(openmrsObsId);
+      }
       
       // Extract date - try multiple field names
       const conditionDate = condData.diagnosedDate || condData.date || condData.createdAt || new Date();
@@ -596,37 +871,96 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
       // Get doctor and hospital info from openmrsData or main fields
       const doctorName = condData.doctor || 
                         condData.diagnosedBy || 
-                        condData.openmrsData?.provider?.name ||
+                        condition.openmrsData?.creatorName ||
                         'Unknown Doctor';
       
       const hospitalName = condData.hospital || 
-                          condData.openmrsData?.location?.name ||
-                          (condData.openmrsData ? 'OpenMRS Hospital' : 'Unknown Hospital');
+                          condition.openmrsData?.locationName ||
+                          (isFromOpenMRS ? 'OpenMRS Hospital' : 'Unknown Hospital');
       
       // Get diagnosis
       const diagnosis = condData.diagnosis || 
                        condData.condition || 
                        condData.name ||
-                       condData.openmrsData?.concept?.display ||
                        'No diagnosis recorded';
       
-      // Check if this is from OpenMRS
-      const isFromOpenMRS = !!condData.openmrsData;
+      // Check if doctor can edit this observation (time-based access control)
+      // For observations < 2 hours old, allow any doctor to edit (not just the creator)
+      // For observations without syncDate (legacy), allow any doctor to edit
+      const canEditObservation = isDoctor && (
+        condition.editAccess?.canEdit === true || 
+        (condition.editAccess?.hoursSinceSync && parseFloat(condition.editAccess.hoursSinceSync) < 2) ||
+        (!condition.syncDate && condition.editAccess?.canEdit !== false) // Legacy records without syncDate
+      );
+      
+      // Debug logging
+      if (isDoctor) {
+        console.log(`🔍 Observation edit check:`, {
+          id: condition._id,
+          diagnosis: diagnosis,
+          hasSyncDate: !!condition.syncDate,
+          syncDate: condition.syncDate,
+          editAccessCanEdit: condition.editAccess?.canEdit,
+          editAccessIsEditable: condition.editAccess?.isEditable,
+          hoursSinceSync: condition.editAccess?.hoursSinceSync,
+          editAccessReason: condition.editAccess?.reason,
+          calculatedIsEditable: canEditObservation,
+          editAccess: condition.editAccess
+        });
+      }
+      
+      // Extract medications from condition data if available
+      // For synced observations, medications might be stored in the data object
+      let medications: any[] = [];
+      
+      // Priority: medications array > single medication fields
+      if (condData.medications && Array.isArray(condData.medications) && condData.medications.length > 0) {
+        // Use medications array if available (from saved edits)
+        medications = condData.medications.map((med: any) => ({
+          name: med.name || med.medicationName || '',
+          dosage: med.dosage || '',
+          frequency: med.frequency || '',
+          startDate: med.startDate || '',
+          endDate: med.endDate || '',
+          prescribedBy: med.prescribedBy || doctorName,
+          medicationStatus: med.medicationStatus || (med.endDate && new Date(med.endDate) < new Date() ? 'Past' : 'Active')
+        })).filter((med: any) => med.name && med.name.trim() !== '');
+        console.log(`💊 Found ${medications.length} medication(s) in medications array for condition ${condition._id}`);
+        console.log(`   Medications:`, medications.map((m: any) => m.name).join(', '));
+      } else if (condData.medicationName) {
+        // Fallback to single medication fields (for backward compatibility)
+        medications = [{
+          name: condData.medicationName,
+          dosage: condData.dosage || '',
+          frequency: condData.frequency || '',
+          startDate: condData.startDate || '',
+          endDate: condData.endDate || '',
+          prescribedBy: condData.prescribedBy || doctorName,
+          medicationStatus: condData.medicationStatus || (condData.endDate && new Date(condData.endDate) < new Date() ? 'Past' : 'Active')
+        }];
+        console.log(`💊 Found 1 medication in single fields for condition ${condition._id}: ${condData.medicationName}`);
+      } else {
+        console.log(`💊 No medications found for condition ${condition._id}`);
+      }
       
       records.push({
         id: condition._id || condition.id || `mr-condition-${index}`,
+        _id: condition._id, // Store original ID for API calls
         date: conditionDate,
         diagnosis: diagnosis,
-        medications: [], // Medical records don't have linked medications in this format
+        medications: medications, // Include medications if available
         testResults: [], // Medical records don't have linked tests in this format
         doctorName: doctorName,
         hospitalName: hospitalName,
         visitType: condData.type || condData.recordType || 'Medical Condition',
         notes: condData.notes || condData.details || '',
         isNew: false,
-        isEditable: false,
+        isEditable: canEditObservation, // Allow doctors to edit based on editAccess
         isFromOpenMRS: isFromOpenMRS, // Flag to show OpenMRS badge
-        openmrsData: condData.openmrsData // Keep metadata for display
+        openmrsData: condition.openmrsData, // Keep metadata for display
+        editAccess: condition.editAccess, // Store edit access info
+        recordType: 'condition', // Store record type for API calls
+        originalData: condData // Store original data for editing
       });
     });
     
@@ -718,7 +1052,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  {canEdit && isEditing ? (
+                  {canEditPersonalInfo && isEditing ? (
                     <input
                       type="text"
                       value={editedData?.personalInfo?.fullName || ''}
@@ -743,7 +1077,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  {canEdit && isEditing ? (
+                  {canEditPersonalInfo && isEditing ? (
                     <input
                       type="date"
                       value={editedData?.personalInfo?.dateOfBirth ? new Date(editedData.personalInfo.dateOfBirth).toISOString().split('T')[0] : ''}
@@ -787,6 +1121,24 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                     <p className="text-gray-900">{editedData?.personalInfo?.address || 'N/A'}</p>
                 </div>
+
+                {/* Emergency Contact */}
+                {editedData?.personalInfo?.emergencyContact && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact</label>
+                    <div className="space-y-2">
+                      <p className="text-gray-900">
+                        <span className="font-semibold">Name:</span> {editedData.personalInfo.emergencyContact.name || 'N/A'}
+                      </p>
+                      <p className="text-gray-900">
+                        <span className="font-semibold">Relationship:</span> {editedData.personalInfo.emergencyContact.relationship || 'N/A'}
+                      </p>
+                      <p className="text-gray-900">
+                        <span className="font-semibold">Phone:</span> {editedData.personalInfo.emergencyContact.phone || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -888,15 +1240,74 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           Synced from OpenMRS
                         </span>
                       )}
-                      {record.isNew && (
-                        <button
-                          onClick={() => removeNewHistoricalRecord(record.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded transition-colors"
-                          title="Remove this new record"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      {record.isEditable && !record.isNew && (
+                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold flex items-center">
+                          <Edit3 className="h-3 w-3 mr-1" />
+                          Editable {record.editAccess?.hoursSinceSync ? `(${record.editAccess.hoursSinceSync}h ago)` : record.syncDate ? '(Recent)' : '(Legacy Record)'}
+                        </span>
                       )}
+                      {!record.isEditable && record.isFromOpenMRS && record.editAccess && (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold flex items-center">
+                          <Shield className="h-3 w-3 mr-1" />
+                          Locked ({record.editAccess.hoursSinceSync ? `${record.editAccess.hoursSinceSync}h ago` : 'Old'})
+                        </span>
+                      )}
+                      {!record.isEditable && !record.isNew && !record.isFromOpenMRS && isDoctor && (
+                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center">
+                          <Edit3 className="h-3 w-3 mr-1" />
+                          Click Edit to Add Medications
+                        </span>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        {(record.isEditable || (!record.isNew && isDoctor && !record.syncDate)) && editingRecordId !== record.id && (
+                          <button
+                            onClick={() => {
+                              console.log('🔍 Starting to edit observation:', record);
+                              console.log('   - isEditable:', record.isEditable);
+                              console.log('   - hasSyncDate:', !!record.syncDate);
+                              console.log('   - editAccess:', record.editAccess);
+                              console.log('   - isDoctor:', isDoctor);
+                              startEditingObservation(record);
+                            }}
+                            className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-lg transition-colors flex items-center font-medium shadow-sm"
+                            title={`Edit this observation${record.editAccess?.reason ? ` - ${record.editAccess.reason}` : ' - Add medications and notes'}`}
+                          >
+                            <Edit3 className="h-4 w-4 mr-2" />
+                            Edit Observation
+                          </button>
+                        )}
+                        {editingRecordId === record.id && (
+                          <>
+                            <button
+                              onClick={() => saveEditedObservation(record)}
+                              disabled={isSaving}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded transition-colors flex items-center disabled:opacity-50"
+                              title="Save changes"
+                            >
+                              <Save className="h-4 w-4 mr-1" />
+                              {isSaving ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={cancelEditingObservation}
+                              disabled={isSaving}
+                              className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 px-3 py-1 rounded transition-colors flex items-center disabled:opacity-50"
+                              title="Cancel editing"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {record.isNew && (
+                          <button
+                            onClick={() => removeNewHistoricalRecord(record.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded transition-colors"
+                            title="Remove this new record"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Header */}
@@ -982,11 +1393,11 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                         <Activity className="h-4 w-4 mr-1 text-red-500" />
                         Diagnosis
                       </h4>
-                      {record.isNew && record.isEditable ? (
+                      {(record.isNew && record.isEditable) || (editingRecordId === record.id) ? (
                         <input
                           type="text"
-                          value={record.diagnosis || ''}
-                          onChange={(e) => updateNewHistoricalRecord(record.id, 'diagnosis', e.target.value)}
+                          value={editingRecordId === record.id ? (editingRecordData?.diagnosis || '') : (record.diagnosis || '')}
+                          onChange={(e) => editingRecordId === record.id ? updateEditingRecordData('diagnosis', e.target.value) : updateNewHistoricalRecord(record.id, 'diagnosis', e.target.value)}
                           placeholder="e.g., Hypertension, Diabetes Type 2, Common Cold"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
                         />
@@ -1004,59 +1415,73 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           <Pill className="h-4 w-4 mr-1 text-blue-500" />
                           Medications
                         </h4>
-                        {record.isNew && record.isEditable && (
+                        {((record.isNew && record.isEditable) || (editingRecordId === record.id)) && (
                           <button
-                            onClick={() => addMedicationToNewRecord(record.id)}
-                            className="text-xs text-green-600 hover:text-green-700 flex items-center"
+                            onClick={() => {
+                              if (editingRecordId === record.id) {
+                                console.log('🔵 Adding medication to observation being edited');
+                                addMedicationToEditingObservation();
+                              } else {
+                                addMedicationToNewRecord(record.id);
+                              }
+                            }}
+                            className="bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center transition-colors shadow-sm"
+                            title="Add a new medication to this observation"
                           >
-                            <Plus className="h-3 w-3 mr-1" />
+                            <Plus className="h-4 w-4 mr-1" />
                             Add Medication
                           </button>
                         )}
                       </div>
-                      {record.medications && record.medications.length > 0 ? (
-                        <div className="space-y-2">
-                          {record.medications.map((med: any, medIndex: number) => (
+                      {(() => {
+                        // When editing, show medications from editingRecordData, otherwise from record
+                        const medicationsToShow = editingRecordId === record.id 
+                          ? (editingRecordData?.medications || [])
+                          : (record.medications || []);
+                        
+                        return medicationsToShow.length > 0 ? (
+                          <div className="space-y-2">
+                            {medicationsToShow.map((med: any, medIndex: number) => (
                             <div key={medIndex} className="bg-white p-3 rounded border border-green-200">
-                              {record.isNew && record.isEditable ? (
+                              {(record.isNew && record.isEditable) || (editingRecordId === record.id) ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                   <input
                                     type="text"
-                                    value={med.name || ''}
-                                    onChange={(e) => updateNewHistoricalRecord(record.id, `medications.${medIndex}.name`, e.target.value)}
+                                    value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.name || '') : (med.name || '')}
+                                    onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.name`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.name`, e.target.value)}
                                     placeholder="e.g., Paracetamol 500mg, Amoxicillin 250mg"
                                     className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <input
                                     type="text"
-                                    value={med.dosage || ''}
-                                    onChange={(e) => updateNewHistoricalRecord(record.id, `medications.${medIndex}.dosage`, e.target.value)}
+                                    value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.dosage || '') : (med.dosage || '')}
+                                    onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.dosage`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.dosage`, e.target.value)}
                                     placeholder="e.g., 500mg, 1 tablet"
                                     className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <input
                                     type="text"
-                                    value={med.frequency || ''}
-                                    onChange={(e) => updateNewHistoricalRecord(record.id, `medications.${medIndex}.frequency`, e.target.value)}
+                                    value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.frequency || '') : (med.frequency || '')}
+                                    onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.frequency`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.frequency`, e.target.value)}
                                     placeholder="e.g., Twice daily, Once every 8 hours"
                                     className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <div className="flex gap-2">
                                     <input
                                       type="date"
-                                      value={med.startDate || ''}
-                                      onChange={(e) => updateNewHistoricalRecord(record.id, `medications.${medIndex}.startDate`, e.target.value)}
+                                      value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.startDate || '') : (med.startDate || '')}
+                                      onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.startDate`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.startDate`, e.target.value)}
                                       className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
                                     />
                                     <input
                                       type="date"
-                                      value={med.endDate || ''}
-                                      onChange={(e) => updateNewHistoricalRecord(record.id, `medications.${medIndex}.endDate`, e.target.value)}
+                                      value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.endDate || '') : (med.endDate || '')}
+                                      onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.endDate`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.endDate`, e.target.value)}
                                       placeholder="End Date"
                                       className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
                                     />
                                     <button
-                                      onClick={() => removeMedicationFromNewRecord(record.id, medIndex)}
+                                      onClick={() => editingRecordId === record.id ? removeMedicationFromEditingObservation(medIndex) : removeMedicationFromNewRecord(record.id, medIndex)}
                                       className="text-red-600 hover:text-red-700 px-2"
                                       title="Remove medication"
                                     >
@@ -1084,22 +1509,48 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                                     {med.endDate && (
                                       <p>End: {new Date(med.endDate).toLocaleDateString()}</p>
                                     )}
-                                    {!med.endDate && (
-                                      <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs mt-1">
-                                        Active
-                                      </span>
-                                    )}
+                                    {(() => {
+                                      const now = new Date();
+                                      const endDate = med.endDate ? new Date(med.endDate) : null;
+                                      
+                                      if (!endDate) {
+                                        return (
+                                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs mt-1">
+                                            Active
+                                          </span>
+                                        );
+                                      } else if (endDate < now) {
+                                        return (
+                                          <span className="inline-block px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs mt-1">
+                                            Past
+                                          </span>
+                                        );
+                                      } else {
+                                        return (
+                                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs mt-1">
+                                            Active
+                                          </span>
+                                        );
+                                      }
+                                    })()}
                                   </div>
                                 </div>
                               )}
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        record.isNew && record.isEditable ? null : (
-                          <p className="text-gray-500 text-sm">No medications recorded</p>
-                        )
-                      )}
+                        ) : (
+                          (record.isNew && record.isEditable) || (editingRecordId === record.id) ? null : (
+                            <div className="text-center py-4 text-gray-500 text-sm">
+                              <Pill className="h-5 w-5 mx-auto mb-2 text-gray-400" />
+                              <p>No medications recorded for this observation</p>
+                              {isDoctor && record.isEditable && (
+                                <p className="text-xs text-gray-400 mt-1">Click "Edit Observation" to add medications</p>
+                              )}
+                            </div>
+                          )
+                        );
+                      })()}
                     </div>
 
                     {/* Test Results */}
@@ -1192,10 +1643,10 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                     {/* Notes */}
                     <div className="mt-4 pt-4 border-t border-green-300">
                       <h4 className="text-sm font-semibold text-gray-700 mb-2">Notes</h4>
-                      {record.isNew && record.isEditable ? (
+                      {(record.isNew && record.isEditable) || (editingRecordId === record.id) ? (
                         <textarea
-                          value={record.notes || ''}
-                          onChange={(e) => updateNewHistoricalRecord(record.id, 'notes', e.target.value)}
+                          value={editingRecordId === record.id ? (editingRecordData?.notes || '') : (record.notes || '')}
+                          onChange={(e) => editingRecordId === record.id ? updateEditingRecordData('notes', e.target.value) : updateNewHistoricalRecord(record.id, 'notes', e.target.value)}
                           placeholder="e.g., Patient responded well to treatment. Recommended follow-up in 2 weeks. Rest advised."
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"

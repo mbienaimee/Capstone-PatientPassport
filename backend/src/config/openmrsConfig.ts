@@ -95,8 +95,8 @@ export const getOpenMRSConfigurations = (): OpenMRSHospitalConfig[] => {
  * Sync Configuration
  */
 export const syncConfig = {
-  // Automatic sync interval (in minutes)
-  autoSyncInterval: parseInt(process.env.OPENMRS_SYNC_INTERVAL || '5'),
+  // Automatic sync interval (in seconds) - default 10 seconds for near real-time sync
+  autoSyncInterval: parseInt(process.env.OPENMRS_SYNC_INTERVAL_SECONDS || process.env.OPENMRS_SYNC_INTERVAL || '10'),
 
   // Enable automatic sync on server start.
   // Defaults to enabled in development for easier local testing, or can be

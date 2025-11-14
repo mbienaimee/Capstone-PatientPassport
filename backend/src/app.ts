@@ -68,7 +68,7 @@ const startServer = async () => {
           await openmrsSyncService.initializeConnections(hospitalConfigs);
 
           if (syncConfig.autoStartSync) {
-            console.log(`\n🔄 Auto-starting sync service with ${syncConfig.autoSyncInterval} minute interval...\n`);
+            console.log(`\n🔄 Auto-starting sync service with ${syncConfig.autoSyncInterval} second interval...\n`);
             openmrsSyncService.startAutoSync(syncConfig.autoSyncInterval);
           } else {
             console.log('\n⏸️ Auto-sync disabled. Use API endpoints to start manual sync.\n');
