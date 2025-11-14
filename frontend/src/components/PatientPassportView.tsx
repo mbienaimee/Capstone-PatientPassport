@@ -417,6 +417,10 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
   const getConsolidatedMedicalHistory = () => {
     const records: any[] = [];
     
+    console.log('🔍 getConsolidatedMedicalHistory called');
+    console.log('📋 editedData structure:', editedData);
+    console.log('📊 medicalRecords:', editedData?.medicalRecords);
+    
     // FIRST: Add new records at the top (most recent first)
     newRecords.forEach(newRecord => {
       records.push({
@@ -426,11 +430,16 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
       });
     });
     
-    // Then process existing hospital visits - they contain the most complete information
+    // Get data from BOTH old format AND new medicalRecords format
     const hospitalVisits = editedData?.hospitalVisits || editedData?.medicalInfo?.hospitalVisits || [];
     const medicalConditions = editedData?.medicalInfo?.medicalConditions || [];
     const medications = editedData?.medicalInfo?.currentMedications || [];
     const testResults = editedData?.testResults || [];
+    
+    // NEW: Also get conditions from medicalRecords (OpenMRS sync data)
+    const medicalRecordsConditions = editedData?.medicalRecords?.conditions || [];
+    console.log('📋 Found conditions from medicalRecords:', medicalRecordsConditions.length);
+    console.log('📋 Sample condition:', medicalRecordsConditions[0]);
 
     // Helper function to extract name from object or string
     const getName = (obj: any): string => {
@@ -575,6 +584,53 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
         });
       }
     });
+
+    // NEW: Process medicalRecords conditions (from OpenMRS sync)
+    console.log('🔄 Processing medicalRecords conditions...');
+    medicalRecordsConditions.forEach((condition: any, index: number) => {
+      const condData = condition.data || condition;
+      
+      // Extract date - try multiple field names
+      const conditionDate = condData.diagnosedDate || condData.date || condData.createdAt || new Date();
+      
+      // Get doctor and hospital info from openmrsData or main fields
+      const doctorName = condData.doctor || 
+                        condData.diagnosedBy || 
+                        condData.openmrsData?.provider?.name ||
+                        'Unknown Doctor';
+      
+      const hospitalName = condData.hospital || 
+                          condData.openmrsData?.location?.name ||
+                          (condData.openmrsData ? 'OpenMRS Hospital' : 'Unknown Hospital');
+      
+      // Get diagnosis
+      const diagnosis = condData.diagnosis || 
+                       condData.condition || 
+                       condData.name ||
+                       condData.openmrsData?.concept?.display ||
+                       'No diagnosis recorded';
+      
+      // Check if this is from OpenMRS
+      const isFromOpenMRS = !!condData.openmrsData;
+      
+      records.push({
+        id: condition._id || condition.id || `mr-condition-${index}`,
+        date: conditionDate,
+        diagnosis: diagnosis,
+        medications: [], // Medical records don't have linked medications in this format
+        testResults: [], // Medical records don't have linked tests in this format
+        doctorName: doctorName,
+        hospitalName: hospitalName,
+        visitType: condData.type || condData.recordType || 'Medical Condition',
+        notes: condData.notes || condData.details || '',
+        isNew: false,
+        isEditable: false,
+        isFromOpenMRS: isFromOpenMRS, // Flag to show OpenMRS badge
+        openmrsData: condData.openmrsData // Keep metadata for display
+      });
+    });
+    
+    console.log('✅ Total records after processing:', records.length);
 
     // Sort by date (most recent first), but keep new records at top
     return records.sort((a, b) => {
@@ -757,7 +813,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                 <div className="bg-white p-3 rounded border">
                   <p className="text-xs text-gray-500">Medical Conditions</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {(editedData?.medicalInfo?.medicalConditions || []).length}
+                    {(editedData?.medicalInfo?.medicalConditions || []).length + (editedData?.medicalRecords?.conditions || []).length}
                   </p>
                 </div>
                 <div className="bg-white p-3 rounded border">
@@ -765,19 +821,19 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                   <p className="text-2xl font-bold text-green-600">
                     {(editedData?.medicalInfo?.currentMedications || []).filter((m: any) => 
                       m.status === 'active' || !m.endDate || new Date(m.endDate) > new Date()
-                    ).length}
+                    ).length + (editedData?.medicalRecords?.medications || []).length}
                   </p>
                           </div>
                 <div className="bg-white p-3 rounded border">
                   <p className="text-xs text-gray-500">Test Results</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {(editedData?.testResults || []).length}
+                    {(editedData?.testResults || []).length + (editedData?.medicalRecords?.tests || []).length}
                   </p>
                           </div>
                 <div className="bg-white p-3 rounded border">
                   <p className="text-xs text-gray-500">Hospital Visits</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {(editedData?.hospitalVisits || []).length}
+                    {(editedData?.hospitalVisits || []).length + (editedData?.medicalRecords?.visits || []).length}
                   </p>
                         </div>
                     </div>
@@ -820,11 +876,19 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                     key={record.id || index}
                     className={`bg-gradient-to-r from-green-50 to-emerald-50 border-2 ${record.isNew ? 'border-yellow-400 border-dashed' : 'border-green-200'} rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow`}
                   >
-                    {record.isNew && (
-                      <div className="mb-4 flex items-center justify-between">
+                    <div className="mb-4 flex items-center justify-between">
+                      {record.isNew && (
                         <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                           New Record (Editable)
                         </span>
+                      )}
+                      {record.isFromOpenMRS && (
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold flex items-center">
+                          <Activity className="h-3 w-3 mr-1" />
+                          Synced from OpenMRS
+                        </span>
+                      )}
+                      {record.isNew && (
                         <button
                           onClick={() => removeNewHistoricalRecord(record.id)}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded transition-colors"
@@ -832,8 +896,8 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     
                     {/* Header */}
                     <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">

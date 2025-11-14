@@ -61,6 +61,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   const [showPassportView, setShowPassportView] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [accessToken, setAccessToken] = useState<string>('');
+  const [passportData, setPassportData] = useState<any>(null);
   const [stats, setStats] = useState({
     totalPatients: 0,
     recentRequests: 0,
@@ -188,9 +189,11 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
     setShowOTPModal(true);
   };
 
-  const handleOTPSuccess = (token: string) => {
-    console.log('OTP Success - Patient:', selectedPatient?._id, 'Token:', token);
-    setAccessToken(token);
+  const handleOTPSuccess = async (passportDataFromOTP: any) => {
+    console.log('OTP Success - Patient:', selectedPatient?._id, 'Passport Data:', passportDataFromOTP);
+    
+    // Store the passport data received from OTP verification
+    setPassportData(passportDataFromOTP);
     setShowOTPModal(false);
     setShowPassportView(true);
   };
@@ -198,6 +201,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
   const handleClosePassportView = () => {
     setShowPassportView(false);
     setAccessToken('');
+    setPassportData(null);
     setSelectedPatient(null);
   };
 
@@ -718,12 +722,15 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) => {
       )}
 
       {/* Patient Passport View */}
-      {showPassportView && selectedPatient && accessToken && (
+      {showPassportView && selectedPatient && passportData && (
         <PatientPassportView
+          passportData={passportData}
           patientId={selectedPatient._id}
-          patientName={selectedPatient.user?.name || 'Unknown Patient'}
-          accessToken={accessToken}
           onClose={handleClosePassportView}
+          onUpdate={(updatedPassport) => {
+            console.log('Passport updated:', updatedPassport);
+            setPassportData(updatedPassport);
+          }}
         />
       )}
 
