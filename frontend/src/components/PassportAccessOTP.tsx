@@ -59,10 +59,14 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
     try {
       const response = await apiService.requestPassportAccessOTP(patientId);
       
+      console.log('✅ OTP request successful:', response);
+      
       if (response.success) {
         const emailSent = response.data?.emailSent;
         const emailWarning = response.data?.emailWarning;
         const existingOTP = response.data?.existingOTP;
+        
+        console.log('OTP request details:', { emailSent, emailWarning, existingOTP });
         
         if (existingOTP) {
           if (emailSent === true) {
@@ -135,11 +139,13 @@ const PassportAccessOTP: React.FC<PassportAccessOTPProps> = ({
     }
   }, [countdown, isRequestingOTP, user?.role, patientId, patientName, patientEmail, showNotification, onCancel]);
 
+  // Auto-request OTP ONLY ONCE when component mounts (not when handleRequestOTP changes)
   useEffect(() => {
     if (user?.role !== 'patient') {
       handleRequestOTP();
     }
-  }, [user?.role, handleRequestOTP]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role]); // Intentionally exclude handleRequestOTP to prevent double calls
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '');

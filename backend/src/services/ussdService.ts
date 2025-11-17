@@ -1,11 +1,15 @@
 import Patient from '@/models/Patient';
 import PatientPassport from '@/models/PatientPassport';
+import MedicalRecord from '@/models/MedicalRecord';
 import User from '@/models/User';
 import { smsService } from './smsService';
 
 /**
  * USSD Service for handling Patient Passport access via USSD
  * Implements Africa's Talking USSD protocol
+ * 
+ * Updated to include MedicalRecord collection for complete historical records
+ * including OpenMRS-synced observations
  */
 
 interface USSDSession {
@@ -275,10 +279,10 @@ class USSDService {
         return this.showSummary(passport, language);
       
       case '2':
-        return this.showMedicalHistory(passport, language, path);
+        return await this.showMedicalHistory(passport, language, path);
       
       case '3':
-        return this.showCurrentMedications(passport, language, path);
+        return await this.showCurrentMedications(passport, language, path);
       
       case '4':
         return this.showHospitalVisits(passport, language, path);
@@ -338,57 +342,131 @@ class USSDService {
   }
   
   /**
-   * Show medical history (conditions)
+   * Show medical history (conditions) - includes MedicalRecord collection
    */
-  private showMedicalHistory(passport: any, language: 'en' | 'rw', path: string[]): string {
-    const conditions = passport.medicalInfo?.medicalConditions || [];
-    
-    // If viewing a specific condition
-    if (path.length === 5 && path[4]) {
-      const index = parseInt(path[4]) - 1;
-      if (index >= 0 && index < conditions.length) {
-        return this.showConditionDetails(conditions[index], language);
-      }
-    }
-    
-    // Show list of conditions
-    if (conditions.length === 0) {
-      return language === 'en' 
-        ? 'END No medical conditions recorded.'
-        : 'END Nta ndwara zanditswe.';
-    }
-    
-    if (language === 'en') {
-      let msg = `CON MEDICAL CONDITIONS (${conditions.length})\n`;
-      conditions.slice(0, 5).forEach((cond: any, i: number) => {
-        const status = cond.status || 'active';
-        msg += `${i + 1}. ${cond.condition || 'Unknown'} [${status}]\n`;
+  private async showMedicalHistory(passport: any, language: 'en' | 'rw', path: string[]): Promise<string> {
+    try {
+      // Get both legacy conditions and MedicalRecord conditions
+      const legacyConditions = passport.medicalInfo?.medicalConditions || [];
+      
+      // Fetch MedicalRecord conditions for this patient
+      const patientId = passport.patient._id || passport.patient;
+      const medicalRecordConditions = await MedicalRecord.find({
+        patientId: patientId,
+        type: 'condition'
+      })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+      
+      console.log(`📋 USSD Medical History:`, {
+        patientId,
+        legacyCount: legacyConditions.length,
+        medicalRecordCount: medicalRecordConditions.length
       });
       
-      if (conditions.length > 5) {
-        msg += `\nShowing 5 of ${conditions.length}`;
-      }
-      msg += '\n0. Back to Main Menu';
+      // Combine and format all conditions
+      const allConditions: any[] = [];
       
-      return msg;
-    } else {
-      let msg = `CON INDWARA (${conditions.length})\n`;
-      conditions.slice(0, 5).forEach((cond: any, i: number) => {
-        const status = cond.status || 'active';
-        msg += `${i + 1}. ${cond.condition || 'Ntizwi'} [${status}]\n`;
+      // Add MedicalRecord conditions (including OpenMRS synced)
+      medicalRecordConditions.forEach((record: any) => {
+        const data = record.data || {};
+        allConditions.push({
+          condition: data.diagnosis || data.name || data.condition || 'Unknown',
+          status: data.status || 'active',
+          diagnosedDate: data.diagnosed || data.diagnosedDate || data.date || record.createdAt,
+          diagnosedBy: data.diagnosedBy || data.doctor || 'Unknown',
+          notes: data.notes || data.details || '',
+          hospital: data.hospital || '',
+          isFromOpenMRS: !!record.openmrsData,
+          source: record.openmrsData ? 'OpenMRS' : 'Manual Entry',
+          medications: data.medications || []
+        });
       });
       
-      if (conditions.length > 5) {
-        msg += `\nBigaragaza 5 muri ${conditions.length}`;
-      }
-      msg += '\n0. Subira ku menu y\'ibanze';
+      // Add legacy conditions (filter out OpenMRS duplicates)
+      legacyConditions.forEach((cond: any) => {
+        const notes = (cond as any).notes || '';
+        if (!notes.includes('Added from OpenMRS')) {
+          allConditions.push({
+            condition: cond.condition || 'Unknown',
+            status: cond.status || 'active',
+            diagnosedDate: cond.diagnosedDate,
+            diagnosedBy: cond.diagnosedBy || 'Unknown',
+            notes: notes,
+            hospital: '',
+            isFromOpenMRS: false,
+            source: 'Legacy',
+            medications: []
+          });
+        }
+      });
       
-      return msg;
+      // Sort by date (most recent first)
+      allConditions.sort((a, b) => {
+        const dateA = new Date(a.diagnosedDate || 0).getTime();
+        const dateB = new Date(b.diagnosedDate || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      console.log(`   Total conditions after merge: ${allConditions.length}`);
+      
+      // If viewing a specific condition
+      if (path.length === 5 && path[4]) {
+        const index = parseInt(path[4]) - 1;
+        if (index >= 0 && index < allConditions.length) {
+          return this.showConditionDetails(allConditions[index], language);
+        }
+      }
+      
+      // Show list of conditions
+      if (allConditions.length === 0) {
+        return language === 'en' 
+          ? 'END No medical conditions recorded.'
+          : 'END Nta ndwara zanditswe.';
+      }
+      
+      if (language === 'en') {
+        let msg = `CON MEDICAL HISTORY (${allConditions.length})\n`;
+        allConditions.slice(0, 5).forEach((cond: any, i: number) => {
+          const status = cond.status || 'active';
+          const source = cond.isFromOpenMRS ? '📡' : '';
+          msg += `${i + 1}. ${source}${cond.condition} [${status}]\n`;
+        });
+        
+        if (allConditions.length > 5) {
+          msg += `\nShowing 5 of ${allConditions.length}`;
+        }
+        msg += '\n📡=OpenMRS synced';
+        msg += '\n0. Back to Main Menu';
+        
+        return msg;
+      } else {
+        let msg = `CON AMATEKA Y'UBUZIMA (${allConditions.length})\n`;
+        allConditions.slice(0, 5).forEach((cond: any, i: number) => {
+          const status = cond.status || 'active';
+          const source = cond.isFromOpenMRS ? '📡' : '';
+          msg += `${i + 1}. ${source}${cond.condition} [${status}]\n`;
+        });
+        
+        if (allConditions.length > 5) {
+          msg += `\nBigaragaza 5 muri ${allConditions.length}`;
+        }
+        msg += '\n📡=Yakuwe kuri OpenMRS';
+        msg += '\n0. Subira ku menu y\'ibanze';
+        
+        return msg;
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching medical history for USSD:', error);
+      return language === 'en'
+        ? 'END Unable to load medical history. Please try again.'
+        : 'END Ntidushobora gufungura amateka. Ongera ugerageze.';
     }
   }
   
   /**
-   * Show specific condition details
+   * Show specific condition details - includes medications
    */
   private showConditionDetails(condition: any, language: 'en' | 'rw'): string {
     if (language === 'en') {
@@ -398,8 +476,29 @@ class USSDService {
       msg += `Diagnosed: ${condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString() : 'N/A'}\n`;
       msg += `By: ${condition.diagnosedBy || 'N/A'}`;
       
+      if (condition.hospital) {
+        msg += `\nHospital: ${condition.hospital}`;
+      }
+      
+      if (condition.isFromOpenMRS) {
+        msg += `\nSource: OpenMRS (Synced)`;
+      }
+      
+      // Show medications if available
+      if (condition.medications && condition.medications.length > 0) {
+        msg += `\n\nMEDICATIONS:`;
+        condition.medications.slice(0, 3).forEach((med: any, i: number) => {
+          msg += `\n${i + 1}. ${med.name || 'N/A'}`;
+          if (med.dosage) msg += ` - ${med.dosage}`;
+          if (med.frequency) msg += ` - ${med.frequency}`;
+        });
+        if (condition.medications.length > 3) {
+          msg += `\n+${condition.medications.length - 3} more`;
+        }
+      }
+      
       if (condition.notes) {
-        msg += `\nNotes: ${condition.notes.substring(0, 50)}`;
+        msg += `\n\nNotes: ${condition.notes.substring(0, 80)}`;
       }
       
       return msg;
@@ -410,8 +509,29 @@ class USSDService {
       msg += `Yasuzumwe: ${condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString() : 'Nta na kimwe'}\n`;
       msg += `Na: ${condition.diagnosedBy || 'Nta na kimwe'}`;
       
+      if (condition.hospital) {
+        msg += `\nIbitaro: ${condition.hospital}`;
+      }
+      
+      if (condition.isFromMRS) {
+        msg += `\nInkomoko: OpenMRS`;
+      }
+      
+      // Show medications if available
+      if (condition.medications && condition.medications.length > 0) {
+        msg += `\n\nIMITI:`;
+        condition.medications.slice(0, 3).forEach((med: any, i: number) => {
+          msg += `\n${i + 1}. ${med.name || 'Nta na kimwe'}`;
+          if (med.dosage) msg += ` - ${med.dosage}`;
+          if (med.frequency) msg += ` - ${med.frequency}`;
+        });
+        if (condition.medications.length > 3) {
+          msg += `\n+${condition.medications.length - 3} iyindi`;
+        }
+      }
+      
       if (condition.notes) {
-        msg += `\nIbisobanuro: ${condition.notes.substring(0, 50)}`;
+        msg += `\n\nIbisobanuro: ${condition.notes.substring(0, 80)}`;
       }
       
       return msg;
@@ -419,52 +539,151 @@ class USSDService {
   }
   
   /**
-   * Show current medications
+   * Show current medications - includes MedicalRecord collection
    */
-  private showCurrentMedications(passport: any, language: 'en' | 'rw', path: string[]): string {
-    const medications = passport.medicalInfo?.currentMedications || [];
-    
-    // If viewing a specific medication
-    if (path.length === 5 && path[4]) {
-      const index = parseInt(path[4]) - 1;
-      if (index >= 0 && index < medications.length) {
-        return this.showMedicationDetails(medications[index], language);
-      }
-    }
-    
-    // Show list of medications
-    if (medications.length === 0) {
-      return language === 'en' 
-        ? 'END No current medications.'
-        : 'END Nta miti ukoresha.';
-    }
-    
-    if (language === 'en') {
-      let msg = `CON CURRENT MEDICATIONS (${medications.length})\n`;
-      medications.slice(0, 5).forEach((med: any, i: number) => {
-        msg += `${i + 1}. ${med.name || 'Unknown'}\n`;
-        msg += `   ${med.dosage || ''} ${med.frequency || ''}\n`;
+  private async showCurrentMedications(passport: any, language: 'en' | 'rw', path: string[]): Promise<string> {
+    try {
+      const legacyMedications = passport.medicalInfo?.currentMedications || [];
+      
+      // Fetch MedicalRecord medications
+      const patientId = passport.patient._id || passport.patient;
+      const medicalRecordMedications = await MedicalRecord.find({
+        patientId: patientId,
+        type: 'medication'
+      })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+      
+      // Also get medications from conditions
+      const medicalRecordConditions = await MedicalRecord.find({
+        patientId: patientId,
+        type: 'condition',
+        'data.medications': { $exists: true, $ne: [] }
+      })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+      
+      console.log(`💊 USSD Medications:`, {
+        patientId,
+        legacyCount: legacyMedications.length,
+        medicalRecordMedicationsCount: medicalRecordMedications.length,
+        conditionsWithMedicationsCount: medicalRecordConditions.length
       });
       
-      if (medications.length > 5) {
-        msg += `\nShowing 5 of ${medications.length}`;
-      }
-      msg += '\n0. Back to Main Menu';
+      // Combine all medications
+      const allMedications: any[] = [];
       
-      return msg;
-    } else {
-      let msg = `CON IMITI UKORESHA (${medications.length})\n`;
-      medications.slice(0, 5).forEach((med: any, i: number) => {
-        msg += `${i + 1}. ${med.name || 'Ntizwi'}\n`;
-        msg += `   ${med.dosage || ''} ${med.frequency || ''}\n`;
+      // Add medications from MedicalRecord medication type
+      medicalRecordMedications.forEach((record: any) => {
+        const data = record.data || {};
+        allMedications.push({
+          name: data.medicationName || data.name || 'Unknown',
+          dosage: data.dosage || '',
+          frequency: data.frequency || '',
+          prescribedBy: data.prescribedBy || data.doctor || '',
+          startDate: data.startDate || data.date,
+          status: data.medicationStatus || data.status || 'Active',
+          isFromOpenMRS: !!record.openmrsData
+        });
       });
       
-      if (medications.length > 5) {
-        msg += `\nBigaragaza 5 muri ${medications.length}`;
-      }
-      msg += '\n0. Subira ku menu y\'ibanze';
+      // Add medications from conditions
+      medicalRecordConditions.forEach((record: any) => {
+        const medications = (record.data?.medications || []);
+        medications.forEach((med: any) => {
+          allMedications.push({
+            name: med.name || med.medicationName || 'Unknown',
+            dosage: med.dosage || '',
+            frequency: med.frequency || '',
+            prescribedBy: med.prescribedBy || '',
+            startDate: med.startDate,
+            status: med.medicationStatus || 'Active',
+            isFromOpenMRS: !!record.openmrsData,
+            linkedTo: record.data?.diagnosis || record.data?.condition
+          });
+        });
+      });
       
-      return msg;
+      // Add legacy medications (filter OpenMRS duplicates)
+      legacyMedications.forEach((med: any) => {
+        const notes = (med as any).notes || '';
+        if (!notes.includes('Added from OpenMRS')) {
+          allMedications.push({
+            name: med.name || 'Unknown',
+            dosage: med.dosage || '',
+            frequency: med.frequency || '',
+            prescribedBy: med.prescribedBy || '',
+            startDate: med.startDate,
+            status: med.status || 'Active',
+            isFromOpenMRS: false
+          });
+        }
+      });
+      
+      // Filter active medications
+      const activeMedications = allMedications.filter(m => 
+        m.status !== 'Past' && m.status !== 'Discontinued'
+      );
+      
+      console.log(`   Total active medications: ${activeMedications.length}`);
+      
+      // If viewing a specific medication
+      if (path.length === 5 && path[4]) {
+        const index = parseInt(path[4]) - 1;
+        if (index >= 0 && index < activeMedications.length) {
+          return this.showMedicationDetails(activeMedications[index], language);
+        }
+      }
+    
+      // Show list of medications
+      if (activeMedications.length === 0) {
+        return language === 'en' 
+          ? 'END No current medications.'
+          : 'END Nta miti ukoresha.';
+      }
+      
+      if (language === 'en') {
+        let msg = `CON CURRENT MEDICATIONS (${activeMedications.length})\n`;
+        activeMedications.slice(0, 5).forEach((med: any, i: number) => {
+          const source = med.isFromOpenMRS ? '📡' : '';
+          msg += `${i + 1}. ${source}${med.name || 'Unknown'}\n`;
+          if (med.dosage || med.frequency) {
+            msg += `   ${med.dosage || ''} ${med.frequency || ''}\n`;
+          }
+        });
+        
+        if (activeMedications.length > 5) {
+          msg += `\nShowing 5 of ${activeMedications.length}`;
+        }
+        msg += '\n📡=OpenMRS synced';
+        msg += '\n0. Back to Main Menu';
+        
+        return msg;
+      } else {
+        let msg = `CON IMITI UKORESHA (${activeMedications.length})\n`;
+        activeMedications.slice(0, 5).forEach((med: any, i: number) => {
+          const source = med.isFromOpenMRS ? '📡' : '';
+          msg += `${i + 1}. ${source}${med.name || 'Ntizwi'}\n`;
+          if (med.dosage || med.frequency) {
+            msg += `   ${med.dosage || ''} ${med.frequency || ''}\n`;
+          }
+        });
+        
+        if (activeMedications.length > 5) {
+          msg += `\nBigaragaza 5 muri ${activeMedications.length}`;
+        }
+        msg += '\n📡=Yakuwe kuri OpenMRS';
+        msg += '\n0. Subira ku menu y\'ibanze';
+        
+        return msg;
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching medications for USSD:', error);
+      return language === 'en'
+        ? 'END Unable to load medications. Please try again.'
+        : 'END Ntidushobora gufungura imiti. Ongera ugerageze.';
     }
   }
   

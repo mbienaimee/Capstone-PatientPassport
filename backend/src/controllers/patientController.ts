@@ -817,22 +817,12 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
       console.log(`   PatientPassport conditions: ${populatedPassport.medicalInfo.medicalConditions?.length || 0}`);
       console.log(`   MedicalRecord conditions: ${medicalRecordConditions.length}`);
       
-      // **CRITICAL**: Filter out duplicates by checking if legacy data was synced from OpenMRS
-      // Legacy data created by the sync service will have "Added from OpenMRS" in notes
-      const legacyConditionsNotFromOpenMRS = (populatedPassport.medicalInfo.medicalConditions || [])
-        .filter(condition => {
-          const notes = (condition as any).notes || '';
-          return !notes.includes('Added from OpenMRS');
-        });
-      
-      const legacyMedicationsNotFromOpenMRS = (populatedPassport.medicalInfo.currentMedications || [])
-        .filter(medication => {
-          const notes = (medication as any).notes || '';
-          return !notes.includes('Added from OpenMRS');
-        });
-      
-      console.log(`   Legacy conditions (not from OpenMRS): ${legacyConditionsNotFromOpenMRS.length}`);
-      console.log(`   TOTAL conditions to return: ${medicalRecordConditions.length + legacyConditionsNotFromOpenMRS.length}`);
+      // **CRITICAL FIX**: To prevent duplicates, we ONLY use MedicalRecord collection data
+      // Do NOT merge with PatientPassport.medicalInfo data as sync creates entries in both places
+      // The MedicalRecord collection is the single source of truth for all observations
+      console.log(`   ✅ Using ONLY MedicalRecord collection data (no legacy merge)`);
+      console.log(`   TOTAL conditions to return: ${medicalRecordConditions.length}`);
+      console.log(`   TOTAL medications to return: ${medicalRecordMedications.length}`);
       
       const transformedData = {
         // Patient profile data
@@ -868,39 +858,16 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
           currentMedications: populatedPassport.medicalInfo.currentMedications || []
         },
         // Medical records in the format expected by frontend
-        // **MERGE** MedicalRecord data (priority) + non-OpenMRS legacy data (to avoid duplicates)
+        // **USE ONLY MedicalRecord collection** - This is the single source of truth
+        // Prevents duplicates from synced OpenMRS data appearing multiple times
         medicalRecords: {
           conditions: [
-            // MedicalRecord collection (OpenMRS sync data + manual entries) - PRIORITIZE THIS
-            ...medicalRecordConditions,
-            // PatientPassport legacy data (ONLY those NOT from OpenMRS sync)
-            // Note: PatientPassport.medicalInfo.medicalConditions doesn't have doctor/hospital fields
-            // These are stored in the legacy MedicalCondition model which is separate
-            ...legacyConditionsNotFromOpenMRS.map((condition: any) => ({
-              data: {
-                name: condition.condition || '',
-                diagnosis: condition.condition || '',
-                details: condition.notes || '',
-                // Legacy conditions from PatientPassport don't have doctor/hospital populated
-                // They only have diagnosedBy as a string
-                doctor: condition.diagnosedBy || 'Unknown Doctor',
-                diagnosedBy: condition.diagnosedBy || 'Unknown Doctor',
-                hospital: 'Unknown Hospital', // Legacy conditions don't have hospital info
-                diagnosed: condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString('en-US', { timeZone: 'Africa/Johannesburg' }) : '',
-                procedure: condition.diagnosedBy || ''
-              }
-            }))
+            // MedicalRecord collection contains ALL data (OpenMRS synced + doctor manual entries)
+            ...medicalRecordConditions
           ],
           medications: [
-            ...medicalRecordMedications,
-            // PatientPassport legacy medications (ONLY those NOT from OpenMRS sync)
-            ...legacyMedicationsNotFromOpenMRS.map(medication => ({
-              data: {
-                medicationName: medication.name || '',
-                dosage: medication.dosage || '',
-                status: 'Active'
-              }
-            }))
+            // MedicalRecord collection contains ALL medications
+            ...medicalRecordMedications
           ],
           tests: [
             ...medicalRecordTests,
