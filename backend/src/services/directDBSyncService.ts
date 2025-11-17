@@ -1,19 +1,7 @@
 import mysql from 'mysql2/promise';
 import { storeOpenMRSObservation } from './openmrsIntegrationService';
 
-interface DBObservation {
-  obs_id: number;
-  person_id: number;
-  encounter_id: number | null;
-  location_id: number | null;
-  patient_name: string;
-  concept_name: string;
-  value_text: string | null;
-  value_numeric: number | null;
-  value_coded_name: string | null;
-  obs_datetime: Date;
-  comments: string | null;
-}
+// DBObservation interface removed - using inline type from query results
 
 class DirectDBSyncService {
   private syncInterval: NodeJS.Timeout | null = null;
@@ -128,14 +116,16 @@ class DirectDBSyncService {
 
   /**
    * Sync observations from OpenMRS database
+   * OPTIMIZED: Batch fetch provider and location data in single query to reduce DB calls
    */
   private async syncObservations() {
+    const startTime = Date.now();
     try {
       console.log(`\n🔄 [${new Date().toISOString()}] Syncing observations from OpenMRS database...`);
 
       const conn = await this.connect();
       
-      // Query new observations since last sync - ENHANCED: Include encounter_id and location_id
+      // OPTIMIZED: Single query with JOINs to fetch provider and location data upfront
       const [observations] = await conn.query<any[]>(`
         SELECT 
           o.obs_id,
@@ -148,11 +138,32 @@ class DirectDBSyncService {
           o.value_numeric,
           cn2.name as value_coded_name,
           o.obs_datetime,
-          o.comments
+          o.comments,
+          -- Provider data (preferred method)
+          CONCAT_WS(' ', ep_pn.given_name, ep_pn.middle_name, ep_pn.family_name) as provider_name,
+          ep_p.identifier as provider_identifier,
+          -- Fallback provider from encounter creator
+          CONCAT_WS(' ', ec_pn.given_name, ec_pn.middle_name, ec_pn.family_name) as creator_name,
+          ec_u.username as creator_username,
+          -- Location data
+          e_location.name as encounter_location_name,
+          o_location.name as obs_location_name
         FROM obs o
         JOIN person_name pn ON o.person_id = pn.person_id AND pn.voided = 0 AND pn.preferred = 1
         JOIN concept_name cn ON o.concept_id = cn.concept_id AND cn.locale = 'en' AND cn.concept_name_type = 'FULLY_SPECIFIED'
         LEFT JOIN concept_name cn2 ON o.value_coded = cn2.concept_id AND cn2.locale = 'en' AND cn2.concept_name_type = 'FULLY_SPECIFIED'
+        -- Provider from encounter_provider (preferred)
+        LEFT JOIN encounter_provider ep ON o.encounter_id = ep.encounter_id AND ep.voided = 0
+        LEFT JOIN provider ep_p ON ep.provider_id = ep_p.provider_id AND ep_p.retired = 0
+        LEFT JOIN person_name ep_pn ON ep_p.person_id = ep_pn.person_id AND ep_pn.voided = 0 AND ep_pn.preferred = 1
+        -- Provider from encounter creator (fallback)
+        LEFT JOIN encounter e ON o.encounter_id = e.encounter_id AND e.voided = 0
+        LEFT JOIN users ec_u ON e.creator = ec_u.user_id
+        LEFT JOIN person_name ec_pn ON ec_u.person_id = ec_pn.person_id AND ec_pn.voided = 0 AND ec_pn.preferred = 1
+        -- Location from encounter
+        LEFT JOIN location e_location ON e.location_id = e_location.location_id AND e_location.retired = 0
+        -- Location from observation
+        LEFT JOIN location o_location ON o.location_id = o_location.location_id AND o_location.retired = 0
         WHERE o.obs_id > ?
           AND o.voided = 0
         ORDER BY o.obs_id ASC
@@ -169,242 +180,132 @@ class DirectDBSyncService {
       let successCount = 0;
       let errorCount = 0;
 
-      // Process each observation
-      for (const obs of observations as DBObservation[]) {
-        try {
-          const patientName = obs.patient_name.trim();
+      // OPTIMIZED: Process observations in parallel batches for better performance
+      const batchSize = 10; // Process 10 observations in parallel
+      const batches = [];
+      for (let i = 0; i < observations.length; i += batchSize) {
+        batches.push(observations.slice(i, i + batchSize));
+      }
+
+      // Process each batch in parallel
+      for (const batch of batches) {
+        const batchPromises = batch.map(async (obs: any) => {
+          try {
+            const patientName = obs.patient_name?.trim() || '';
           const conceptName = obs.concept_name;
           
-          // ENHANCED: Fetch provider and location from encounter (matches OpenMRS UI format)
+            // OPTIMIZED: Use pre-fetched provider and location data from JOINs
           let providerName = 'Unknown Doctor';
-          let locationName = 'Unknown Hospital';
-          
-          // Get provider from encounter_provider (e.g., "Jake Doctor") - Multiple fallback methods
-          if (obs.encounter_id) {
-            // Method 1: Try strict conditions (preferred)
-            try {
-              const [providerRows] = await conn.query<any[]>(`
-                SELECT 
-                  pn.given_name,
-                  pn.family_name,
-                  pn.middle_name,
-                  p.identifier,
-                  er.name as role_name
-                FROM encounter_provider ep
-                JOIN provider p ON ep.provider_id = p.provider_id AND p.retired = 0
-                JOIN person_name pn ON p.person_id = pn.person_id AND pn.voided = 0 AND pn.preferred = 1
-                LEFT JOIN encounter_role er ON ep.encounter_role_id = er.encounter_role_id
-                WHERE ep.encounter_id = ?
-                  AND ep.voided = 0
-                ORDER BY 
-                  CASE WHEN er.name = 'Clinician' THEN 1 ELSE 2 END,
-                  ep.date_created DESC
-                LIMIT 1
-              `, [obs.encounter_id]);
-              
-              if (providerRows && providerRows.length > 0) {
-                const provider = providerRows[0];
-                const givenName = (provider.given_name || '').trim();
-                const familyName = (provider.family_name || '').trim();
-                const middleName = (provider.middle_name || '').trim();
-                
-                if (givenName && familyName) {
-                  providerName = middleName ? `${givenName} ${middleName} ${familyName}` : `${givenName} ${familyName}`;
-                } else if (givenName) {
-                  providerName = givenName;
-                } else if (familyName) {
-                  providerName = familyName;
-                } else {
-                  providerName = provider.identifier || 'Unknown Doctor';
-                }
-                providerName = providerName.trim().replace(/\s+/g, ' ');
-                console.log(`   ✅ Method 1: Found provider "${providerName}" from encounter ${obs.encounter_id}`);
-              } else {
-                // Method 2: Try relaxed conditions (allow non-preferred names)
-                const [providerRows2] = await conn.query<any[]>(`
-                  SELECT 
-                    pn.given_name,
-                    pn.family_name,
-                    pn.middle_name,
-                    p.identifier
-                  FROM encounter_provider ep
-                  JOIN provider p ON ep.provider_id = p.provider_id AND p.retired = 0
-                  JOIN person_name pn ON p.person_id = pn.person_id AND pn.voided = 0
-                  WHERE ep.encounter_id = ?
-                    AND ep.voided = 0
-                  ORDER BY pn.preferred DESC, ep.date_created DESC
-                  LIMIT 1
-                `, [obs.encounter_id]);
-                
-                if (providerRows2 && providerRows2.length > 0) {
-                  const provider = providerRows2[0];
-                  const givenName = (provider.given_name || '').trim();
-                  const familyName = (provider.family_name || '').trim();
-                  const middleName = (provider.middle_name || '').trim();
-                  
-                  if (givenName && familyName) {
-                    providerName = middleName ? `${givenName} ${middleName} ${familyName}` : `${givenName} ${familyName}`;
-                  } else if (givenName) {
-                    providerName = givenName;
-                  } else if (familyName) {
-                    providerName = familyName;
-                  } else {
-                    providerName = provider.identifier || 'Unknown Doctor';
-                  }
-                  providerName = providerName.trim().replace(/\s+/g, ' ');
-                  console.log(`   ✅ Method 2: Found provider "${providerName}" from encounter ${obs.encounter_id}`);
-                } else {
-                  // Method 3: Try encounter creator
-                  const [creatorRows] = await conn.query<any[]>(`
-                    SELECT 
-                      u.username,
-                      pn.given_name,
-                      pn.family_name,
-                      pn.middle_name,
-                      p.identifier
-                    FROM encounter e
-                    JOIN users u ON e.creator = u.user_id
-                    LEFT JOIN person_name pn ON u.person_id = pn.person_id AND pn.voided = 0 AND pn.preferred = 1
-                    LEFT JOIN provider p ON u.person_id = p.person_id AND p.retired = 0
-                    WHERE e.encounter_id = ?
-                      AND e.voided = 0
-                    LIMIT 1
-                  `, [obs.encounter_id]);
-                  
-                  if (creatorRows && creatorRows.length > 0) {
-                    const creator = creatorRows[0];
-                    const givenName = (creator.given_name || '').trim();
-                    const familyName = (creator.family_name || '').trim();
-                    const middleName = (creator.middle_name || '').trim();
-                    
-                    if (givenName && familyName) {
-                      providerName = middleName ? `${givenName} ${middleName} ${familyName}` : `${givenName} ${familyName}`;
-                    } else if (givenName) {
-                      providerName = givenName;
-                    } else if (familyName) {
-                      providerName = familyName;
-                    } else {
-                      providerName = creator.username || creator.identifier || 'Unknown Doctor';
-                    }
-                    providerName = providerName.trim().replace(/\s+/g, ' ');
-                    console.log(`   ✅ Method 3: Found provider "${providerName}" from encounter creator`);
-                  } else {
-                    console.warn(`   ⚠️ All methods failed to find provider for encounter ${obs.encounter_id}`);
-                  }
-                }
-              }
-            } catch (providerError: any) {
-              console.warn(`   ⚠️ Error fetching provider from encounter ${obs.encounter_id}:`, providerError.message);
+            
+            // Priority 1: Provider from encounter_provider (preferred)
+            if (obs.provider_name && obs.provider_name.trim()) {
+              providerName = obs.provider_name.trim().replace(/\s+/g, ' ');
+            } else if (obs.provider_identifier && obs.provider_identifier.trim()) {
+              providerName = obs.provider_identifier.trim();
+            } 
+            // Priority 2: Provider from encounter creator (fallback)
+            else if (obs.creator_name && obs.creator_name.trim()) {
+              providerName = obs.creator_name.trim().replace(/\s+/g, ' ');
+            } else if (obs.creator_username && obs.creator_username.trim()) {
+              providerName = obs.creator_username.trim();
             }
             
-            // Get location from encounter (e.g., "Site 1")
-            try {
-              const [locationRows] = await conn.query<any[]>(`
-                SELECT l.name as location_name
-                FROM encounter e
-                JOIN location l ON e.location_id = l.location_id AND l.retired = 0
-                WHERE e.encounter_id = ?
-                  AND e.voided = 0
-                LIMIT 1
-              `, [obs.encounter_id]);
-              
-              if (locationRows && locationRows.length > 0 && locationRows[0].location_name) {
-                locationName = locationRows[0].location_name;
-                console.log(`   ✅ Found location: "${locationName}" from encounter ${obs.encounter_id}`);
+            // Location: Prefer encounter location, fallback to observation location
+            let locationName = obs.encounter_location_name || 
+                              obs.obs_location_name || 
+                              'Unknown Hospital';
+            
+            // Determine the observation value
+            let observationValue = obs.value_text || 
+                                 (obs.value_numeric !== null ? String(obs.value_numeric) : '') ||
+                                 obs.value_coded_name ||
+                                 '';
+
+            // Check if it's a diagnosis or medication based on concept name
+            const isDiagnosis = conceptName.toLowerCase().includes('diagnosis') || 
+                              conceptName.toLowerCase().includes('condition') ||
+                              conceptName.toLowerCase().includes('disease') ||
+                              conceptName.toLowerCase().includes('malaria') ||
+                              conceptName.toLowerCase().includes('smear') ||
+                              conceptName.toLowerCase().includes('fever') ||
+                              conceptName.toLowerCase().includes('pain');
+            
+            const isMedication = conceptName.toLowerCase().includes('medication') ||
+                                conceptName.toLowerCase().includes('drug') ||
+                                conceptName.toLowerCase().includes('treatment') ||
+                                conceptName.toLowerCase().includes('prescription');
+
+            let observationType: 'diagnosis' | 'medication' = 'diagnosis';
+            let observationData: any = {
+              obs_id: obs.obs_id,
+              encounter_id: obs.encounter_id,
+              location_id: obs.location_id
+            };
+
+            if (isDiagnosis) {
+              observationType = 'diagnosis';
+              observationData.diagnosis = conceptName;
+              observationData.details = observationValue;
+              observationData.date = obs.obs_datetime;
+              if (obs.comments) {
+                observationData.details = `${observationData.details}. ${obs.comments}`;
               }
-            } catch (locationError: any) {
-              console.warn(`   ⚠️ Could not fetch location from encounter ${obs.encounter_id}:`, locationError.message);
+            } else if (isMedication) {
+              observationType = 'medication';
+              observationData.medicationName = conceptName;
+              observationData.dosage = observationValue;
+              observationData.details = obs.comments || '';
+              observationData.date = obs.obs_datetime;
+            } else {
+              // Generic observation - treat as diagnosis
+              observationType = 'diagnosis';
+              observationData.diagnosis = conceptName;
+              observationData.details = observationValue;
+              observationData.date = obs.obs_datetime;
             }
-          }
-          
-          // Fallback to observation location_id if encounter location not found
-          if (locationName === 'Unknown Hospital' && obs.location_id) {
-            try {
-              const [locationRows] = await conn.query<any[]>(`
-                SELECT name
-                FROM location
-                WHERE location_id = ?
-                  AND retired = 0
-                LIMIT 1
-              `, [obs.location_id]);
-              
-              if (locationRows && locationRows.length > 0) {
-                locationName = locationRows[0].name;
-              }
-            } catch (error) {
-              // Silent fail
+
+            // Store in Patient Passport database with actual provider and location
+            await storeOpenMRSObservation(
+              patientName,
+              observationType,
+              observationData,
+              providerName,
+              locationName
+            );
+            
+            // Update last synced ID (use max to handle parallel processing)
+            const obsId = obs.obs_id;
+            if (obsId > this.lastSyncId) {
+              this.lastSyncId = obsId;
             }
+            
+            return { success: true, obsId, conceptName, patientName, providerName, locationName };
+          } catch (error: any) {
+            return { success: false, obsId: obs.obs_id, error: error.message };
           }
-          
-          // Determine the observation value
-          let observationValue = obs.value_text || 
-                               (obs.value_numeric !== null ? String(obs.value_numeric) : '') ||
-                               obs.value_coded_name ||
-                               '';
+        });
 
-          // Check if it's a diagnosis or medication based on concept name
-          const isDiagnosis = conceptName.toLowerCase().includes('diagnosis') || 
-                            conceptName.toLowerCase().includes('condition') ||
-                            conceptName.toLowerCase().includes('disease') ||
-                            conceptName.toLowerCase().includes('malaria') ||
-                            conceptName.toLowerCase().includes('smear') ||
-                            conceptName.toLowerCase().includes('fever') ||
-                            conceptName.toLowerCase().includes('pain');
-          
-          const isMedication = conceptName.toLowerCase().includes('medication') ||
-                              conceptName.toLowerCase().includes('drug') ||
-                              conceptName.toLowerCase().includes('treatment') ||
-                              conceptName.toLowerCase().includes('prescription');
-
-          let observationType: 'diagnosis' | 'medication' = 'diagnosis';
-          let observationData: any = {
-            obs_id: obs.obs_id,
-            encounter_id: obs.encounter_id,
-            location_id: obs.location_id
-          };
-
-          if (isDiagnosis) {
-            observationType = 'diagnosis';
-            observationData.diagnosis = conceptName;
-            observationData.details = observationValue;
-            observationData.date = obs.obs_datetime;
-            if (obs.comments) {
-              observationData.details = `${observationData.details}. ${obs.comments}`;
-            }
-          } else if (isMedication) {
-            observationType = 'medication';
-            observationData.medicationName = conceptName;
-            observationData.dosage = observationValue;
-            observationData.details = obs.comments || '';
-            observationData.date = obs.obs_datetime;
-          } else {
-            // Generic observation - treat as diagnosis
-            observationType = 'diagnosis';
-            observationData.diagnosis = conceptName;
-            observationData.details = observationValue;
-            observationData.date = obs.obs_datetime;
-          }
-
-          // Store in Patient Passport database with actual provider and location
-          await storeOpenMRSObservation(
-            patientName,
-            observationType,
-            observationData,
-            providerName, // Use actual provider name (e.g., "Jake Doctor")
-            locationName  // Use actual location name (e.g., "Site 1")
-          );
-          
+        // Wait for batch to complete
+        const results = await Promise.all(batchPromises);
+        
+        // Process results
+        for (const result of results) {
+          if (result.success) {
           successCount++;
-          this.lastSyncId = obs.obs_id; // Update last synced ID
-          console.log(`   ✓ Synced: ${conceptName} for patient ${patientName} (ID: ${obs.obs_id})`);
-          console.log(`      Provider: "${providerName}" | Location: "${locationName}"`);
-        } catch (error: any) {
+            // Only log first few to reduce console noise
+            if (successCount <= 5) {
+              console.log(`   ✓ Synced: ${result.conceptName} for patient ${result.patientName} (ID: ${result.obsId})`);
+              console.log(`      Provider: "${result.providerName}" | Location: "${result.locationName}"`);
+            }
+          } else {
           errorCount++;
-          console.error(`   ✗ Error syncing observation ${obs.obs_id}:`, error.message);
+            console.error(`   ✗ Error syncing observation ${result.obsId}:`, result.error);
+          }
         }
       }
 
-      console.log(`\n📊 DB Sync complete: ${successCount} successful, ${errorCount} errors`);
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`\n📊 DB Sync complete: ${successCount} successful, ${errorCount} errors (${duration}s)`);
       console.log(`   Last synced observation ID: ${this.lastSyncId}`);
     } catch (error: any) {
       console.error('❌ Error during direct DB sync:', error.message);

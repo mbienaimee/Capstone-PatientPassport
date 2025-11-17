@@ -15,12 +15,12 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5000",
-      "description": "Development server"
+      "url": "https://patientpassport-api.azurewebsites.net",
+      "description": "Azure Production server (Primary)"
     },
     {
-      "url": "https://patientpassport-api.azurewebsites.net",
-      "description": "Azure Production server"
+      "url": "http://localhost:5000",
+      "description": "Development server"
     }
   ],
   "components": {
@@ -1108,6 +1108,216 @@
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/medical-records/patient/{patientId}": {
+      "get": {
+        "summary": "Get all medical records for a patient",
+        "description": "Retrieve all medical records for a specific patient",
+        "tags": ["Medical Records"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Medical records retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/MedicalRecord" } },
+                        "medications": { "type": "array", "items": { "$ref": "#/components/schemas/MedicalRecord" } },
+                        "tests": { "type": "array", "items": { "$ref": "#/components/schemas/MedicalRecord" } },
+                        "visits": { "type": "array", "items": { "$ref": "#/components/schemas/MedicalRecord" } },
+                        "images": { "type": "array", "items": { "$ref": "#/components/schemas/MedicalRecord" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/medical-records/patient/{patientId}/type/{type}": {
+      "get": {
+        "summary": "Get medical records by type",
+        "description": "Get medical records of a specific type for a patient",
+        "tags": ["Medical Records"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "enum": ["condition", "medication", "test", "visit", "image"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Medical records retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/MedicalRecord" } }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/medical-records/{id}": {
+      "put": {
+        "summary": "Update medical record",
+        "description": "Update an existing medical record",
+        "tags": ["Medical Records"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": { "type": "object" }
+                },
+                "required": ["data"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Medical record updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/MedicalRecord" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "summary": "Delete medical record",
+        "description": "Delete a medical record",
+        "tags": ["Medical Records"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Medical record deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/medical-records/{id}/edit-access": {
+      "get": {
+        "summary": "Get edit access info for medical record",
+        "description": "Check if a doctor can edit a specific medical record",
+        "tags": ["Medical Records"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Edit access information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "canEdit": { "type": "boolean" },
+                        "isEditable": { "type": "boolean" },
+                        "hoursSinceSync": { "type": "string" },
+                        "reason": { "type": "string" },
+                        "medicationStatus": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
     },
