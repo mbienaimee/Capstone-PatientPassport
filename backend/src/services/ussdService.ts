@@ -369,19 +369,27 @@ class USSDService {
       const allConditions: any[] = [];
       
       // Add MedicalRecord conditions (including OpenMRS synced)
+      // FILTER OUT test results - only show actual diagnoses
       medicalRecordConditions.forEach((record: any) => {
         const data = record.data || {};
-        allConditions.push({
-          condition: data.diagnosis || data.name || data.condition || 'Unknown',
-          status: data.status || 'active',
-          diagnosedDate: data.diagnosed || data.diagnosedDate || data.date || record.createdAt,
-          diagnosedBy: data.diagnosedBy || data.doctor || 'Unknown',
-          notes: data.notes || data.details || '',
-          hospital: data.hospital || '',
-          isFromOpenMRS: !!record.openmrsData,
-          source: record.openmrsData ? 'OpenMRS' : 'Manual Entry',
-          medications: data.medications || []
-        });
+        const conditionName = data.diagnosis || data.name || data.condition || 'Unknown';
+        
+        // Skip if this is a test result, not a diagnosis
+        const isTestResult = /\b(test|rapid test|lab|laboratory|screening|examination|x-ray|ultrasound|scan|blood work)\b/i.test(conditionName);
+        
+        if (!isTestResult) {
+          allConditions.push({
+            condition: conditionName,
+            status: data.status || 'active',
+            diagnosedDate: data.diagnosed || data.diagnosedDate || data.date || record.createdAt,
+            diagnosedBy: data.diagnosedBy || data.doctor || 'Unknown',
+            notes: data.notes || data.details || '',
+            hospital: data.hospital || '',
+            isFromOpenMRS: !!record.openmrsData,
+            source: record.openmrsData ? 'OpenMRS' : 'Manual Entry',
+            medications: data.medications || []
+          });
+        }
       });
       
       // Add legacy conditions (filter out OpenMRS duplicates)
@@ -430,14 +438,26 @@ class USSDService {
         let msg = `CON MEDICAL HISTORY (${allConditions.length})\n`;
         allConditions.slice(0, 5).forEach((cond: any, i: number) => {
           const status = cond.status || 'active';
-          const source = cond.isFromOpenMRS ? '📡' : '';
+          const source = cond.isFromOpenMRS ? '*' : '';
           msg += `${i + 1}. ${source}${cond.condition} [${status}]\n`;
+          
+          // Show medications under the condition
+          if (cond.medications && cond.medications.length > 0) {
+            cond.medications.slice(0, 2).forEach((med: any) => {
+              msg += `   - ${med.name || 'N/A'}`;
+              if (med.dosage) msg += ` (${med.dosage})`;
+              msg += '\n';
+            });
+            if (cond.medications.length > 2) {
+              msg += `   (${cond.medications.length - 2} more meds)\n`;
+            }
+          }
         });
         
         if (allConditions.length > 5) {
           msg += `\nShowing 5 of ${allConditions.length}`;
         }
-        msg += '\n📡=OpenMRS synced';
+        msg += '\n*=OpenMRS synced';
         msg += '\n0. Back to Main Menu';
         
         return msg;
@@ -445,14 +465,26 @@ class USSDService {
         let msg = `CON AMATEKA Y'UBUZIMA (${allConditions.length})\n`;
         allConditions.slice(0, 5).forEach((cond: any, i: number) => {
           const status = cond.status || 'active';
-          const source = cond.isFromOpenMRS ? '📡' : '';
+          const source = cond.isFromOpenMRS ? '*' : '';
           msg += `${i + 1}. ${source}${cond.condition} [${status}]\n`;
+          
+          // Show medications under the condition
+          if (cond.medications && cond.medications.length > 0) {
+            cond.medications.slice(0, 2).forEach((med: any) => {
+              msg += `   - ${med.name || 'N/A'}`;
+              if (med.dosage) msg += ` (${med.dosage})`;
+              msg += '\n';
+            });
+            if (cond.medications.length > 2) {
+              msg += `   (${cond.medications.length - 2} andi)\n`;
+            }
+          }
         });
         
         if (allConditions.length > 5) {
           msg += `\nBigaragaza 5 muri ${allConditions.length}`;
         }
-        msg += '\n📡=Yakuwe kuri OpenMRS';
+        msg += '\n*=Yakuwe kuri OpenMRS';
         msg += '\n0. Subira ku menu y\'ibanze';
         
         return msg;
