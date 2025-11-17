@@ -359,45 +359,21 @@ const PatientPassport: React.FC = () => {
     }
   });
 
-  const medications: Medication[] = (medicalData.medications || []).map((record: unknown, index: number) => {
-    try {
-      console.log(`Processing medication ${index}:`, record);
-      
-      // Handle different possible data structures
-      let medicationData: any = {};
-      
-      if (record && typeof record === 'object') {
-        const r = record as any;
-        // Check if it has a 'data' property (new format)
-        if (r.data && typeof r.data === 'object') {
-          medicationData = r.data;
-        }
-        // Check if it has direct properties (old format)
-        else if (r.name || r.medicationName) {
-          medicationData = {
-            medicationName: r.name || r.medicationName || '',
-            dosage: r.dosage || '',
-            status: r.status || 'Active'
-          };
-        }
-        // Fallback to direct mapping
-        else {
-          medicationData = r;
-        }
+  // FIXED: Extract medications from embedded arrays in conditions
+  const medications: Medication[] = [];
+  (medicalData.conditions || []).forEach((record: unknown) => {
+    if (record && typeof record === 'object') {
+      const r = record as any;
+      const condData = r.data || r;
+      if (condData.medications && Array.isArray(condData.medications)) {
+        condData.medications.forEach((med: any) => {
+          medications.push({
+            name: med.name || med.medicationName || '',
+            dosage: med.dosage || '',
+            status: (med.medicationStatus || med.status || 'Active') as "Active" | "Past"
+          });
+        });
       }
-      
-      return {
-        name: medicationData.medicationName || medicationData.name || '',
-        dosage: medicationData.dosage || '',
-        status: (medicationData.status || 'Active') as "Active" | "Past"
-      };
-    } catch (error) {
-      console.error(`Error processing medication ${index}:`, error, record);
-      return {
-        name: '',
-        dosage: '',
-        status: 'Active' as "Active" | "Past"
-      };
     }
   });
 
@@ -548,8 +524,23 @@ const PatientPassport: React.FC = () => {
     // Get raw data from medicalData for better compatibility
     const rawVisits = medicalData.visits || hospitalVisits || [];
     const rawConditions = medicalData.conditions || medicalHistory || [];
-    const rawMedications = medicalData.medications || medications || [];
     const rawTests = medicalData.tests || testResults || [];
+    
+    // FIXED: Extract medications from conditions (they are embedded in data.medications)
+    const rawMedications: any[] = [];
+    rawConditions.forEach((c: any) => {
+      const condData = c.data || c;
+      if (condData.medications && Array.isArray(condData.medications)) {
+        condData.medications.forEach((med: any) => {
+          rawMedications.push({
+            ...med,
+            // Preserve parent condition info for date matching
+            conditionId: c._id,
+            conditionDate: condData.diagnosedDate || condData.diagnosed || condData.date
+          });
+        });
+      }
+    });
     
     console.log('🔍 getConsolidatedMedicalHistory - Raw data counts:', {
       visits: rawVisits.length,
@@ -589,7 +580,6 @@ const PatientPassport: React.FC = () => {
         data: condData
       };
     });
-    const meds = rawMedications;
     const tests = rawTests;
 
     // Create consolidated records from hospital visits
@@ -604,17 +594,6 @@ const PatientPassport: React.FC = () => {
         const condDate = c.diagnosed || c.diagnosedDate;
         if (!condDate) return false;
         return datesMatch(condDate, visitDate);
-      });
-      
-      // Find related medications (prescribed around visit date)
-      const relatedMedications = meds.filter((m: any) => {
-        const medData = m.data || m;
-        const startDate = medData.startDate;
-        if (!startDate) return false;
-        const medDate = typeof startDate === 'string' ? new Date(startDate) : startDate;
-        const visit = typeof visitDate === 'string' ? new Date(visitDate) : visitDate;
-        const daysDiff = Math.abs((medDate.getTime() - visit.getTime()) / (1000 * 60 * 60 * 24));
-        return daysDiff <= 7;
       });
 
       // Find related tests (tested on the same date or within 3 days)
@@ -646,23 +625,31 @@ const PatientPassport: React.FC = () => {
                        relatedConditions.map((c: any) => c.name).join(', ') || 
                        'No diagnosis recorded';
 
+      // FIXED: Extract embedded medications from related conditions (NO DUPLICATION)
+      const visitMedications: any[] = [];
+      relatedConditions.forEach((cond: any) => {
+        const condData = cond.data || cond;
+        if (condData.medications && Array.isArray(condData.medications)) {
+          condData.medications.forEach((med: any) => {
+            visitMedications.push({
+              name: med.name || med.medicationName || '',
+              dosage: med.dosage || '',
+              frequency: med.frequency || '',
+              startDate: med.startDate,
+              endDate: med.endDate,
+              prescribedBy: med.prescribedBy || doctorName
+            });
+          });
+        }
+      });
+
       records.push({
         id: visit._id || visit.id || `visit-${index}`,
         date: visitDate,
         diagnosis: diagnosis,
         // carry through openmrs metadata if present on visit
         openmrsData: visitData.openmrsData || visit.openmrsData || visit.data?.openmrsData,
-        medications: relatedMedications.map((m: any) => {
-          const medData = m.data || m;
-          return {
-            name: medData.medicationName || medData.name || '',
-            dosage: medData.dosage || '',
-            frequency: medData.frequency || '',
-            startDate: medData.startDate,
-            endDate: medData.endDate,
-            prescribedBy: getName(medData.prescribedBy)
-          };
-        }),
+        medications: visitMedications,
         testResults: relatedTests.map((t: any) => {
           const testData = t.data || t;
           return {
@@ -693,13 +680,9 @@ const PatientPassport: React.FC = () => {
       });
 
       if (!hasVisit) {
-        // Find medications and tests around this condition date
-        const relatedMedications = meds.filter((m: any) => {
-          const medData = m.data || m;
-          const startDate = medData.startDate;
-          if (!startDate) return false;
-          return datesMatch(startDate, conditionDate);
-        });
+        // FIXED: Get medications directly from condition's embedded data
+        const condData = condition.data || condition;
+        const embeddedMedications = condData.medications || [];
 
         const relatedTests = tests.filter((t: any) => {
           const testData = t.data || t;
@@ -709,7 +692,6 @@ const PatientPassport: React.FC = () => {
         });
 
         // ENHANCED: Extract doctor and hospital from multiple sources (data object, openmrsData, direct properties)
-        const condData = condition.data || condition;
         const hospitalName = condData.hospital || 
                            condition.hospital?.name || 
                            condition.hospital || 
@@ -723,23 +705,23 @@ const PatientPassport: React.FC = () => {
                           condition.openmrsData?.creatorName ||
                           'Unknown Doctor';
 
+        // FIXED: Only use embedded medications (no duplication)
+        const allMedications = embeddedMedications.map((med: any) => ({
+          name: med.name || med.medicationName || '',
+          dosage: med.dosage || '',
+          frequency: med.frequency || '',
+          startDate: med.startDate,
+          endDate: med.endDate,
+          prescribedBy: med.prescribedBy || doctorName
+        }));
+
         records.push({
           id: condition._id || `condition-${index}`,
           date: conditionDate,
           diagnosis: condition.name || 'No diagnosis',
           // preserve OpenMRS metadata if present on the condition
           openmrsData: condition.openmrsData,
-          medications: relatedMedications.map((m: any) => {
-            const medData = m.data || m;
-            return {
-              name: medData.medicationName || medData.name || '',
-              dosage: medData.dosage || '',
-              frequency: medData.frequency || '',
-              startDate: medData.startDate,
-              endDate: medData.endDate,
-              prescribedBy: getName(medData.prescribedBy)
-            };
-          }),
+          medications: allMedications,
           testResults: relatedTests.map((t: any) => {
             const testData = t.data || t;
             return {

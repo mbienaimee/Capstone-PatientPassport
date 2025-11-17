@@ -75,6 +75,7 @@ const doctorSchema = new Schema<IDoctor>({
 });
 
 // Indexes (removed duplicates - user and licenseNumber already have unique: true)
+doctorSchema.index({ user: 1 }); // For fast lookups by user ID in /me endpoint
 doctorSchema.index({ hospital: 1 });
 doctorSchema.index({ specialization: 1 });
 doctorSchema.index({ isActive: 1 });

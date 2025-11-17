@@ -179,6 +179,7 @@ class DirectDBSyncService {
 
       let successCount = 0;
       let errorCount = 0;
+      let skippedCount = 0;
 
       // OPTIMIZED: Process observations in parallel batches for better performance
       const batchSize = 10; // Process 10 observations in parallel
@@ -220,6 +221,19 @@ class DirectDBSyncService {
                                  (obs.value_numeric !== null ? String(obs.value_numeric) : '') ||
                                  obs.value_coded_name ||
                                  '';
+
+            // FILTER OUT test results, measurements, vitals, and encounter notes - only sync actual diagnoses
+            const isTestOrMeasurement = /\b(test|rapid test|lab|laboratory|screening|examination|x-ray|ultrasound|scan|blood work|serum|arterial|oxygen|saturation|pulse|weight|height|temperature|blood pressure|heart rate|bmi|vitals|encounter note|text of|note|observation|measurement)\b/i.test(conceptName);
+            
+            // Skip this observation if it's not a real diagnosis
+            if (isTestOrMeasurement) {
+              console.log(`   ⏭️  Skipped (not a diagnosis): ${conceptName}`);
+              const obsId = obs.obs_id;
+              if (obsId > this.lastSyncId) {
+                this.lastSyncId = obsId;
+              }
+              return { success: true, obsId, conceptName: `[Skipped] ${conceptName}`, patientName, providerName, locationName, skipped: true };
+            }
 
             // Check if it's a diagnosis or medication based on concept name
             const isDiagnosis = conceptName.toLowerCase().includes('diagnosis') || 
@@ -291,7 +305,12 @@ class DirectDBSyncService {
         // Process results
         for (const result of results) {
           if (result.success) {
-          successCount++;
+            if ((result as any).skipped) {
+              skippedCount++;
+              // Don't count skipped as successful syncs
+              continue;
+            }
+            successCount++;
             // Only log first few to reduce console noise
             if (successCount <= 5) {
               console.log(`   ✓ Synced: ${result.conceptName} for patient ${result.patientName} (ID: ${result.obsId})`);
@@ -305,7 +324,7 @@ class DirectDBSyncService {
       }
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`\n📊 DB Sync complete: ${successCount} successful, ${errorCount} errors (${duration}s)`);
+      console.log(`\n📊 DB Sync complete: ${successCount} successful, ${skippedCount} skipped, ${errorCount} errors (${duration}s)`);
       console.log(`   Last synced observation ID: ${this.lastSyncId}`);
     } catch (error: any) {
       console.error('❌ Error during direct DB sync:', error.message);

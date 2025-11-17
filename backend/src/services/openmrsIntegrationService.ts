@@ -1,8 +1,7 @@
 import Patient from '@/models/Patient';
 import Hospital from '@/models/Hospital';
 import Doctor from '@/models/Doctor';
-import MedicalCondition from '@/models/MedicalCondition';
-import Medication from '@/models/Medication';
+// Legacy models removed - using only MedicalRecord as single source of truth
 import MedicalRecord from '@/models/MedicalRecord';
 import mongoose from 'mongoose';
 import { CustomError } from '@/middleware/errorHandler';
@@ -609,24 +608,44 @@ export const storeOpenMRSObservation = async (
         }
       }
       
+      // Build observation notes from value and comment (actual clinical data)
+      let observationNotes = '';
+      if (observationData.value && typeof observationData.value === 'string') {
+        observationNotes = observationData.value.trim();
+      }
+      if (observationData.comment && typeof observationData.comment === 'string') {
+        observationNotes += (observationNotes ? ' - ' : '') + observationData.comment.trim();
+      }
+      if (observationData.details && typeof observationData.details === 'string' && !observationNotes) {
+        observationNotes = observationData.details.trim();
+      }
+      
       // Parse diagnosis date safely
       const diagnosisDate = parseSafeDate(observationData, OPENMRS_CONFIG.DATE_FIELD_NAMES);
+      
+      // **CRITICAL: Check for duplicate observation by obsId to prevent duplicates**
+      const obsId = observationData.obs_id || observationData.obsId;
+      if (obsId) {
+        const existingRecord = await MedicalRecord.findOne({
+          patientId: patient._id,
+          'openmrsData.obsId': obsId
+        });
+        
+        if (existingRecord) {
+          console.log(`⏭️  Observation already exists (obsId: ${obsId}), skipping duplicate`);
+          console.log(`   - Existing Record ID: ${existingRecord._id}`);
+          console.log(`   - Created at: ${existingRecord.createdAt}`);
+          return { medicalRecord: existingRecord, duplicate: true };
+        }
+      }
       
       console.log(`   📋 Creating diagnosis: ${diagnosisName}`);
       console.log(`   📝 Details: ${diagnosisDetails}`);
       console.log(`   📅 Date: ${diagnosisDate.toISOString()}`);
       
-      // Create medical condition (old format - for compatibility)
-      const condition = await MedicalCondition.create({
-        patient: patient._id,
-        doctor: doctor._id,
-        name: diagnosisName,
-        details: diagnosisDetails,
-        diagnosed: diagnosisDate,
-        status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS,
-        notes: `Added from OpenMRS - Hospital: ${hospitalName}`
-      });
-
+      // REMOVED: Legacy MedicalCondition creation to prevent duplicates
+      // We now use ONLY MedicalRecord as the single source of truth
+      
       // Get doctor name - use doctorLicenseNumber if it's a name (e.g., "Jake Doctor"), otherwise get from User
       let doctorDisplayName = doctorLicenseNumber;
       if (doctor.user) {
@@ -669,7 +688,7 @@ export const storeOpenMRSObservation = async (
           hospital: hospitalName, // Use hospitalName parameter (e.g., "Site 1")
           doctor: doctorDisplayName, // Use actual provider name (e.g., "Jake Doctor")
           diagnosedBy: doctorDisplayName,
-          notes: `Added from OpenMRS - Hospital: ${hospitalName}`,
+          notes: observationNotes || diagnosisDetails || `Observation from OpenMRS`,
           status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS
         },
         createdBy: doctor._id.toString(),
@@ -689,19 +708,15 @@ export const storeOpenMRSObservation = async (
         }
       });
 
-      // Add to patient's medical history
-      if (!patient.medicalHistory.includes(condition._id)) {
-        patient.medicalHistory.push(condition._id);
-        await patient.save();
-      }
+      // REMOVED: Legacy patient.medicalHistory update (no longer needed)
+      // MedicalRecord is now the single source of truth
 
       console.log(`✅ Diagnosis stored successfully!`);
-      console.log(`   - Condition ID: ${condition._id}`);
       console.log(`   - MedicalRecord ID: ${medicalRecord._id}`);
       console.log(`   - Patient: ${patientName}`);
       console.log(`   - Hospital: ${hospitalName}`);
       console.log(`   - Doctor: ${doctorLicenseNumber}`);
-      return { condition, medicalRecord };
+      return { medicalRecord };
       
     } else if (observationType === 'medication') {
       // Extract medication information using flexible field mapping
@@ -723,26 +738,43 @@ export const storeOpenMRSObservation = async (
         medicationDosage = observationData.value.trim();
       }
       
+      // Build medication notes from value, comment, and details (actual clinical data)
+      let medicationNotes = '';
+      if (observationData.comment && typeof observationData.comment === 'string') {
+        medicationNotes = observationData.comment.trim();
+      }
+      if (observationData.details && typeof observationData.details === 'string' && !medicationNotes) {
+        medicationNotes = observationData.details.trim();
+      }
+      if (!medicationNotes && medicationDosage) {
+        medicationNotes = `Dosage: ${medicationDosage}`;
+      }
+      
       // Parse medication start date safely
       const startDate = parseSafeDate(observationData, OPENMRS_CONFIG.DATE_FIELD_NAMES);
+      
+      // **CRITICAL: Check for duplicate observation by obsId to prevent duplicates**
+      const obsId = observationData.obs_id || observationData.obsId;
+      if (obsId) {
+        const existingRecord = await MedicalRecord.findOne({
+          patientId: patient._id,
+          'openmrsData.obsId': obsId
+        });
+        
+        if (existingRecord) {
+          console.log(`⏭️  Medication already exists (obsId: ${obsId}), skipping duplicate`);
+          console.log(`   - Existing Record ID: ${existingRecord._id}`);
+          console.log(`   - Created at: ${existingRecord.createdAt}`);
+          return { medicalRecord: existingRecord, duplicate: true };
+        }
+      }
       
       console.log(`   💊 Creating medication: ${medicationName}`);
       console.log(`   📝 Dosage: ${medicationDosage}`);
       console.log(`   📅 Start Date: ${startDate.toISOString()}`);
       
-      // Create medication (old format - for compatibility)
-      const medication = await Medication.create({
-        patient: patient._id,
-        doctor: doctor._id,
-        hospital: hospital._id,
-        name: medicationName,
-        dosage: medicationDosage,
-        frequency: observationData.frequency || OPENMRS_CONFIG.DEFAULT_MEDICATION_FREQUENCY,
-        startDate: startDate,
-        endDate: observationData.endDate,
-        status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS,
-        notes: `Added from OpenMRS - Hospital: ${hospitalName}`
-      });
+      // REMOVED: Legacy Medication creation to prevent duplicates
+      // We now use ONLY MedicalRecord as the single source of truth
 
       // Get doctor name - use doctorLicenseNumber if it's a name (e.g., "Jake Doctor"), otherwise get from User
       let doctorDisplayName = doctorLicenseNumber;
@@ -787,7 +819,7 @@ export const storeOpenMRSObservation = async (
           hospital: hospitalName, // Use hospitalName parameter (e.g., "Site 1")
           doctor: doctorDisplayName, // Use actual provider name (e.g., "Jake Doctor")
           prescribedBy: doctorDisplayName,
-          notes: `Added from OpenMRS - Hospital: ${hospitalName}`,
+          notes: medicationNotes || `Prescribed from OpenMRS`,
           medicationStatus: 'Active', // Initially active (will be updated based on time)
           status: observationData.status || OPENMRS_CONFIG.DEFAULT_OBSERVATION_STATUS
         },
@@ -808,19 +840,15 @@ export const storeOpenMRSObservation = async (
         }
       });
 
-      // Add to patient's medications
-      if (!patient.medications.includes(medication._id)) {
-        patient.medications.push(medication._id);
-        await patient.save();
-      }
+      // REMOVED: Legacy patient.medications update (no longer needed)
+      // MedicalRecord is now the single source of truth
 
       console.log(`✅ Medication stored successfully!`);
-      console.log(`   - Medication ID: ${medication._id}`);
       console.log(`   - MedicalRecord ID: ${medicalRecord._id}`);
       console.log(`   - Patient: ${patientName}`);
       console.log(`   - Hospital: ${hospitalName}`);
       console.log(`   - Doctor: ${doctorLicenseNumber}`);
-      return { medication, medicalRecord };
+      return { medicalRecord };
     }
     
     throw new CustomError(`Invalid observation type: ${observationType}`, 400);

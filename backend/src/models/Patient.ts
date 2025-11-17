@@ -135,6 +135,7 @@ const patientSchema = new Schema({
 // Indexes (removed duplicates - nationalId and user already have unique: true)
 patientSchema.index({ status: 1 });
 patientSchema.index({ assignedDoctors: 1 });
+patientSchema.index({ user: 1 }); // For fast lookups by user ID in /me endpoint
 
 // Virtual for age
 patientSchema.virtual('age').get(function() {

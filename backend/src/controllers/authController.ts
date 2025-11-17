@@ -456,21 +456,23 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user;
 
-  // Get role-specific profile with complete data
+  // Get role-specific profile with optimized queries (only essential fields)
   let profile = null;
   
   if (user.role === 'patient') {
+    // Optimized: Don't populate large arrays, just get basic patient info
     profile = await Patient.findOne({ user: user._id })
-      .populate('medicalHistory')
-      .populate('medications')
-      .populate('testResults')
-      .populate('hospitalVisits')
+      .select('nationalId dateOfBirth bloodType allergies emergencyContact assignedDoctors')
       .populate('assignedDoctors', 'specialization')
-      .populate('assignedDoctors.user', 'name email');
+      .populate('assignedDoctors.user', 'name email')
+      .lean(); // Use lean() for faster queries
   } else if (user.role === 'doctor') {
-    profile = await Doctor.findOne({ user: user._id }).populate('hospital');
+    profile = await Doctor.findOne({ user: user._id })
+      .populate('hospital', 'name location')
+      .lean();
   } else if (user.role === 'hospital') {
-    profile = await Hospital.findOne({ user: user._id });
+    profile = await Hospital.findOne({ user: user._id })
+      .lean();
   }
 
   const response: ApiResponse = {

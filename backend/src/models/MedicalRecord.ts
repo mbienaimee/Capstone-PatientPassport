@@ -183,9 +183,12 @@ const medicalRecordSchema = new Schema<IMedicalRecord>({
   timestamps: true
 });
 
-// Indexes
+// Indexes for performance optimization
 medicalRecordSchema.index({ patientId: 1, type: 1 });
+medicalRecordSchema.index({ patientId: 1, createdAt: -1 }); // For sorted queries
 medicalRecordSchema.index({ createdBy: 1 });
+medicalRecordSchema.index({ syncDate: -1 }); // For time-based queries
+medicalRecordSchema.index({ 'openmrsData.obsId': 1 }, { sparse: true }); // For sync lookups
 
 export default mongoose.model<IMedicalRecord>('MedicalRecord', medicalRecordSchema);
 

@@ -11,6 +11,10 @@ const PORT = process.env['PORT'] || 5000;
 // Accept either MONGODB_URI or MONGO_URI for compatibility
 const MONGODB_URI = process.env['MONGODB_URI'] || process.env['MONGO_URI'] || 'mongodb://localhost:27017/patient-passport';
 
+// Force DNS resolution to use IPv4 and set DNS lookup options
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 // Connect to MongoDB with optimizations and retry logic
 const connectDB = async (maxRetries = 3, baseDelayMs = 2000) => {
   let attempt = 0;
@@ -19,12 +23,17 @@ const connectDB = async (maxRetries = 3, baseDelayMs = 2000) => {
       attempt++;
       const conn = await mongoose.connect(MONGODB_URI, {
         maxPoolSize: 10,
-        serverSelectionTimeoutMS: 30000, // Increased from 5s to 30s for Atlas
-        socketTimeoutMS: 45000,
-        connectTimeoutMS: 30000, // Increased from 10s to 30s
+        serverSelectionTimeoutMS: 60000, // Increased to 60s for slow networks
+        socketTimeoutMS: 75000,
+        connectTimeoutMS: 60000, // Increased to 60s for DNS resolution issues
         heartbeatFrequencyMS: 10000,
         compressors: ['zlib'],
-        readPreference: 'primary'
+        readPreference: 'primary',
+        family: 4, // Force IPv4
+        directConnection: false,
+        retryWrites: true,
+        retryReads: true,
+        w: 'majority'
       });
       console.log(`MongoDB Connected: ${conn.connection.host}`);
       return true;
