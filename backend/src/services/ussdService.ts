@@ -369,15 +369,21 @@ class USSDService {
       const allConditions: any[] = [];
       
       // Add MedicalRecord conditions (including OpenMRS synced)
-      // FILTER OUT test results - only show actual diagnoses
+      // FILTER OUT test results, measurements, vitals, and notes - only show actual diagnoses
       medicalRecordConditions.forEach((record: any) => {
         const data = record.data || {};
-        const conditionName = data.diagnosis || data.name || data.condition || 'Unknown';
+        const conditionName = (data.diagnosis || data.name || data.condition || '').trim();
         
-        // Skip if this is a test result, not a diagnosis
-        const isTestResult = /\b(test|rapid test|lab|laboratory|screening|examination|x-ray|ultrasound|scan|blood work)\b/i.test(conditionName);
+        // Skip empty or invalid names
+        if (!conditionName || conditionName === 'Unknown') {
+          return;
+        }
         
-        if (!isTestResult) {
+        // Skip if this is NOT a medical diagnosis (filter out tests, measurements, vitals, notes)
+        const isNotDiagnosis = /\b(test|rapid test|lab|laboratory|screening|examination|x-ray|ultrasound|scan|blood work|serum|arterial|oxygen|saturation|pulse|weight|height|temperature|blood pressure|heart rate|bmi|vitals|encounter note|text of|note|observation|measurement)\b/i.test(conditionName);
+        
+        // Only include actual medical diagnoses
+        if (!isNotDiagnosis) {
           allConditions.push({
             condition: conditionName,
             status: data.status || 'active',
@@ -387,7 +393,8 @@ class USSDService {
             hospital: data.hospital || '',
             isFromOpenMRS: !!record.openmrsData,
             source: record.openmrsData ? 'OpenMRS' : 'Manual Entry',
-            medications: data.medications || []
+            medications: Array.isArray(data.medications) ? data.medications : [],
+            createdAt: record.createdAt // Keep original timestamp for sorting
           });
         }
       });
@@ -410,11 +417,11 @@ class USSDService {
         }
       });
       
-      // Sort by date (most recent first)
+      // Sort by date (most recent first) - use createdAt for accurate sorting
       allConditions.sort((a, b) => {
-        const dateA = new Date(a.diagnosedDate || 0).getTime();
-        const dateB = new Date(b.diagnosedDate || 0).getTime();
-        return dateB - dateA;
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.diagnosedDate || 0).getTime();
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.diagnosedDate || 0).getTime();
+        return dateB - dateA; // Most recent first
       });
       
       console.log(`   Total conditions after merge: ${allConditions.length}`);
