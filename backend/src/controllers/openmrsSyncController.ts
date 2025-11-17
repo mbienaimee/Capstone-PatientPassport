@@ -125,17 +125,21 @@ export const stopAutoSync = asyncHandler(async (req: Request, res: Response, nex
  * @desc    Trigger manual sync for all hospitals
  * @route   POST /api/openmrs-sync/sync-all
  * @access  Admin only
+ * @query   fullHistory=true - Sync ALL historical observations (default: true)
  */
 export const syncAllHospitals = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  console.log('🔄 Triggering manual sync for all hospitals...');
+  // Check if full history sync is requested (default: true)
+  const fullHistory = req.query.fullHistory !== 'false'; // Default to true unless explicitly set to false
+  
+  console.log(`🔄 Triggering manual sync for all hospitals... (Full History: ${fullHistory})`);
 
   // Run sync in background
-  openmrsSyncService.syncAllHospitals().catch(error => {
+  openmrsSyncService.syncAllHospitals(fullHistory).catch(error => {
     console.error('Error during manual sync:', error);
   });
 
   await AuditLog.create({
-    action: 'openmrs_manual_sync_all',
+    action: fullHistory ? 'openmrs_manual_sync_all_full' : 'openmrs_manual_sync_all_incremental',
     performedBy: req.user?.userId || 'System',
     targetModel: 'System',
     ipAddress: req.ip,
@@ -144,9 +148,10 @@ export const syncAllHospitals = asyncHandler(async (req: Request, res: Response,
 
   const response: ApiResponse = {
     success: true,
-    message: 'Manual sync triggered for all hospitals (running in background)',
+    message: `Manual sync triggered for all hospitals (${fullHistory ? 'FULL HISTORY' : 'INCREMENTAL'} - running in background)`,
     data: {
-      status: 'triggered'
+      status: 'triggered',
+      mode: fullHistory ? 'full_history' : 'incremental'
     }
   };
 

@@ -10,6 +10,15 @@
  * - Real-time observation sync
  * - Automatic patient matching
  * - No manual doctor entry required
+ * 
+ * SYNC MODES:
+ * - FULL HISTORY (default): Syncs ALL past observations from OpenMRS (no time limit)
+ * - INCREMENTAL: Only syncs observations since last sync timestamp
+ * 
+ * USAGE:
+ * - Automatic sync on startup: Syncs ALL history by default
+ * - Manual trigger via API: POST /api/openmrs-sync/sync-all?fullHistory=true (default)
+ * - Incremental sync: POST /api/openmrs-sync/sync-all?fullHistory=false
  */
 
 import mysql from 'mysql2/promise';
@@ -29,6 +38,7 @@ interface OpenMRSConnection {
   database: string;
   user: string;
   password: string;
+  enabled?: boolean;
 }
 
 // OpenMRS Observation Structure
@@ -61,6 +71,7 @@ interface ProcessedObservation {
 
 class OpenMRSSyncService {
   private connections: Map<string, mysql.Pool> = new Map();
+  private hospitalConfigs: Map<string, OpenMRSConnection> = new Map();
   private syncInterval: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
 
@@ -88,6 +99,7 @@ class OpenMRSSyncService {
         // Test connection
         await pool.query('SELECT 1');
         this.connections.set(hospital.hospitalId, pool);
+        this.hospitalConfigs.set(hospital.hospitalId, hospital);
         
         console.log(`✅ Connected to ${hospital.hospitalName} OpenMRS database`);
       } catch (error) {
@@ -134,17 +146,18 @@ class OpenMRSSyncService {
 
   /**
    * Sync observations from all hospitals
+   * @param syncAllHistory - If true, syncs ALL observations regardless of last sync time (default: true)
    */
-  async syncAllHospitals(): Promise<void> {
+  async syncAllHospitals(syncAllHistory: boolean = true): Promise<void> {
     console.log('\n🔄 ═══════════════════════════════════════════════════════');
-    console.log('🔄 Starting Multi-Hospital Observation Sync');
+    console.log(`🔄 Starting Multi-Hospital Observation Sync ${syncAllHistory ? '(FULL HISTORY)' : '(INCREMENTAL)'}`);
     console.log('🔄 ═══════════════════════════════════════════════════════\n');
 
     const syncResults: any[] = [];
 
     for (const [hospitalId, connection] of this.connections.entries()) {
       try {
-        const result = await this.syncHospital(hospitalId, connection);
+        const result = await this.syncHospital(hospitalId, connection, syncAllHistory);
         syncResults.push(result);
       } catch (error) {
         console.error(`❌ Error syncing hospital ${hospitalId}:`, error);
@@ -161,22 +174,26 @@ class OpenMRSSyncService {
   }
 
   /**
-   * Sync observations from a single hospital
+   * Sync a single hospital's observations
+   * @param syncAllHistory - If true, syncs ALL observations regardless of last sync time
    */
-  private async syncHospital(hospitalId: string, connection: mysql.Pool): Promise<any> {
-    console.log(`\n🏥 Syncing hospital: ${hospitalId}`);
-
-    // Get hospital from Patient Passport database
-    const hospital = await Hospital.findById(hospitalId);
+  private async syncHospital(
+    hospitalId: string,
+    connection: mysql.Pool,
+    syncAllHistory: boolean = true
+  ): Promise<any> {
+    const hospital = this.hospitalConfigs.get(hospitalId);
     if (!hospital) {
-      throw new Error(`Hospital ${hospitalId} not found in Patient Passport database`);
+      throw new Error(`Hospital config not found: ${hospitalId}`);
     }
 
-    // Get last sync timestamp for this hospital
-    const lastSyncTime = await this.getLastSyncTimestamp(hospitalId);
-    console.log(`   Last sync: ${lastSyncTime || 'Never'}`);
+    console.log(`📍 Syncing: ${hospital.hospitalName}`);
 
-    // Query new/updated observations
+    // Get last sync timestamp for this hospital (ignored if syncAllHistory is true)
+    const lastSyncTime = syncAllHistory ? null : await this.getLastSyncTimestamp(hospitalId);
+    console.log(`   Sync mode: ${syncAllHistory ? 'ALL HISTORY' : `Since ${lastSyncTime || 'Never'}`}`);
+
+    // Query observations (all history or since last sync)
     const observations = await this.fetchObservationsFromOpenMRS(
       connection,
       lastSyncTime
@@ -205,7 +222,7 @@ class OpenMRSSyncService {
 
     return {
       hospitalId,
-      hospitalName: hospital.name,
+      hospitalName: hospital.hospitalName,
       syncedCount,
       errorCount,
       timestamp: new Date()
@@ -214,8 +231,9 @@ class OpenMRSSyncService {
 
   /**
    * Fetch observations from OpenMRS database
-   * Strategy: Fetch observations from multiple patients (not just one patient's old data)
+   * Strategy: Fetch ALL observations from all patients (complete historical data)
    * ENHANCED: Order by date_created DESC to get most recent observations first
+   * NOTE: When since is null, fetches ALL historical observations (no time limit)
    */
   private async fetchObservationsFromOpenMRS(
     connection: mysql.Pool,
@@ -225,7 +243,8 @@ class OpenMRSSyncService {
       ? `AND o.date_created > ?`
       : '';
 
-    // Modified query to get observations from ALL patients more evenly
+    // Modified query to get observations from ALL patients
+    // When since is null, fetches complete historical data
     // ORDER BY date_created DESC to get most recent observations first
     const query = `
       SELECT 
@@ -246,7 +265,7 @@ class OpenMRSSyncService {
       WHERE o.voided = 0
         ${sinceClause}
       ORDER BY o.date_created DESC, o.obs_id DESC
-      LIMIT 5000
+      LIMIT 10000
     `;
 
     const params = since ? [since] : [];
