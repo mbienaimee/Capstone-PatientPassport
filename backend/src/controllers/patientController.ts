@@ -706,7 +706,7 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
         console.log(`   🔍 User id (virtual): ${user.id}`);
       }
 
-      // Transform MedicalRecord data - ENHANCED: Include doctor and hospital fields + edit access
+      // Transform MedicalRecord data - UNIFIED: Conditions include medications, doctor, and hospital as one object
       const medicalRecordConditions = medicalRecords
         .filter(record => record.type === 'condition')
         .map(record => {
@@ -717,14 +717,48 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
           // Get edit access information (pass User ID, not Doctor ID)
           const editInfo = getObservationEditInfo(record, doctorUserId);
           
+          // Prepare medications array - include both embedded and associated medications
+          let medications = [];
+          
+          // Add medications from condition's data.medications array
+          if (record.data.medications && Array.isArray(record.data.medications) && record.data.medications.length > 0) {
+            medications = record.data.medications.map(med => ({
+              name: med.name || '',
+              dosage: med.dosage || '',
+              frequency: med.frequency || '',
+              startDate: med.startDate || '',
+              endDate: med.endDate || '',
+              prescribedBy: med.prescribedBy || doctorValue,
+              medicationStatus: med.medicationStatus || 'Active',
+              doctor: doctorValue,
+              hospital: hospitalValue
+            }));
+          }
+          // Add single medication if exists (for backward compatibility)
+          else if (record.data.medicationName) {
+            medications = [{
+              name: record.data.medicationName,
+              dosage: record.data.dosage || '',
+              frequency: record.data.frequency || '',
+              startDate: record.data.startDate || '',
+              endDate: record.data.endDate || '',
+              prescribedBy: record.data.prescribedBy || doctorValue,
+              medicationStatus: record.data.medicationStatus || 'Active',
+              doctor: doctorValue,
+              hospital: hospitalValue
+            }];
+          }
+          
           console.log(`   📋 Condition Record ${record._id}:`);
-          console.log(`      - data.doctor: ${record.data.doctor || 'NOT SET'}`);
-          console.log(`      - data.hospital: ${record.data.hospital || 'NOT SET'}`);
-          console.log(`      - medications array: ${record.data.medications ? `${record.data.medications.length} medication(s)` : 'NOT SET'}`);
+          console.log(`      - Diagnosis: ${record.data.name || 'NOT SET'}`);
+          console.log(`      - Doctor: ${doctorValue}`);
+          console.log(`      - Hospital: ${hospitalValue}`);
+          console.log(`      - Medications: ${medications.length} medication(s)`);
           console.log(`      - Edit access: ${editInfo.canEdit ? 'YES' : 'NO'} (${editInfo.reason})`);
           
           return {
             _id: record._id,
+            type: 'condition',
             data: {
               name: record.data.name || '',
               diagnosis: record.data.diagnosis || record.data.name || '',
@@ -734,20 +768,13 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
               date: record.data.date || record.data.diagnosed || '',
               procedure: record.data.procedure || '',
               doctor: doctorValue,
-              diagnosedBy: record.data.diagnosedBy || record.data.doctor || record.openmrsData?.creatorName || 'Unknown Doctor',
+              diagnosedBy: record.data.diagnosedBy || doctorValue,
               hospital: hospitalValue,
-              // Include medications array if available (from saved edits)
-              medications: record.data.medications && Array.isArray(record.data.medications) ? record.data.medications : undefined,
-              // Also include single medication fields for backward compatibility
-              medicationName: record.data.medicationName || '',
-              dosage: record.data.dosage || '',
-              frequency: record.data.frequency || '',
-              startDate: record.data.startDate || '',
-              endDate: record.data.endDate || '',
-              prescribedBy: record.data.prescribedBy || '',
-              medicationStatus: record.data.medicationStatus || 'Active',
+              // UNIFIED: Medications included with doctor and hospital info
+              medications: medications,
               // Include notes for editing
-              notes: record.data.notes || record.data.details || ''
+              notes: record.data.notes || record.data.details || '',
+              status: record.data.status || 'Active'
             },
             openmrsData: record.openmrsData || null,
             createdAt: record.createdAt,
@@ -860,15 +887,16 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
         // Medical records in the format expected by frontend
         // **USE ONLY MedicalRecord collection** - This is the single source of truth
         // Prevents duplicates from synced OpenMRS data appearing multiple times
+        // **UNIFIED STRUCTURE**: Each condition includes its medications, doctor, and hospital as one object
         medicalRecords: {
           conditions: [
             // MedicalRecord collection contains ALL data (OpenMRS synced + doctor manual entries)
+            // Each condition now includes medications array with doctor and hospital info
             ...medicalRecordConditions
           ],
-          medications: [
-            // MedicalRecord collection contains ALL medications
-            ...medicalRecordMedications
-          ],
+          // Standalone medications are now merged into conditions
+          // This array is kept for backward compatibility but should be empty or minimal
+          medications: [],
           tests: [
             ...medicalRecordTests,
             ...(populatedPassport.testResults || []).map(test => ({
