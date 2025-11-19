@@ -54,10 +54,20 @@ class SMSService {
    */
   async sendSMS(to: string | string[], message: string, from?: string): Promise<SMSResult> {
     if (!this.isInitialized) {
-      throw new CustomError('SMS service not initialized. Please check Africa\'s Talking credentials.', 500);
+      const errorMsg = 'SMS service not initialized. Please configure valid Africa\'s Talking credentials in .env file (AFRICASTALKING_API_KEY and AFRICASTALKING_USERNAME).';
+      console.error(`❌ ${errorMsg}`);
+      throw new CustomError(errorMsg, 500);
     }
 
     try {
+      // Check for placeholder/invalid credentials
+      const apiKey = process.env.AFRICASTALKING_API_KEY;
+      if (!apiKey || apiKey.includes('your-') || apiKey.includes('key-here')) {
+        const errorMsg = 'Africa\'s Talking API key not configured. Please set AFRICASTALKING_API_KEY in .env with your actual API key from https://africastalking.com';
+        console.error(`❌ ${errorMsg}`);
+        throw new CustomError(errorMsg, 500);
+      }
+
       // Normalize phone numbers to E.164 format
       const recipients = Array.isArray(to) ? to : [to];
       const formattedRecipients = recipients.map(phone => this.formatPhoneNumber(phone));

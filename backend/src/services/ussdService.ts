@@ -921,21 +921,48 @@ class USSDService {
         false
       );
       
+      // Always show passport summary on screen, with note about SMS status
+      const frontendUrl = process.env.FRONTEND_URL || 'https://jade-pothos-e432d0.netlify.app';
+      
       if (language === 'en') {
-        return smsSent
-          ? 'END Your full Patient Passport has been sent to your phone via SMS. Thank you!'
-          : `END Passport Summary:\nName: ${passport.personalInfo?.fullName}\nID: ${passport.personalInfo?.nationalId}\nBlood: ${passport.personalInfo?.bloodType || 'N/A'}\n\nVisit: ${process.env.FRONTEND_URL}/patient-passport`;
+        let message = `END Passport Summary:\n`;
+        message += `Name: ${passport.personalInfo?.fullName || 'N/A'}\n`;
+        message += `ID: ${passport.personalInfo?.nationalId || 'N/A'}\n`;
+        message += `Blood: ${passport.personalInfo?.bloodType || 'N/A'}\n\n`;
+        
+        if (smsSent) {
+          message += `✓ Details sent via SMS!\n`;
+        } else {
+          message += `Note: SMS not configured.\n`;
+        }
+        
+        message += `\nVisit: ${frontendUrl}/patient-passport`;
+        return message;
       } else {
-        return smsSent
-          ? 'END Passport yawe yose yoherejwe kuri telephone yawe. Murakoze!'
-          : `END Incamake ya Passport:\nAmazina: ${passport.personalInfo?.fullName}\nIrangamuntu: ${passport.personalInfo?.nationalId}\nAmaraso: ${passport.personalInfo?.bloodType || 'Nta na kimwe'}\n\nSura: ${process.env.FRONTEND_URL}/patient-passport`;
+        let message = `END Incamake ya Passport:\n`;
+        message += `Amazina: ${passport.personalInfo?.fullName || 'Nta na kimwe'}\n`;
+        message += `Irangamuntu: ${passport.personalInfo?.nationalId || 'Nta na kimwe'}\n`;
+        message += `Amaraso: ${passport.personalInfo?.bloodType || 'Nta na kimwe'}\n\n`;
+        
+        if (smsSent) {
+          message += `✓ Ibisobanuro byoherejwe kuri SMS!\n`;
+        } else {
+          message += `Icyitonderwa: SMS ntago iteganyijwe.\n`;
+        }
+        
+        message += `\nSura: ${frontendUrl}/patient-passport`;
+        return message;
       }
     } catch (error) {
       console.error('❌ Error in sendPassportAndConfirm:', error);
-      return this.showError(language,
-        language === 'en' 
-          ? 'Failed to send SMS. Please try again.' 
-          : 'Byanze kohereza SMS. Ongera ugerageze.');
+      
+      // Even on error, show passport summary
+      const frontendUrl = process.env.FRONTEND_URL || 'https://jade-pothos-e432d0.netlify.app';
+      if (language === 'en') {
+        return `END Passport Summary:\nName: ${passport.personalInfo?.fullName || 'N/A'}\nID: ${passport.personalInfo?.nationalId || 'N/A'}\nBlood: ${passport.personalInfo?.bloodType || 'N/A'}\n\nVisit: ${frontendUrl}/patient-passport`;
+      } else {
+        return `END Incamake ya Passport:\nAmazina: ${passport.personalInfo?.fullName || 'Nta na kimwe'}\nIrangamuntu: ${passport.personalInfo?.nationalId || 'Nta na kimwe'}\nAmaraso: ${passport.personalInfo?.bloodType || 'Nta na kimwe'}\n\nSura: ${frontendUrl}/patient-passport`;
+      }
     }
   }
   
