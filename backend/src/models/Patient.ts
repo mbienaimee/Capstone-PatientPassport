@@ -132,10 +132,10 @@ const patientSchema = new Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes (removed duplicates - nationalId and user already have unique: true)
+// Indexes (nationalId and user already have unique: true which creates indexes)
 patientSchema.index({ status: 1 });
 patientSchema.index({ assignedDoctors: 1 });
-patientSchema.index({ user: 1 }); // For fast lookups by user ID in /me endpoint
+// Note: user field index removed - already indexed via unique: true
 
 // Virtual for age
 patientSchema.virtual('age').get(function() {

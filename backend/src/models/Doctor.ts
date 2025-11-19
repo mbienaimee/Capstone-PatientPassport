@@ -74,8 +74,8 @@ const doctorSchema = new Schema<IDoctor>({
   toObject: { virtuals: true }
 });
 
-// Indexes (removed duplicates - user and licenseNumber already have unique: true)
-doctorSchema.index({ user: 1 }); // For fast lookups by user ID in /me endpoint
+// Indexes (user and licenseNumber already have unique: true which creates indexes)
+// Note: user field index removed - already indexed via unique: true
 doctorSchema.index({ hospital: 1 });
 doctorSchema.index({ specialization: 1 });
 doctorSchema.index({ isActive: 1 });
