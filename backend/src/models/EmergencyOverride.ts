@@ -37,11 +37,13 @@ const emergencyOverrideSchema = new Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
+// Indexes for faster queries
 emergencyOverrideSchema.index({ user: 1 });
 emergencyOverrideSchema.index({ patient: 1 });
 emergencyOverrideSchema.index({ accessTime: -1 });
 emergencyOverrideSchema.index({ createdAt: -1 });
+// Compound index for emergency access verification (most common query)
+emergencyOverrideSchema.index({ user: 1, patient: 1, accessTime: -1 });
 
 // Virtual for user details
 emergencyOverrideSchema.virtual('userDetails', {

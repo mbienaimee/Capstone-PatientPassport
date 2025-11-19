@@ -494,6 +494,34 @@ class ApiService {
     return this.request(`/patients/passport/${patientId}`);
   }
 
+  // Emergency Access Methods
+  async requestEmergencyAccess(data: {
+    patientId: string;
+    justification: string;
+    hospitalId?: string;
+  }): Promise<ApiResponse<any>> {
+    console.log('🚨 API Service: Requesting emergency access...');
+    console.log('   Endpoint: /emergency-access/request');
+    console.log('   Data:', data);
+    
+    return this.request('/emergency-access/request', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async getEmergencyAccessLogs(): Promise<ApiResponse<any>> {
+    return this.request('/emergency-access/logs');
+  }
+
+  async getPatientEmergencyAudit(patientId: string): Promise<ApiResponse<any>> {
+    return this.request(`/emergency-access/audit/${patientId}`);
+  }
+
+  async getDoctorEmergencyHistory(): Promise<ApiResponse<any>> {
+    return this.request('/emergency-access/my-history');
+  }
+
   // OpenMRS sync methods (manual trigger) - restricted to doctor/admin users
   async syncPatient(nationalId: string): Promise<ApiResponse<any>> {
     return this.request(`/openmrs-sync/sync-patient/${nationalId}`, {

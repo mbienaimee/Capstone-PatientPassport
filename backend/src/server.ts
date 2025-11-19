@@ -19,6 +19,7 @@ import assignmentRoutes from './routes/assignments';
 import accessControlRoutes from './routes/accessControl';
 import notificationRoutes from './routes/notifications';
 import passportAccessRoutes from './routes/passportAccess';
+import emergencyAccessRoutes from './routes/emergencyAccess';
 import ussdRoutes from './routes/ussd';
 import openmrsSyncRoutes from './routes/openmrsSync';
 import openmrsIntegrationRoutes from './routes/openmrsIntegration';
@@ -79,12 +80,14 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://jade-pothos-e432d0.netlify.app',
   'https://patientpassport-api.azurewebsites.net',
+  'https://simulator.africastalking.com', // Africa's Talking USSD Simulator
+  'https://account.africastalking.com', // Africa's Talking Dashboard
   process.env['FRONTEND_URL']
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
+    // Allow requests with no origin (like mobile apps, curl, Postman, Africa's Talking webhooks)
     if (!origin) return callback(null, true);
     
     // In development, allow all origins
@@ -212,6 +215,17 @@ app.use('/api-docs', (req, res, next) => {
   next();
 });
 
+// Serve static files (for USSD simulator and other tools)
+app.use(express.static('public', {
+  maxAge: '1d',
+  etag: true
+}));
+
+// USSD Simulator page
+app.get('/ussd-simulator', (_req, res) => {
+  res.sendFile(path.join(__dirname, '../public/ussd-simulator.html'));
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
@@ -223,6 +237,7 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/access-control', accessControlRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/passport-access', passportAccessRoutes);
+app.use('/api/emergency-access', emergencyAccessRoutes);
 app.use('/api/ussd', ussdRoutes);
 app.use('/api/openmrs-sync', openmrsSyncRoutes);
 app.use('/api/openmrs', openmrsIntegrationRoutes);
@@ -234,7 +249,8 @@ app.get('/', (_req, res) => {
     message: 'Welcome to PatientPassport API',
     version: '1.0.0',
     documentation: '/api-docs',
-    health: '/health'
+    health: '/health',
+    ussdSimulator: '/ussd-simulator'
   });
 });
 

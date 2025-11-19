@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, FileText, Filter, Eye } from 'lucide-react';
+import { Search, User, FileText, Filter, Eye, AlertTriangle } from 'lucide-react';
 import { apiService } from '../services/api';
+import EmergencyAccessModal from './EmergencyAccessModal';
 
 interface Patient {
   _id: string;
@@ -30,6 +31,8 @@ const DoctorPatientPassport: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDoctorForm, setShowDoctorForm] = useState(true);
+  const [selectedPatientForEmergency, setSelectedPatientForEmergency] = useState<Patient | null>(null);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
   useEffect(() => {
     if (searchTerm) {
@@ -94,6 +97,25 @@ const DoctorPatientPassport: React.FC = () => {
         patientName: patient.user.name,
         doctorName: doctorInfo.name,
         licenseNumber: doctorInfo.licenseNumber
+      } 
+    });
+  };
+
+  const handleEmergencyAccess = (patient: Patient) => {
+    setSelectedPatientForEmergency(patient);
+    setShowEmergencyModal(true);
+  };
+
+  const handleEmergencyAccessSuccess = (accessData: any) => {
+    // Navigate to patient passport with emergency access granted
+    navigate('/doctor-access-request', { 
+      state: { 
+        patientId: selectedPatientForEmergency?._id, 
+        patientName: selectedPatientForEmergency?.user.name,
+        doctorName: doctorInfo.name,
+        licenseNumber: doctorInfo.licenseNumber,
+        emergencyAccess: true,
+        emergencyOverrideId: accessData.emergencyOverride._id
       } 
     });
   };
@@ -246,12 +268,35 @@ const DoctorPatientPassport: React.FC = () => {
                         <Eye className="h-4 w-4 mr-2" />
                         View Patient Passport
                       </button>
+
+                      {/* Emergency Access Button */}
+                      <button
+                        onClick={() => handleEmergencyAccess(patient)}
+                        className="w-full mt-2 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center border-2 border-red-700"
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        🚨 Emergency Access
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
+        )}
+
+        {/* Emergency Access Modal */}
+        {showEmergencyModal && selectedPatientForEmergency && (
+          <EmergencyAccessModal
+            isOpen={showEmergencyModal}
+            onClose={() => {
+              setShowEmergencyModal(false);
+              setSelectedPatientForEmergency(null);
+            }}
+            patientId={selectedPatientForEmergency._id}
+            patientName={selectedPatientForEmergency.user.name}
+            onSuccess={handleEmergencyAccessSuccess}
+          />
         )}
       </div>
     </div>

@@ -17,7 +17,17 @@ const router = express.Router();
 
 // Public route - Africa's Talking webhook
 // This endpoint receives USSD requests from Africa's Talking
+// Must be accessible without authentication
 router.post('/callback', handleUSSDCallback);
+
+// Health check for USSD service
+router.get('/health', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'USSD service is running',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Protected routes - Admin only
 router.use(authenticate);

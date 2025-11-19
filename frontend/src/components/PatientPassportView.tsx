@@ -7,9 +7,6 @@ import {
   Activity, 
   FileText, 
   Shield,
-  Edit3,
-  Save,
-  X,
   Plus,
   Trash2,
   Stethoscope,
@@ -24,13 +21,15 @@ interface PatientPassportViewProps {
   patientId: string;
   onClose: () => void;
   onUpdate: (updatedPassport: any) => void;
+  isEmergencyAccess?: boolean;
 }
 
 const PatientPassportView: React.FC<PatientPassportViewProps> = ({
   passportData,
   patientId,
   onClose,
-  onUpdate
+  onUpdate,
+  isEmergencyAccess = false
 }) => {
   const { showNotification } = useNotification();
   const { user } = useAuth();
@@ -885,11 +884,11 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                        'No diagnosis recorded';
       
       // Check if doctor can edit this observation (time-based access control)
-      // For observations < 2 hours old, allow any doctor to edit (not just the creator)
+      // For observations < 3 hours old, allow any doctor to edit (not just the creator)
       // For observations without syncDate (legacy), allow any doctor to edit
       const canEditObservation = isDoctor && (
         condition.editAccess?.canEdit === true || 
-        (condition.editAccess?.hoursSinceSync && parseFloat(condition.editAccess.hoursSinceSync) < 2) ||
+        (condition.editAccess?.hoursSinceSync && parseFloat(condition.editAccess.hoursSinceSync) < 3) ||
         (!condition.syncDate && condition.editAccess?.canEdit !== false) // Legacy records without syncDate
       );
       
@@ -984,17 +983,27 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+        {/* Emergency Access Banner */}
+        {isEmergencyAccess && (
+          <div className="bg-green-600 text-white px-6 py-3">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <p className="font-bold text-lg">EMERGENCY ACCESS ACTIVE</p>
+                <p className="text-sm text-green-100">This access is logged and will be audited • Patient has been notified</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Header - Green Theme */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 rounded-t-2xl">
+        <div className={`p-6 ${isEmergencyAccess ? 'bg-gradient-to-r from-green-700 to-emerald-700' : 'bg-gradient-to-r from-green-600 to-emerald-600'} ${isEmergencyAccess ? '' : 'rounded-t-2xl'}`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white">Patient Passport</h2>
-                <p className="text-green-100">{editedData?.personalInfo?.fullName || 'Unknown Patient'}</p>
-              </div>
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-1">Patient Passport</h2>
+              <p className="text-xl text-white font-medium">{editedData?.personalInfo?.fullName || 'Unknown Patient'}</p>
+              {isEmergencyAccess && (
+                <p className="text-sm text-red-100 mt-2">⚠️ Emergency Protocol - Full Access Granted</p>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               {isDoctor && (
@@ -1009,14 +1018,12 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                     disabled={isSaving}
                     className="flex items-center px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-green-50 disabled:opacity-50 font-medium"
                   >
-                    <Save className="h-4 w-4 mr-2" />
                     {isSaving ? 'Saving...' : 'Save'}
                   </button>
                   <button
                     onClick={handleCancel}
                     className="flex items-center px-4 py-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30"
                   >
-                    <X className="h-4 w-4 mr-2" />
                     Cancel
                   </button>
                 </>
@@ -1025,7 +1032,6 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                   onClick={() => setIsEditing(true)}
                   className="flex items-center px-4 py-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30"
                 >
-                  <Edit3 className="h-4 w-4 mr-2" />
                   Edit
                 </button>
               ) : null}
@@ -1033,7 +1039,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                 onClick={onClose}
                 className="flex items-center px-4 py-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30"
               >
-                <X className="h-4 w-4" />
+                Close
               </button>
             </div>
           </div>
@@ -1241,8 +1247,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                         </span>
                       )}
                       {record.isEditable && !record.isNew && (
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold flex items-center">
-                          <Edit3 className="h-3 w-3 mr-1" />
+                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
                           Editable {record.editAccess?.hoursSinceSync ? `(${record.editAccess.hoursSinceSync}h ago)` : record.syncDate ? '(Recent)' : '(Legacy Record)'}
                         </span>
                       )}
@@ -1253,8 +1258,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                         </span>
                       )}
                       {!record.isEditable && !record.isNew && !record.isFromOpenMRS && isDoctor && (
-                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center">
-                          <Edit3 className="h-3 w-3 mr-1" />
+                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                           Click Edit to Add Medications
                         </span>
                       )}
@@ -1272,7 +1276,6 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                             className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-lg transition-colors flex items-center font-medium shadow-sm"
                             title={`Edit this observation${record.editAccess?.reason ? ` - ${record.editAccess.reason}` : ' - Add medications and notes'}`}
                           >
-                            <Edit3 className="h-4 w-4 mr-2" />
                             Edit Observation
                           </button>
                         )}
@@ -1284,7 +1287,6 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                               className="text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded transition-colors flex items-center disabled:opacity-50"
                               title="Save changes"
                             >
-                              <Save className="h-4 w-4 mr-1" />
                               {isSaving ? 'Saving...' : 'Save'}
                             </button>
                             <button
@@ -1293,7 +1295,6 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                               className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 px-3 py-1 rounded transition-colors flex items-center disabled:opacity-50"
                               title="Cancel editing"
                             >
-                              <X className="h-4 w-4 mr-1" />
                               Cancel
                             </button>
                           </>
@@ -1684,7 +1685,6 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                 disabled={isSaving}
                 className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-semibold transition-colors shadow-lg"
               >
-                <Save className="h-5 w-5 mr-2" />
                 {isSaving ? 'Saving Records...' : `Save ${newRecords.length} New Record${newRecords.length > 1 ? 's' : ''}`}
               </button>
             </div>

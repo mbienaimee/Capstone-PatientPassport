@@ -11,17 +11,25 @@ import { asyncHandler } from '@/middleware/errorHandler';
 // @route   POST /api/ussd/callback
 // @access  Public (Africa's Talking webhook)
 export const handleUSSDCallback = asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Log incoming request for debugging
+  console.log('📱 USSD Callback received:');
+  console.log('   Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('   Body:', JSON.stringify(req.body, null, 2));
+  console.log('   Query:', JSON.stringify(req.query, null, 2));
+
   const { sessionId, serviceCode, phoneNumber, text } = req.body;
 
   // Validate required fields
   if (!sessionId || !phoneNumber) {
-    console.error(' Missing required USSD fields');
+    console.error('❌ Missing required USSD fields:', { sessionId, phoneNumber });
     res.set('Content-Type', 'text/plain');
-    res.send('END Invalid request');
+    res.status(200).send('END Invalid request. Please try again.');
     return;
   }
 
   try {
+    console.log(`✅ Processing USSD: Session=${sessionId}, Phone=${phoneNumber}, Text="${text}"`);
+    
     // Process USSD request
     const response = await ussdService.processUSSDRequest({
       sessionId,
@@ -30,14 +38,18 @@ export const handleUSSDCallback = asyncHandler(async (req: Request, res: Respons
       text: text || ''
     });
 
-    // Send response with proper content type
-    res.set('Content-Type', 'text/plain');
-    res.send(response);
+    console.log(`✅ USSD Response: ${response.substring(0, 100)}...`);
+
+    // Send response with proper content type and headers for Africa's Talking
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.set('Cache-Control', 'no-cache');
+    res.status(200).send(response);
 
   } catch (error: any) {
-    console.error(' USSD Error:', error);
-    res.set('Content-Type', 'text/plain');
-    res.send('END An error occurred. Please try again later.');
+    console.error('❌ USSD Error:', error);
+    console.error('   Stack:', error.stack);
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.status(200).send('END An error occurred. Please try again later.');
   }
 });
 

@@ -123,6 +123,11 @@ const HospitalLogin = () => {
     } catch (error) {
       console.error('Login error:', error);
       
+      // Clear any stale authentication data on login failure
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('refreshToken');
+      
       let errorMessage = 'An unexpected error occurred. Please try again.';
       
       if (error instanceof Error) {

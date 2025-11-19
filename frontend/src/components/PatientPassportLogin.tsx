@@ -21,6 +21,28 @@ const PatientPassportLogin: React.FC = () => {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // Clear any existing auth data when component mounts (patient login page)
+  React.useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        // If there's a doctor/hospital session active, warn and clear
+        if (userData.role && userData.role !== 'patient') {
+          console.warn(`⚠️ Clearing cached ${userData.role} session for patient login`);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('refreshToken');
+        }
+      } catch (e) {
+        // Invalid stored data, clear it
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('refreshToken');
+      }
+    }
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev: LoginFormData) => ({ ...prev, [name]: value }));
@@ -111,6 +133,11 @@ const PatientPassportLogin: React.FC = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
+      
+      // Clear any stale authentication data on login failure
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('refreshToken');
       
       let errorMessage = 'An unexpected error occurred. Please try again.';
       

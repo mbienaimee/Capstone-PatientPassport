@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USSD Simulator - Patient Passport</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .phone-screen {
+            background: #f5f5f5;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .ussd-display {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            min-height: 200px;
+        }
+        
+        .input-section {
+            padding: 20px;
+            background: #fafafa;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-number {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-number:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-send {
+            background: #10b981;
+            color: white;
+            grid-column: span 3;
+        }
+        
+        .btn-send:hover {
+            background: #059669;
+        }
+        
+        .btn-clear {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background: #dc2626;
+        }
+        
+        .btn-reset {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: #d97706;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        
+        .session-info {
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 USSD Simulator</h1>
+            <p>Patient Passport System</p>
+        </div>
+        
+        <div class="phone-screen">
+            <div class="session-info">
+                <strong>Session ID:</strong> <span id="sessionId">-</span><br>
+                <strong>Phone:</strong> <span id="phoneNumber">-</span><br>
+                <strong>Path:</strong> <span id="path">-</span>
+            </div>
+            
+            <div class="ussd-display" id="display">
+                Welcome to Patient Passport USSD!
+                
+Click "Start Session" to begin...
+            </div>
+        </div>
+        
+        <div class="input-section">
+            <div class="form-group">
+                <label for="phoneInput">Phone Number</label>
+                <input type="text" id="phoneInput" placeholder="+250788123456" value="+250788123456">
+            </div>
+            
+            <div class="form-group">
+                <label for="apiUrl">API URL</label>
+                <input type="text" id="apiUrl" placeholder="http://localhost:5000" value="http://localhost:5000">
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-number" onclick="sendInput('1')">1</button>
+                <button class="btn btn-number" onclick="sendInput('2')">2</button>
+                <button class="btn btn-number" onclick="sendInput('3')">3</button>
+                <button class="btn btn-number" onclick="sendInput('4')">4</button>
+                <button class="btn btn-number" onclick="sendInput('5')">5</button>
+                <button class="btn btn-number" onclick="sendInput('6')">6</button>
+                <button class="btn btn-number" onclick="sendInput('7')">7</button>
+                <button class="btn btn-number" onclick="sendInput('8')">8</button>
+                <button class="btn btn-number" onclick="sendInput('9')">9</button>
+                <button class="btn btn-clear" onclick="clearInput()">Clear</button>
+                <button class="btn btn-number" onclick="sendInput('0')">0</button>
+                <button class="btn btn-reset" onclick="resetSession()">Reset</button>
+                <button class="btn btn-send" onclick="startSession()">▶ Start Session</button>
+            </div>
+            
+            <div id="status" class="status hidden"></div>
+        </div>
+    </div>
+    
+    <script>
+        let sessionId = '';
+        let currentPath = [];
+        let sessionEnded = false;
+        
+        function updateSessionInfo() {
+            document.getElementById('sessionId').textContent = sessionId || '-';
+            document.getElementById('phoneNumber').textContent = document.getElementById('phoneInput').value || '-';
+            document.getElementById('path').textContent = currentPath.length > 0 ? currentPath.join(' * ') : '-';
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.classList.remove('hidden');
+            
+            setTimeout(() => {
+                status.classList.add('hidden');
+            }, 3000);
+        }
+        
+        async function makeUSSDRequest(text) {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const phoneNumber = document.getElementById('phoneInput').value;
+            
+            if (!phoneNumber) {
+                showStatus('Please enter a phone number', 'error');
+                return null;
+            }
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/ussd/callback`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionId,
+                        phoneNumber: phoneNumber,
+                        serviceCode: '*384#',
+                        text: text
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const responseText = await response.text();
+                return responseText;
+                
+            } catch (error) {
+                console.error('USSD Request Error:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        async function startSession() {
+            sessionId = 'sim-' + Date.now();
+            currentPath = [];
+            sessionEnded = false;
+            updateSessionInfo();
+            
+            showStatus('Starting new USSD session...', 'info');
+            
+            const response = await makeUSSDRequest('');
+            
+            if (response) {
+                displayUSSDResponse(response);
+                showStatus('Session started successfully!', 'success');
+            }
+        }
+        
+        async function sendInput(digit) {
+            if (sessionEnded) {
+                showStatus('Session ended. Please start a new session.', 'error');
+                return;
+            }
+            
+            if (!sessionId) {
+                showStatus('Please start a session first', 'error');
+                return;
+            }
+            
+            currentPath.push(digit);
+            updateSessionInfo();
+            
+            const text = currentPath.join('*');
+            showStatus(`Sending: ${digit}`, 'info');
+            
+            const response = await makeUSSDRequest(text);
+            
+            if (response) {
+                displayUSSDResponse(response);
+                
+                if (response.startsWith('END')) {
+                    sessionEnded = true;
+                    showStatus('Session ended', 'info');
+                }
+            }
+        }
+        
+        function displayUSSDResponse(response) {
+            const display = document.getElementById('display');
+            
+            // Remove CON or END prefix for display
+            let displayText = response.replace(/^(CON|END)\s*/, '');
+            
+            // Add header if session ended
+            if (response.startsWith('END')) {
+                displayText = '🔴 SESSION ENDED\n\n' + displayText;
+            } else if (response.startsWith('CON')) {
+                displayText = '🟢 SESSION ACTIVE\n\n' + displayText;
+            }
+            
+            display.textContent = displayText;
+        }
+        
+        function clearInput() {
+            if (currentPath.length > 0) {
+                currentPath.pop();
+                updateSessionInfo();
+                showStatus('Last input cleared', 'info');
+            }
+        }
+        
+        function resetSession() {
+            sessionId = '';
+            currentPath = [];
+            sessionEnded = false;
+            updateSessionInfo();
+            
+            const display = document.getElementById('display');
+            display.textContent = 'Welcome to Patient Passport USSD!\n\nClick "Start Session" to begin...';
+            
+            showStatus('Session reset', 'info');
+        }
+        
+        // Initialize
+        updateSessionInfo();
+    </script>
+</body>
+</html>

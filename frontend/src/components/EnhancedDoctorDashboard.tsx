@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import PassportAccessOTP from './PassportAccessOTP';
 import PatientPassportView from './PatientPassportView';
+import EmergencyAccessModal from './EmergencyAccessModal';
 import Logo from './Logo';
 import { 
   Users, 
@@ -77,6 +78,10 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showAddPatientForm, setShowAddPatientForm] = useState(false);
   const [passportData, setPassportData] = useState<any>(null);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [emergencyPatient, setEmergencyPatient] = useState<DoctorPatient | null>(null);
+  const [isEmergencyAccess, setIsEmergencyAccess] = useState(false);
+  const [isLoadingEmergencyAccess, setIsLoadingEmergencyAccess] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     recentRequests: 0,
@@ -274,6 +279,65 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
     setShowOTPModal(true);
   };
 
+  // Emergency access workflow
+  const handleEmergencyAccess = (patient: DoctorPatient) => {
+    console.log('Doctor requesting EMERGENCY access to patient:', patient.user?.name);
+    setEmergencyPatient(patient);
+    setShowEmergencyModal(true);
+  };
+
+  const handleEmergencyAccessSuccess = async (accessData: any) => {
+    console.log('🚨 EMERGENCY ACCESS GRANTED - Opening passport...');
+    
+    // Close modal and show loading immediately for better UX
+    setShowEmergencyModal(false);
+    setIsLoadingEmergencyAccess(true);
+    setIsEmergencyAccess(true);
+    
+    try {
+      const patientId = accessData.data?.patientId || emergencyPatient?._id;
+      
+      if (!patientId) {
+        throw new Error('Patient ID not found');
+      }
+      
+      console.log('📋 Fetching passport data...');
+      
+      // Fetch passport data
+      const passportResponse = await apiService.getPatientPassport(patientId);
+      
+      if (passportResponse.success && passportResponse.data) {
+        console.log('✅ Passport fetched successfully');
+        
+        // Set all state and open passport view
+        setPassportData(passportResponse.data);
+        setSelectedPatient(emergencyPatient);
+        setShowPassportView(true);
+        
+        showNotification({
+          type: 'success',
+          title: '🚨 Emergency Access Granted',
+          message: `Access to ${emergencyPatient?.user?.name}'s records is now active.`
+        });
+      } else {
+        throw new Error(passportResponse.message || 'Failed to fetch passport');
+      }
+    } catch (error: any) {
+      console.error('❌ Error:', error);
+      
+      showNotification({
+        type: 'error',
+        title: 'Error',
+        message: `Failed to open passport: ${error.message || 'Unknown error'}`
+      });
+      
+      // Reset emergency state on error
+      setIsEmergencyAccess(false);
+    } finally {
+      setIsLoadingEmergencyAccess(false);
+    }
+  };
+
   const handleOTPSuccess = async (otpResponseData: any) => {
     console.log('OTP verification successful, granting access to:', selectedPatient?.user?.name);
     console.log('OTP Response data:', otpResponseData);
@@ -301,6 +365,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
         console.log('✅ Complete passport data fetched:', passportResponse.data);
         setPassportData(passportResponse.data);
         setShowOTPModal(false);
+        setIsEmergencyAccess(false); // This is normal access, not emergency
         setShowPassportView(true);
         
         showNotification({
@@ -325,6 +390,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
     setShowPassportView(false);
     setPassportData(null);
     setSelectedPatient(null);
+    setIsEmergencyAccess(false); // Reset emergency flag
     
     showNotification({
       type: 'info',
@@ -524,6 +590,19 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
 
   return (
     <div className="min-h-screen bg-green-50">
+      {/* Emergency Access Loading Overlay */}
+      {isLoadingEmergencyAccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 shadow-xl">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              <p className="text-lg font-semibold text-gray-900">Opening Patient Passport...</p>
+              <p className="text-sm text-gray-600">Emergency access granted</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-green-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -865,13 +944,21 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
                         }`}>
                           {patient.status === 'active' ? '✅ Active' : '❌ Inactive'}
                         </span>
-                        <button
-                          onClick={() => handleViewPatient(patient)}
-                          className="bg-gradient-to-r from-green-600 to-green-700 text-white px-4 sm:px-6 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
-                        >
-                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span>Request Access</span>
-                        </button>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button
+                            onClick={() => handleViewPatient(patient)}
+                            className="bg-gradient-to-r from-green-600 to-green-700 text-white px-4 sm:px-6 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
+                          >
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span>Request Access</span>
+                          </button>
+                          <button
+                            onClick={() => handleEmergencyAccess(patient)}
+                            className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center space-x-2 border-2 border-green-800"
+                          >
+                            <span>Emergency Access</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -967,6 +1054,7 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
           patientId={selectedPatient._id}
           onClose={handleClosePassportView}
           onUpdate={handlePassportUpdate}
+          isEmergencyAccess={isEmergencyAccess}
         />
       )}
 
@@ -1222,6 +1310,20 @@ const EnhancedDoctorDashboard: React.FC<DoctorDashboardProps> = ({ onLogout }) =
             </form>
           </div>
         </div>
+      )}
+
+      {/* Emergency Access Modal */}
+      {showEmergencyModal && emergencyPatient && (
+        <EmergencyAccessModal
+          isOpen={showEmergencyModal}
+          onClose={() => {
+            setShowEmergencyModal(false);
+            setEmergencyPatient(null);
+          }}
+          patientId={emergencyPatient._id}
+          patientName={emergencyPatient.user.name}
+          onSuccess={handleEmergencyAccessSuccess}
+        />
       )}
     </div>
   );
