@@ -58,6 +58,9 @@ export const errorHandler = (
   const isAuthCheck = req.originalUrl.includes('/auth/me') || req.path === '/me' || req.path.endsWith('/me');
   const isExpected401 = err.statusCode === 401 && isAuthCheck;
 
+  // Check if this is a USSD route - USSD requires plain text responses, not JSON
+  const isUSSDRoute = req.originalUrl.includes('/ussd/') || req.path.includes('/ussd/');
+
   if (!isExpected401) {
     console.error('Error:', error);
   }
@@ -90,6 +93,14 @@ export const errorHandler = (
   if (!err.statusCode) {
     err.statusCode = 500;
     err.message = 'Something went wrong!';
+  }
+
+  // For USSD routes, return plain text instead of JSON
+  if (isUSSDRoute) {
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.status(200).send(`END An error occurred: ${err.message}`);
+    return;
   }
 
   res.status(err.statusCode).json({

@@ -24,6 +24,7 @@ import ussdRoutes from './routes/ussd';
 import openmrsSyncRoutes from './routes/openmrsSync';
 import openmrsIntegrationRoutes from './routes/openmrsIntegration';
 import scheduledSyncRoutes from './routes/scheduledSync';
+import metricsRoutes from './routes/metrics';
 import { getEmailStatus } from './services/simpleEmailService';
 import openmrsSyncService from './services/openmrsSyncService';
 
@@ -31,6 +32,7 @@ import openmrsSyncService from './services/openmrsSyncService';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { generalLimiter } from './middleware/rateLimiter';
 import { performanceMonitor } from './middleware/performanceMonitor';
+import { trackResponseTime, trackErrors } from './middleware/metricsMiddleware';
 
 // Load environment variables
 dotenv.config();
@@ -138,6 +140,9 @@ app.use(performanceMonitor);
 // Rate limiting
 app.use(generalLimiter);
 
+// Metrics tracking middleware (tracks API response times automatically)
+app.use(trackResponseTime);
+
 // Health check endpoint
 app.get('/health', (_req, res) => {
   const emailStatus = typeof getEmailStatus === 'function' ? getEmailStatus() : { configured: false };
@@ -242,6 +247,7 @@ app.use('/api/ussd', ussdRoutes);
 app.use('/api/openmrs-sync', openmrsSyncRoutes);
 app.use('/api/openmrs', openmrsIntegrationRoutes);
 app.use('/api/scheduled-sync', scheduledSyncRoutes);
+app.use('/api/metrics', metricsRoutes);
 
 app.get('/', (_req, res) => {
   res.json({
@@ -256,6 +262,9 @@ app.get('/', (_req, res) => {
 
 // 404 handler
 app.use(notFound);
+
+// Track errors before handling them
+app.use(trackErrors);
 
 // Error handler
 app.use(errorHandler);

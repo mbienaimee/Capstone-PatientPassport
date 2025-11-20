@@ -11,8 +11,16 @@ import { asyncHandler } from '@/middleware/errorHandler';
 // @route   POST /api/ussd/callback
 // @access  Public (Africa's Talking webhook)
 export const handleUSSDCallback = asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Set USSD-specific headers immediately to prevent any HTML responses
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  
   // Log incoming request for debugging
   console.log('📱 USSD Callback received:');
+  console.log('   Origin:', req.headers.origin || 'unknown');
+  console.log('   User-Agent:', req.headers['user-agent'] || 'unknown');
   console.log('   Headers:', JSON.stringify(req.headers, null, 2));
   console.log('   Body:', JSON.stringify(req.body, null, 2));
   console.log('   Query:', JSON.stringify(req.query, null, 2));
@@ -22,7 +30,6 @@ export const handleUSSDCallback = asyncHandler(async (req: Request, res: Respons
   // Validate required fields
   if (!sessionId || !phoneNumber) {
     console.error('❌ Missing required USSD fields:', { sessionId, phoneNumber });
-    res.set('Content-Type', 'text/plain');
     res.status(200).send('END Invalid request. Please try again.');
     return;
   }
@@ -38,18 +45,36 @@ export const handleUSSDCallback = asyncHandler(async (req: Request, res: Respons
       text: text || ''
     });
 
-    console.log(`✅ USSD Response: ${response.substring(0, 100)}...`);
+    // Ensure response is a string and starts with CON or END
+    const ussdResponse = typeof response === 'string' 
+      ? response 
+      : `END ${JSON.stringify(response)}`;
+    
+    // Validate USSD response format
+    if (!ussdResponse.startsWith('CON ') && !ussdResponse.startsWith('END ')) {
+      console.warn('⚠️ USSD response missing CON/END prefix, adding END');
+      const fixedResponse = ussdResponse.startsWith('CON') || ussdResponse.startsWith('END')
+        ? ussdResponse
+        : `END ${ussdResponse}`;
+      
+      console.log(`✅ USSD Response (fixed): ${fixedResponse.substring(0, 100)}...`);
+      res.status(200).send(fixedResponse);
+      return;
+    }
+
+    console.log(`✅ USSD Response: ${ussdResponse.substring(0, 100)}...`);
 
     // Send response with proper content type and headers for Africa's Talking
-    res.set('Content-Type', 'text/plain; charset=utf-8');
-    res.set('Cache-Control', 'no-cache');
-    res.status(200).send(response);
+    res.status(200).send(ussdResponse);
 
   } catch (error: any) {
     console.error('❌ USSD Error:', error);
-    console.error('   Stack:', error.stack);
-    res.set('Content-Type', 'text/plain; charset=utf-8');
-    res.status(200).send('END An error occurred. Please try again later.');
+    console.error('   Error message:', error?.message);
+    console.error('   Stack:', error?.stack);
+    
+    // Ensure error response is always plain text
+    const errorMessage = 'END An error occurred. Please try again later.';
+    res.status(200).send(errorMessage);
   }
 });
 
