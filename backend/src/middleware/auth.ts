@@ -56,12 +56,15 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       const doctorRecord = await Doctor.findOne({ user: user._id });
       const patientRecord = await Patient.findOne({ user: user._id });
       
+      let roleCorrected = false;
+      
       // If user has a Doctor record but role is not 'doctor', update it
       if (doctorRecord && user.role !== 'doctor') {
         console.log(`⚠️  Role mismatch: User has Doctor record but role is '${user.role}'. Updating to 'doctor'...`);
         user.role = 'doctor';
         await user.save();
         console.log(`✅ User role updated to 'doctor'`);
+        roleCorrected = true;
       }
       // If user has a Patient record but role is not 'patient', update it (unless they also have Doctor record)
       else if (patientRecord && !doctorRecord && user.role !== 'patient') {
@@ -69,8 +72,19 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         user.role = 'patient';
         await user.save();
         console.log(`✅ User role updated to 'patient'`);
+        roleCorrected = true;
+      }
+      
+      // If role was corrected, the token has stale data - request re-login
+      if (roleCorrected) {
+        console.log(`⚠️  Token has outdated role information. Requesting user to re-login...`);
+        throw new CustomError('Your user role has been updated. Please logout and login again to refresh your session.', 401);
       }
     } catch (error) {
+      // If it's our CustomError about role update, throw it
+      if (error instanceof CustomError) {
+        throw error;
+      }
       // Don't fail authentication if role verification fails, just log it
       console.error('Error verifying user role:', error);
     }
@@ -118,7 +132,7 @@ export const authorize = (...roles: string[]) => {
             console.log(`✅ User role updated to 'doctor'`);
           } else {
             console.log(`❌ No Doctor record found for user ${req.user._id}`);
-            return next(new CustomError(`Access denied. Role '${req.user.role}' is not authorized to access this resource. Please ensure you are logged in with a doctor account.`, 403));
+            return next(new CustomError(`Access denied. Your session shows role '${req.user.role}' but you don't have a doctor account. If your role was recently updated, please logout and login again to refresh your session.`, 403));
           }
         } catch (error) {
           console.error(`❌ Error checking Doctor record:`, error);

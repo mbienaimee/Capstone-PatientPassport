@@ -1,11 +1,22 @@
 import { io, Socket } from 'socket.io-client';
 
+// 🔇 SOCKET.IO DISABLED FOR STABILITY
+// Real-time features are currently disabled to prevent connection errors
+// USSD and all other features work via REST API (not affected)
+const SOCKET_ENABLED = false;
+
 class SocketService {
   private socket: Socket | null = null;
   private token: string | null = null;
   private isDisconnecting: boolean = false;
 
   connect(token: string) {
+    // Socket.io disabled - skip connection
+    if (!SOCKET_ENABLED) {
+      console.log('ℹ️ Socket.io is disabled. Real-time features unavailable.');
+      return null;
+    }
+
     // Disconnect existing socket if any
     if (this.socket) {
       this.disconnect();
@@ -75,6 +86,10 @@ class SocketService {
 
   // Safe emit helper - checks connection state before emitting
   private safeEmit(event: string, data?: any): boolean {
+    if (!SOCKET_ENABLED) {
+      return false; // Silently fail when disabled
+    }
+
     if (!this.socket || this.isDisconnecting) {
       console.warn(`Cannot emit ${event}: socket not available or disconnecting`);
       return false;
@@ -111,6 +126,7 @@ class SocketService {
 
   // Listen for access request notifications
   onAccessRequest(callback: (data: any) => void) {
+    if (!SOCKET_ENABLED) return; // No-op when disabled
     if (this.socket && !this.isDisconnecting) {
       this.socket.on('access_request', callback);
     }
@@ -118,6 +134,7 @@ class SocketService {
 
   // Listen for access response notifications
   onAccessResponse(callback: (data: any) => void) {
+    if (!SOCKET_ENABLED) return; // No-op when disabled
     if (this.socket && !this.isDisconnecting) {
       this.socket.on('access_response', callback);
     }
@@ -125,6 +142,7 @@ class SocketService {
 
   // Listen for general notifications
   onNotification(callback: (data: any) => void) {
+    if (!SOCKET_ENABLED) return; // No-op when disabled
     if (this.socket && !this.isDisconnecting) {
       this.socket.on('notification', callback);
     }
@@ -132,6 +150,7 @@ class SocketService {
 
   // Listen for emergency notifications
   onEmergencyNotification(callback: (data: any) => void) {
+    if (!SOCKET_ENABLED) return; // No-op when disabled
     if (this.socket && !this.isDisconnecting) {
       this.socket.on('emergency_access', callback);
     }

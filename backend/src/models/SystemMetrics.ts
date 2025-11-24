@@ -45,21 +45,18 @@ export interface ISystemMetrics extends Document {
 const systemMetricsSchema = new Schema<ISystemMetrics>({
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   metricType: {
     type: String,
     enum: ['response_time', 'accuracy', 'usability', 'error', 'api_call'],
-    required: true,
-    index: true
+    required: true
   },
   
   // Response Time Metrics
   endpoint: {
     type: String,
-    trim: true,
-    index: true
+    trim: true
   },
   method: {
     type: String,
@@ -91,8 +88,7 @@ const systemMetricsSchema = new Schema<ISystemMetrics>({
   // Usability Metrics
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
-    index: true
+    ref: 'User'
   },
   userRole: {
     type: String,

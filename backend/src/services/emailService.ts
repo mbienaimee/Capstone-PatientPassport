@@ -29,7 +29,10 @@ class EmailService {
         tls: {
           ciphers: 'SSLv3',
           rejectUnauthorized: false
-        }
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000
       };
       this.transporters.push(nodemailer.createTransport(gmailConfig));
     } else {

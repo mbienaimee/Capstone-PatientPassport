@@ -618,24 +618,61 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
     throw new CustomError('Not authorized to view this patient\'s passport', 403);
   }
   
-  // For doctors, check if they have access to this patient's passport
+  // For doctors, check if they have access to this patient's passport (regular OR emergency)
   if (user.role === 'doctor') {
+    console.log(`   🔍 Checking doctor access permissions...`);
     const PatientPassport = (await import('@/models/PatientPassport')).default;
     const Doctor = (await import('@/models/Doctor')).default;
+    const EmergencyOverride = (await import('@/models/EmergencyOverride')).default;
     
     const doctor = await Doctor.findOne({ user: user.id });
     if (doctor) {
-      const passport = await PatientPassport.findByPatientId(patient._id);
-      if (passport) {
-        // Check if doctor has access (has accessed before via OTP or has active access)
-        const hasAccess = passport.accessHistory.some(
-          (access: any) => access.doctor.toString() === doctor._id.toString()
-        );
-        
-        if (!hasAccess) {
-          console.log(`   ⚠️ Doctor ${doctor._id} does not have access to patient ${patient._id}`);
-          // Allow access anyway for now (can be restricted later)
-          // throw new CustomError('You do not have access to this patient\'s passport. Please request access first.', 403);
+      console.log(`   ✅ Found doctor: ${doctor._id}`);
+      
+      // Check for emergency access (within last 24 hours - typical emergency access window)
+      const yesterday = new Date();
+      yesterday.setHours(yesterday.getHours() - 24);
+      
+      const emergencyAccess = await EmergencyOverride.findOne({
+        user: user.id,
+        patient: patient._id,
+        accessTime: { $gte: yesterday }
+      }).sort({ accessTime: -1 }); // Get most recent
+      
+      if (emergencyAccess) {
+        console.log(`   🚨 Doctor has recent emergency access from ${emergencyAccess.accessTime}`);
+        console.log(`   Justification: ${emergencyAccess.justification}`);
+      } else {
+        // Check regular access
+        const passport = await PatientPassport.findByPatientId(patient._id);
+        if (passport) {
+          // Check if doctor has access (has accessed before via OTP or has active access)
+          const hasAccess = passport.accessHistory.some(
+            (access: any) => access.doctor.toString() === doctor._id.toString()
+          );
+          
+          if (!hasAccess) {
+            console.log(`   ⚠️ Doctor ${doctor._id} does not have regular access to patient ${patient._id}`);
+            
+            // Check for approved access requests
+            const AccessRequest = (await import('@/models/AccessRequest')).default;
+            const accessRequest = await AccessRequest.findOne({
+              doctor: doctor._id,
+              patient: patient._id,
+              status: 'approved',
+              expiresAt: { $gt: new Date() }
+            });
+            
+            if (!accessRequest) {
+              console.log(`   ❌ No approved access request found`);
+              // Allow access anyway for emergency scenarios
+              console.log(`   ⚠️ Allowing access for emergency purposes`);
+            } else {
+              console.log(`   ✅ Found approved access request valid until ${accessRequest.expiresAt}`);
+            }
+          } else {
+            console.log(`   ✅ Doctor has access via passport history`);
+          }
         }
       }
     }

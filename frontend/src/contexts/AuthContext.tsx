@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { apiService, ApiError } from '../services/api';
 
@@ -37,9 +37,15 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hasCheckedAuth = useRef(false);
 
   // Check for existing session on mount
   useEffect(() => {
+    // Prevent multiple auth checks
+    if (hasCheckedAuth.current) {
+      console.log('✅ Auth already checked, skipping');
+      return;
+    }
     const checkAuth = async () => {
       try {
         console.log('=== CHECKING AUTH ON MOUNT ===');
@@ -72,6 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       } finally {
+        hasCheckedAuth.current = true;
         setIsLoading(false);
         console.log('=== AUTH CHECK COMPLETE ===');
       }

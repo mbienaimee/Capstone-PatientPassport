@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -7,8 +7,9 @@ import LoadingSpinner from './ui/LoadingSpinner';
 
 const HospitalLogin = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
+  const hasRedirected = useRef(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -18,6 +19,26 @@ const HospitalLogin = () => {
     email: '',
     password: ''
   });
+
+  // Redirect if already logged in as staff (hospital, doctor, admin, receptionist)
+  useEffect(() => {
+    const staffRoles = ['hospital', 'doctor', 'admin', 'receptionist'];
+    if (isAuthenticated && user && staffRoles.includes(user.role) && !hasRedirected.current) {
+      console.log(`✅ ${user.role} user already logged in, redirecting to dashboard`);
+      hasRedirected.current = true;
+      
+      // Redirect to appropriate dashboard based on role
+      if (user.role === 'hospital') {
+        navigate('/hospital-dashboard', { replace: true });
+      } else if (user.role === 'doctor') {
+        navigate('/doctor-dashboard', { replace: true });
+      } else if (user.role === 'admin') {
+        navigate('/admin-dashboard', { replace: true });
+      } else if (user.role === 'receptionist') {
+        navigate('/receptionist-dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -91,27 +112,31 @@ const HospitalLogin = () => {
       } else if (result) {
         // Login successful without OTP
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        const userName = userData.name || 'Hospital Admin';
+        const userName = userData.name || 'User';
+        const roleTitle = userData.role === 'hospital' ? 'Hospital Admin' : 
+                         userData.role === 'doctor' ? 'Doctor' :
+                         userData.role === 'admin' ? 'Administrator' :
+                         userData.role === 'receptionist' ? 'Receptionist' : 'Staff';
         
         showNotification({
           type: 'success',
           title: 'Login Successful',
-          message: `Welcome back, ${userName}!`
+          message: `Welcome back, ${userName}! (${roleTitle})`
         });
         
         // Redirect based on user role
         if (userData.role === 'patient') {
-          navigate('/patient-passport');
+          navigate('/patient-passport', { replace: true });
         } else if (userData.role === 'doctor') {
-          navigate('/doctor-dashboard');
+          navigate('/doctor-dashboard', { replace: true });
         } else if (userData.role === 'admin') {
-          navigate('/admin-dashboard');
+          navigate('/admin-dashboard', { replace: true });
         } else if (userData.role === 'hospital') {
-          navigate('/hospital-dashboard');
+          navigate('/hospital-dashboard', { replace: true });
         } else if (userData.role === 'receptionist') {
-          navigate('/receptionist-dashboard');
+          navigate('/receptionist-dashboard', { replace: true });
         } else {
-          navigate('/hospital-dashboard'); // fallback
+          navigate('/hospital-dashboard', { replace: true }); // fallback
         }
       } else {
         showNotification({
@@ -171,16 +196,28 @@ const HospitalLogin = () => {
     navigate('/');
   };
 
+  // Show loading spinner while checking auth or redirecting
+  const staffRoles = ['hospital', 'doctor', 'admin', 'receptionist'];
+  if (isLoading || (isAuthenticated && user && staffRoles.includes(user.role))) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-slate-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <LoadingSpinner size="lg" text="Checking authentication..." />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6 sm:mb-8">
           <Logo size="xl" className="justify-center mb-4" />
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Welcome Back
+            Hospital Login
           </h2>
           <p className="text-sm sm:text-base text-gray-600">
-            Hospital staff login portal - Patients can access the patient login page
+            Access portal for hospital staff, doctors, and administrators
           </p>
         </div>
 
@@ -199,7 +236,7 @@ const HospitalLogin = () => {
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div className="space-y-2">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Hospital Email
+              Email Address
             </label>
             <input
               type="email"
@@ -207,7 +244,7 @@ const HospitalLogin = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Enter your hospital email"
+              placeholder="Enter your email"
               autoComplete="username"
               className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base ${errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 hover:border-gray-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               aria-describedby={errors.email ? "email-error" : undefined}

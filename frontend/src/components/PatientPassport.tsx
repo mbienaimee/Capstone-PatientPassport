@@ -16,7 +16,6 @@ import {
   FiEye,
   FiLogOut
 } from 'react-icons/fi';
-import { Calendar, Stethoscope, Building as BuildingIcon, User, Pill, Activity, FileText, RefreshCw } from 'lucide-react';
 
 interface MedicalCondition {
   name: string;
@@ -886,20 +885,28 @@ const PatientPassport: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Patient Passport Overview
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Complete medical history and health information
-          </p>
+          <div className="mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-12 w-12 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center shadow-md">
+              <FiShield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Patient Passport Overview
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
+                Complete medical history and health information
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
           {/* Patient Information */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
             <div className="mb-4">
-              <h2 className="text-lg sm:text-xl font-semibold text-green-600">
+              <h2 className="text-lg sm:text-xl font-semibold text-green-600 flex items-center gap-2">
+                <FiUser className="h-5 w-5" />
                 Patient Information
               </h2>
             </div>
@@ -977,7 +984,8 @@ const PatientPassport: React.FC = () => {
           {/* Emergency Contact */}
           <div className="dashboard-card">
             <div className="dashboard-card-header">
-              <h2 className="dashboard-card-title text-green-600">
+              <h2 className="dashboard-card-title text-green-600 flex items-center gap-2">
+                <FiShield className="h-5 w-5" />
                 Emergency Contact
               </h2>
             </div>
@@ -1036,13 +1044,12 @@ const PatientPassport: React.FC = () => {
 
         {/* Consolidated Medical History - All in One Card */}
         <div className="mb-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                <Activity className="h-6 w-6 mr-2 text-green-600" />
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                 Medical History
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600">
                 Complete medical records with diagnosis, medications, tests, and visit information
               </p>
             </div>
@@ -1052,15 +1059,14 @@ const PatientPassport: React.FC = () => {
               <button
                 onClick={handleManualRefresh}
                 disabled={isRefreshing}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isRefreshing 
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'bg-green-50 text-green-700 hover:bg-green-100 active:scale-95'
+                    : 'bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-md hover:shadow-lg'
                 }`}
                 title={lastRefreshTime ? `Last refreshed: ${lastRefreshTime.toLocaleTimeString()}` : 'Refresh data'}
               >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -1087,45 +1093,39 @@ const PatientPassport: React.FC = () => {
                 {currentRecords.map((record: any, index: number) => (
                 <div 
                   key={record.id || index}
-                  className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-white rounded-xl border border-green-500 p-6 shadow-lg hover:shadow-xl transition-all duration-300 mb-5"
                 >
                   {/* Header */}
-                    <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
-                    <div className="flex items-start justify-between">
+                  <div className="bg-green-500 rounded-lg p-5 mb-5 -m-6">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Calendar className="h-4 w-4 text-green-600" />
-                          <span className="font-semibold text-gray-900">
-                            {new Date(record.date).toLocaleDateString('en-US', { 
-                              weekday: 'short',
-                              year: 'numeric', 
-                              month: 'short', 
-                              day: 'numeric' 
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Stethoscope className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-700">{record.visitType}</span>
-                        </div>
+                        <span className="inline-block px-4 py-1.5 bg-green-600 text-white rounded-full text-xs font-bold mb-3">
+                          {new Date(record.date).toLocaleDateString('en-US', { 
+                            weekday: 'long',
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </span>
+                        <h3 className="text-xl font-bold text-white">
+                          {record.visitType || 'Medical Visit'}
+                        </h3>
                       </div>
-                      <div className="text-right ml-4">
-                        <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900 mb-2 bg-green-50 px-3 py-1.5 rounded border border-green-200">
-                          <BuildingIcon className="h-4 w-4 text-green-600" />
-                          <span className="text-green-700">{record.hospitalName}</span>
+                      <div className="flex flex-col gap-2 md:text-right">
+                        <div className="inline-block px-4 py-2 bg-white text-green-600 rounded-lg text-sm font-bold shadow-md">
+                          {record.hospitalName || 'Hospital'}
                         </div>
-                        <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1.5 rounded border border-blue-200">
-                          <User className="h-4 w-4 text-blue-600" />
-                          <span className="text-blue-700">{record.doctorName}</span>
+                        <div className="inline-block px-4 py-2 bg-white text-green-600 rounded-lg text-sm font-bold shadow-md">
+                          Dr. {record.doctorName || 'Doctor'}
                         </div>
                       </div>
                     </div>
                   </div>
                   {/* Show OpenMRS synced banner if present */}
                   {((record as any).openmrsData && (record as any).openmrsData.synced) || ((record as any).data && (record as any).data.openmrsData && (record as any).data.openmrsData.synced) ? (
-                    <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-100 text-blue-800 rounded text-sm">
-                      <strong>Synced from OpenMRS</strong>
-                      <span className="ml-2 text-gray-700">{(record as any).diagnosis || (record as any).data?.name || ''}</span>
+                    <div className="mb-4 px-4 py-3 bg-green-50 border-l-4 border-green-500 text-green-900 rounded-r-lg">
+                      <strong className="text-sm font-bold">Synced from OpenMRS</strong>
+                      <span className="ml-2 text-sm text-gray-700">{(record as any).diagnosis || (record as any).data?.name || ''}</span>
                       {(record as any).notes || (record as any).data?.treatment ? (
                         <div className="text-xs text-gray-600 mt-1">Treatment: {(record as any).notes || (record as any).data?.treatment}</div>
                       ) : null}
@@ -1134,47 +1134,47 @@ const PatientPassport: React.FC = () => {
                   ) : null}
 
                   {/* Diagnosis */}
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                      <Activity className="h-4 w-4 mr-1 text-red-500" />
+                  <div className="mb-5">
+                    <h4 className="text-base font-bold text-gray-900 mb-3 pb-2 border-b-2 border-green-500">
                       Diagnosis
                     </h4>
-                    <p className="text-gray-900 bg-white p-3 rounded border border-green-200">
-                      {record.diagnosis || 'No diagnosis recorded'}
-                    </p>
+                    <div className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
+                      <p className="text-gray-900 font-semibold text-base leading-relaxed">
+                        {record.diagnosis || 'No diagnosis recorded'}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Medications */}
                   {record.medications && record.medications.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                        <Pill className="h-4 w-4 mr-1 text-blue-500" />
+                    <div className="mb-5">
+                      <h4 className="text-base font-bold text-gray-900 mb-3 pb-2 border-b-2 border-green-500">
                         Medications
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {record.medications.map((med: any, medIndex: number) => (
-                          <div key={medIndex} className="bg-white p-3 rounded border border-green-200">
-                            <div className="flex justify-between items-start">
+                          <div key={medIndex} className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
+                            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
                               <div className="flex-1">
-                                <p className="font-medium text-gray-900">{med.name}</p>
-                                <p className="text-sm text-gray-600">
+                                <p className="font-bold text-gray-900 text-lg mb-2">{med.name}</p>
+                                <p className="text-sm text-gray-700 font-semibold mb-2">
                                   {med.dosage} - {med.frequency}
                                 </p>
                                 {med.prescribedBy && (
-                                  <p className="text-xs text-gray-500 mt-1">
+                                  <p className="text-xs text-gray-600 mt-1">
                                     Prescribed by: {med.prescribedBy}
                                   </p>
                                 )}
                               </div>
-                              <div className="text-right text-xs text-gray-500">
+                              <div className="flex flex-col items-start md:items-end gap-2">
                                 {med.startDate && (
-                                  <p>Start: {new Date(med.startDate).toLocaleDateString()}</p>
+                                  <p className="text-xs text-gray-600 font-medium">Start: {new Date(med.startDate).toLocaleDateString()}</p>
                                 )}
                                 {med.endDate && (
-                                  <p>End: {new Date(med.endDate).toLocaleDateString()}</p>
+                                  <p className="text-xs text-gray-600 font-medium">End: {new Date(med.endDate).toLocaleDateString()}</p>
                                 )}
                                 {!med.endDate && (
-                                  <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs mt-1">
+                                  <span className="inline-block px-4 py-1.5 bg-green-500 text-white rounded-full text-xs font-bold">
                                     Active
                                   </span>
                                 )}
@@ -1188,25 +1188,24 @@ const PatientPassport: React.FC = () => {
 
                   {/* Test Results */}
                   {record.testResults && record.testResults.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                        <Activity className="h-4 w-4 mr-1 text-green-500" />
+                    <div className="mb-5">
+                      <h4 className="text-base font-bold text-gray-900 mb-3 pb-2 border-b-2 border-green-500">
                         Test Results
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {record.testResults.map((test: any, testIndex: number) => (
-                          <div key={testIndex} className="bg-white p-3 rounded border border-green-200">
-                            <div className="flex justify-between items-start">
+                          <div key={testIndex} className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
+                            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
                               <div className="flex-1">
-                                <p className="font-medium text-gray-900">{test.testType}</p>
-                                <p className="text-sm text-gray-700 mt-1">{test.results}</p>
+                                <p className="font-bold text-gray-900 text-lg mb-2">{test.testType}</p>
+                                <p className="text-sm text-gray-700 font-semibold">{test.results}</p>
                               </div>
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                test.status === 'normal' ? 'bg-green-100 text-green-800' :
-                                test.status === 'abnormal' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
+                              <span className={`px-4 py-2 rounded-full text-xs font-bold ${
+                                test.status === 'normal' ? 'bg-green-500 text-white' :
+                                test.status === 'abnormal' ? 'bg-green-500 text-white' :
+                                'bg-green-500 text-white'
                               }`}>
-                                {test.status}
+                                {test.status?.toUpperCase() || 'NORMAL'}
                               </span>
                             </div>
                           </div>
@@ -1217,11 +1216,15 @@ const PatientPassport: React.FC = () => {
 
                   {/* Notes */}
                   {record.notes && (
-                    <div className="mt-4 pt-4 border-t border-green-300">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Notes</h4>
-                      <p className="text-sm text-gray-600 bg-white p-3 rounded border border-green-200">
-                        {record.notes}
-                      </p>
+                    <div className="mt-5 pt-5 border-t-2 border-gray-200">
+                      <h4 className="text-base font-bold text-gray-900 mb-3 pb-2 border-b-2 border-green-500">
+                        Additional Notes
+                      </h4>
+                      <div className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
+                        <p className="text-sm text-gray-700 leading-relaxed font-medium">
+                          {record.notes}
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -1313,9 +1316,9 @@ const PatientPassport: React.FC = () => {
               )}
             </>
             ) : (
-              <div className="bg-gray-50 rounded-lg p-8 text-center">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">No medical history records available</p>
+              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm">
+                <p className="text-lg font-semibold text-gray-700 mb-2">No medical history records available</p>
+                <p className="text-sm text-gray-500">Your medical records will appear here once they are added by your healthcare providers.</p>
               </div>
             )}
           </div>
@@ -1324,7 +1327,8 @@ const PatientPassport: React.FC = () => {
         {/* Medical Images */}
         <div className="dashboard-card">
           <div className="dashboard-card-header">
-            <h2 className="dashboard-card-title text-green-600">
+            <h2 className="dashboard-card-title text-green-600 flex items-center gap-2">
+              <FiImage className="h-5 w-5" />
               Medical Images
             </h2>
             <p className="text-sm text-gray-600 mt-1">

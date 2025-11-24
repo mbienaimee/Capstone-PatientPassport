@@ -312,8 +312,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new CustomError('Account has been deactivated', 401);
   }
 
-  // Check if email is verified (skip for doctors and admins)
-  if (!user.isEmailVerified && user.role !== 'doctor' && user.role !== 'admin') {
+  // Check if email is verified (skip for all staff roles: doctors, admins, hospitals, and receptionists)
+  const staffRoles = ['doctor', 'admin', 'hospital', 'receptionist'];
+  if (!user.isEmailVerified && !staffRoles.includes(user.role)) {
     throw new CustomError('Please verify your email address before logging in. Check your email for verification instructions.', 401);
   }
 
@@ -332,8 +333,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new CustomError('Invalid credentials', 401);
   }
 
-  // For patients, hospitals, doctors, and admins, skip OTP and login directly
-  if (user.role === 'patient' || user.role === 'hospital' || user.role === 'doctor' || user.role === 'admin') {
+  // For all users (patients and staff), skip OTP and login directly with email/password
+  if (['patient', 'hospital', 'doctor', 'admin', 'receptionist'].includes(user.role)) {
     try {
       // Update last login
       console.log('Updating last login for user:', user._id);

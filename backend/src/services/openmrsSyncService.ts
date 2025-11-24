@@ -93,17 +93,24 @@ class OpenMRSSyncService {
           connectionLimit: 10,
           queueLimit: 0,
           enableKeepAlive: true,
-          keepAliveInitialDelay: 0
+          keepAliveInitialDelay: 0,
+          connectTimeout: 60000      // Increase timeout to 60 seconds for slow networks
         });
 
-        // Test connection
-        await pool.query('SELECT 1');
+        // Test connection with timeout
+        const testPromise = pool.query('SELECT 1');
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection test timeout after 60s')), 60000)
+        );
+        
+        await Promise.race([testPromise, timeoutPromise]);
         this.connections.set(hospital.hospitalId, pool);
         this.hospitalConfigs.set(hospital.hospitalId, hospital);
         
         console.log(`✅ Connected to ${hospital.hospitalName} OpenMRS database`);
       } catch (error) {
         console.error(`❌ Failed to connect to ${hospital.hospitalName}:`, error);
+        console.log(`ℹ️  ${hospital.hospitalName} will be skipped in automatic sync`);
       }
     }
 

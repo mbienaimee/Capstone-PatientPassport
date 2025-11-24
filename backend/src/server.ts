@@ -71,7 +71,13 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "blob:"],
       workerSrc: ["'self'", "blob:"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"]
+      connectSrc: [
+        "'self'",
+        "https://simulator.africastalking.com",
+        "https://account.africastalking.com",
+        "https://*.africastalking.com",
+        "https://*.at-uat.org"
+      ]
     }
   }
 }));
@@ -82,15 +88,18 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://jade-pothos-e432d0.netlify.app',
   'https://patientpassport-api.azurewebsites.net',
-  'https://simulator.africastalking.com', // Africa's Talking USSD Simulator
-  'https://account.africastalking.com', // Africa's Talking Dashboard
   process.env['FRONTEND_URL']
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, Postman, Africa's Talking webhooks)
+    // Allow requests with no origin (mobile apps, curl, Postman, Africa's Talking webhooks)
     if (!origin) return callback(null, true);
+    
+    // Always allow Africa's Talking domains (for USSD callbacks)
+    if (origin && (origin.includes('africastalking.com') || origin.includes('at-uat.org'))) {
+      return callback(null, true);
+    }
     
     // In development, allow all origins
     if (process.env['NODE_ENV'] === 'development') {
@@ -133,6 +142,33 @@ app.use(express.urlencoded({
   // Performance optimizations
   parameterLimit: 1000
 }));
+
+// Add connection timeout and keep-alive settings
+app.use((req, res, next) => {
+  // Set socket timeout to 30 seconds
+  const socket = (req as any).socket || (req as any).connection;
+  if (socket) {
+    socket.setTimeout(30000); // 30 second timeout
+    socket.setKeepAlive(true, 10000); // Keep-alive every 10 seconds
+    
+    // Handle socket errors gracefully
+    socket.on('error', (err: Error) => {
+      console.error('🔌 Socket error:', err.message);
+      if (!res.headersSent) {
+        res.status(500).end();
+      }
+    });
+    
+    socket.on('timeout', () => {
+      console.warn('⏱️ Socket timeout');
+      if (!res.headersSent) {
+        res.status(408).send('Request Timeout');
+      }
+      socket.destroy();
+    });
+  }
+  next();
+});
 
 // Performance monitoring
 app.use(performanceMonitor);
@@ -220,6 +256,25 @@ app.use('/api-docs', (req, res, next) => {
   next();
 });
 
+// Handle socket.io client library requests BEFORE static files
+// SOCKET.IO IS DISABLED - Return 404 to prevent connection attempts
+app.get('/socket.io/socket.io.js', (_req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Access-Control-Allow-Origin', '*');
+  res.status(404).send('Socket.io is disabled. USSD uses HTTP POST /api/ussd/callback');
+});
+
+// Block ALL socket.io WebSocket upgrade requests
+app.use((req, res, next) => {
+  if (req.headers.upgrade === 'websocket' || req.url.startsWith('/socket.io')) {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.status(404).end();
+    return;
+  }
+  next();
+});
+
 // Serve static files (for USSD simulator and other tools)
 app.use(express.static('public', {
   maxAge: '1d',
@@ -256,7 +311,19 @@ app.get('/', (_req, res) => {
     version: '1.0.0',
     documentation: '/api-docs',
     health: '/health',
-    ussdSimulator: '/ussd-simulator'
+    ussdSimulator: '/ussd-simulator',
+    socketIO: '/socket.io (WebSocket server)'
+  });
+});
+
+// Socket.io health check endpoint
+app.get('/socket.io/health', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'Socket.io server is running',
+    endpoint: '/socket.io',
+    transports: ['websocket', 'polling'],
+    version: '4.8.1'
   });
 });
 

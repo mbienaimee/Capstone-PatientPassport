@@ -209,6 +209,16 @@ export const updateMedicalRecord = asyncHandler(async (req: Request, res: Respon
     }
   }
 
+  // CRITICAL: Fix missing createdBy - required field that might be missing in old records
+  // If createdBy is missing (legacy records from sync), set it to current user or a system value
+  if (!medicalRecord.createdBy || medicalRecord.createdBy === undefined || medicalRecord.createdBy === null) {
+    console.log(`⚠️  WARNING: Record ${id} has no createdBy field - setting to current user`);
+    // Use current user's ID, or if that's not available, use a system ID
+    const userId = user._id ? user._id.toString() : (user.id ? user.id.toString() : 'system');
+    medicalRecord.createdBy = userId;
+    console.log(`   Set createdBy to: ${userId}`);
+  }
+  
   // Update the record data
   // Merge the new data with existing data, ensuring medications array is properly handled
   const updatedData = { ...medicalRecord.data, ...data };

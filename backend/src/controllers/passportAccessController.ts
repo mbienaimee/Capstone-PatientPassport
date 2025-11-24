@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import PatientPassport from '@/models/PatientPassport';
 import Patient from '@/models/Patient';
 import Doctor from '@/models/Doctor';
+import MedicalRecord from '@/models/MedicalRecord';
 import { asyncHandler, CustomError } from '@/middleware/errorHandler';
 import { ApiResponse } from '@/types';
 import { generateOTP, sendOTP } from '@/utils/otp';
@@ -287,13 +288,38 @@ export const verifyPassportAccessOTP = asyncHandler(async (req: Request, res: Re
     .populate('accessHistory.doctor.user', 'name');
 
   console.log(`✅ Passport populated successfully`);
+
+  // Query MedicalRecord collection for observations
+  console.log(`🔍 Querying MedicalRecord collection for patient: ${patientId}`);
+  const medicalRecords = await MedicalRecord.find({ patientId: patientId })
+    .populate('createdBy', 'name')
+    .sort({ createdAt: -1 })
+    .lean();
+  
+  console.log(`📋 Found ${medicalRecords.length} medical records for passport`);
+
+  // Group medical records by type
+  const medicalRecordsGrouped = {
+    conditions: medicalRecords.filter(r => r.type === 'condition'),
+    medications: medicalRecords.filter(r => r.type === 'medication'),
+    tests: medicalRecords.filter(r => r.type === 'test'),
+    visits: medicalRecords.filter(r => r.type === 'visit'),
+    images: medicalRecords.filter(r => r.type === 'image')
+  };
+
+  // Add medicalRecords to passport data
+  const passportWithRecords = {
+    ...populatedPassport.toObject(),
+    medicalRecords: medicalRecordsGrouped
+  };
+
   console.log(`✅ Doctor ${doctor.user.name} now has access to ${patient.user.name}'s passport`);
 
   const response: ApiResponse = {
     success: true,
     message: 'OTP verified successfully. Passport access granted.',
     data: {
-      passport: populatedPassport,
+      passport: passportWithRecords,
       accessToken: 'temp-access-token', // You can implement JWT tokens for passport access
       expiresIn: '1 hour',
       doctorId: doctorId.toString(),
@@ -359,10 +385,39 @@ export const getPatientPassport = asyncHandler(async (req: Request, res: Respons
 
     console.log(`✅ Passport populated successfully`);
 
+    // Query MedicalRecord collection for observations
+    console.log(`🔍 Querying MedicalRecord collection for patient: ${patientId}`);
+    const medicalRecords = await MedicalRecord.find({ patientId: patientId })
+      .populate('createdBy', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    console.log(`📋 Found ${medicalRecords.length} medical records`);
+
+    // Group medical records by type
+    const medicalRecordsGrouped = {
+      conditions: medicalRecords.filter(r => r.type === 'condition'),
+      medications: medicalRecords.filter(r => r.type === 'medication'),
+      tests: medicalRecords.filter(r => r.type === 'test'),
+      visits: medicalRecords.filter(r => r.type === 'visit'),
+      images: medicalRecords.filter(r => r.type === 'image')
+    };
+
+    console.log(`   Conditions: ${medicalRecordsGrouped.conditions.length}`);
+    console.log(`   Medications: ${medicalRecordsGrouped.medications.length}`);
+    console.log(`   Tests: ${medicalRecordsGrouped.tests.length}`);
+    console.log(`   Visits: ${medicalRecordsGrouped.visits.length}`);
+
+    // Add medicalRecords to passport data
+    const passportWithRecords = {
+      ...populatedPassport.toObject(),
+      medicalRecords: medicalRecordsGrouped
+    };
+
     const response: ApiResponse = {
       success: true,
       message: 'Patient passport retrieved successfully',
-      data: populatedPassport
+      data: passportWithRecords
     };
 
     res.json(response);

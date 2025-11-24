@@ -119,6 +119,51 @@ export const asyncHandler = (fn: Function) => {
 
 // 404 handler
 export const notFound = (req: Request, res: Response, next: NextFunction) => {
+  // Check if this is a socket.io or static file request
+  const isSocketIOPath = req.path.includes('/socket.io/') || req.path.includes('/engine.io/');
+  const isStaticFile = /\.(js|css|html|json|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/i.test(req.path);
+  const isUSSDRoute = req.originalUrl.includes('/ussd/') || req.path.includes('/ussd/');
+  
+  // For socket.io paths, return JSON instead of triggering error handler
+  if (isSocketIOPath) {
+    res.set('Content-Type', 'application/json');
+    res.status(404).json({
+      error: 'Socket.io endpoint not found',
+      message: 'This endpoint is handled by socket.io server. Ensure socket.io is properly configured.',
+      path: req.path
+    });
+    return;
+  }
+  
+  // For static files, return JSON error (not HTML)
+  if (isStaticFile) {
+    res.set('Content-Type', 'application/json');
+    res.status(404).json({
+      error: 'File not found',
+      message: `The requested file ${req.path} was not found on this server.`,
+      path: req.path
+    });
+    return;
+  }
+  
+  // For USSD routes, return plain text
+  if (isUSSDRoute) {
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.status(404).send(`END Error: USSD endpoint not found - ${req.originalUrl}`);
+    return;
+  }
+  
+  // For API routes, return JSON
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({
+      success: false,
+      message: `API endpoint not found - ${req.originalUrl}`,
+      path: req.path
+    });
+    return;
+  }
+  
+  // Default: trigger error handler (which will return JSON for API, HTML for web)
   const error = new CustomError(`Not found - ${req.originalUrl}`, 404);
   next(error);
 };

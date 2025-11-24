@@ -89,8 +89,9 @@ const DoctorPatientPassport: React.FC = () => {
     }
   };
 
-  const handleViewPatientPassport = (patient: Patient) => {
-    // Navigate to access request form
+  const handleViewPatientPassport = async (patient: Patient) => {
+    // TODO: First check if doctor has approved access
+    // For now, navigate to access request form
     navigate('/doctor-access-request', { 
       state: { 
         patientId: patient._id, 
@@ -107,17 +108,26 @@ const DoctorPatientPassport: React.FC = () => {
   };
 
   const handleEmergencyAccessSuccess = (accessData: any) => {
-    // Navigate to patient passport with emergency access granted
-    navigate('/doctor-access-request', { 
-      state: { 
-        patientId: selectedPatientForEmergency?._id, 
-        patientName: selectedPatientForEmergency?.user.name,
-        doctorName: doctorInfo.name,
-        licenseNumber: doctorInfo.licenseNumber,
+    // Navigate to patient passport view with emergency access granted
+    // Store emergency access info in localStorage for the session
+    localStorage.setItem('emergencyAccess', JSON.stringify({
+      patientId: selectedPatientForEmergency?._id,
+      emergencyOverrideId: accessData.emergencyOverride._id,
+      expiresAt: accessData.emergencyOverride.expiresAt
+    }));
+    
+    // Navigate to view patient passport (update-passport route for now)
+    navigate("/update-passport", {
+      state: {
+        patientId: selectedPatientForEmergency?._id,
+        viewOnly: true,
         emergencyAccess: true,
-        emergencyOverrideId: accessData.emergencyOverride._id
-      } 
+        patientData: selectedPatientForEmergency
+      }
     });
+    
+    setShowEmergencyModal(false);
+    setSelectedPatientForEmergency(null);
   };
 
   return (

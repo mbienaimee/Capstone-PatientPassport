@@ -2,7 +2,7 @@ import 'dotenv/config';
 import app from './server';
 import mongoose from 'mongoose';
 import { createServer } from 'http';
-import SocketService from './services/socketService';
+// import SocketService from './services/socketService'; // DISABLED
 import openmrsSyncService from './services/openmrsSyncService';
 import { directDBSyncService } from './services/directDBSyncService';
 import { getOpenMRSConfigurations, syncConfig } from './config/openmrsConfig';
@@ -61,41 +61,55 @@ const startServer = async () => {
     const server = createServer(app);
 
     // Initialize Socket.IO (socket functionality does not require MongoDB)
-    new SocketService(server);
+    // DISABLED: Socket.io causes conflicts with Africa's Talking USSD simulator
+    // new SocketService(server);
+    console.log('⚠️  Socket.io is DISABLED (prevents Africa\'s Talking simulator conflicts)');
+    console.log('ℹ️  USSD works via HTTP POST /api/ussd/callback');
 
     // Only initialize MongoDB-dependent services if DB connection succeeded
     if (dbConnected) {
-      // Initialize OpenMRS Sync Service
-      console.log('\n🔄 ═══════════════════════════════════════════════════════');
-      console.log('🔄 Initializing OpenMRS Auto-Sync Service');
-      console.log('🔄 ═══════════════════════════════════════════════════════\n');
+      // Initialize OpenMRS Sync Service (DISABLED - using auto-sync-loop.js instead)
+      if (process.env.SKIP_OPENMRS_SYNC !== 'true') {
+        console.log('\n🔄 ═══════════════════════════════════════════════════════');
+        console.log('🔄 Initializing OpenMRS Auto-Sync Service');
+        console.log('🔄 ═══════════════════════════════════════════════════════\n');
 
-      try {
-        const hospitalConfigs = getOpenMRSConfigurations();
+        try {
+          const hospitalConfigs = getOpenMRSConfigurations();
 
-        if (hospitalConfigs.length > 0) {
-          await openmrsSyncService.initializeConnections(hospitalConfigs);
+          if (hospitalConfigs.length > 0) {
+            await openmrsSyncService.initializeConnections(hospitalConfigs);
 
-          if (syncConfig.autoStartSync) {
-            console.log(`\n🔄 Auto-starting sync service with ${syncConfig.autoSyncInterval} second interval...\n`);
-            openmrsSyncService.startAutoSync(syncConfig.autoSyncInterval);
+            if (syncConfig.autoStartSync) {
+              console.log(`\n🔄 Auto-starting sync service with ${syncConfig.autoSyncInterval} second interval...\n`);
+              openmrsSyncService.startAutoSync(syncConfig.autoSyncInterval);
+            } else {
+              console.log('\n⏸️ Auto-sync disabled. Use API endpoints to start manual sync.\n');
+            }
           } else {
-            console.log('\n⏸️ Auto-sync disabled. Use API endpoints to start manual sync.\n');
+            console.log('\n⚠️ No OpenMRS hospital configurations found.');
+            console.log('ℹ️ Configure hospitals in .env or openmrsConfig.ts to enable sync.\n');
           }
-        } else {
-          console.log('\n⚠️ No OpenMRS hospital configurations found.');
-          console.log('ℹ️ Configure hospitals in .env or openmrsConfig.ts to enable sync.\n');
+        } catch (syncError) {
+          console.error('\n❌ Failed to initialize OpenMRS sync:', syncError);
+          console.log('⚠️ Server will continue without OpenMRS sync capabilities.\n');
         }
-      } catch (syncError) {
-        console.error('\n❌ Failed to initialize OpenMRS sync:', syncError);
-        console.log('⚠️ Server will continue without OpenMRS sync capabilities.\n');
+      } else {
+        console.log('\n✅ OpenMRS built-in sync DISABLED (using external auto-sync-loop.js)');
+        console.log('ℹ️  Sync is handled by the separate auto-sync-loop.js process\n');
       }
 
-      // Start scheduled observation sync service (direct DB sync)
-      console.log('\n🔄 ═══════════════════════════════════════════════════════');
-      console.log('🔄 Starting Direct Database Observation Sync Service');
-      console.log('🔄 ═══════════════════════════════════════════════════════\n');
-      directDBSyncService.start();
+      // Direct DB sync (optional - requires local MySQL with OpenMRS)
+      // Only attempt if ENABLE_DIRECT_DB_SYNC is explicitly set to 'true'
+      if (process.env.ENABLE_DIRECT_DB_SYNC === 'true') {
+        console.log('\n🔄 ═══════════════════════════════════════════════════════');
+        console.log('🔄 Starting Direct Database Observation Sync Service');
+        console.log('🔄 ═══════════════════════════════════════════════════════\n');
+        directDBSyncService.start();
+      } else {
+        console.log('\nℹ️  Direct DB sync disabled (requires local MySQL + OpenMRS)');
+        console.log('   Using REST API sync for OpenMRS integration ✓\n');
+      }
     } else {
       console.log('\n⚠️ MongoDB not connected - running in degraded mode.');
       console.log('   Some features (OpenMRS sync, patient/persistence endpoints) will be disabled until DB is available.\n');

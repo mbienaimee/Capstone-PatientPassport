@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, User, Phone, Mail, Calendar, Filter, Eye, UserPlus, X } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,6 +41,8 @@ const PatientList: React.FC<PatientListProps> = ({ hospitalId, onViewPatient }) 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddPatientForm, setShowAddPatientForm] = useState(false);
+  const hasFetchedRef = useRef(false);
+  const currentHospitalIdRef = useRef<string | null>(null);
   const [newPatientForm, setNewPatientForm] = useState({
     name: '',
     email: '',
@@ -56,38 +58,58 @@ const PatientList: React.FC<PatientListProps> = ({ hospitalId, onViewPatient }) 
     emergencyContactRelation: ''
   });
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching patients for hospital:', hospitalId);
+      console.log('🔍 Fetching patients for hospital:', hospitalId);
       const response = await apiService.getHospitalPatients(hospitalId);
-      console.log('Patients API response:', response);
+      console.log('📊 Patients API response:', response);
       
       if (response.success && response.data) {
-        const patientsData = (response.data as any) || [];
-        console.log('Setting patients, count:', patientsData.length);
+        // Handle both array and object responses
+        let patientsData = Array.isArray(response.data) ? response.data : [];
+        
+        console.log('✅ Setting patients, count:', patientsData.length);
+        console.log('📝 First patient sample:', patientsData[0]);
+        
         setPatients(patientsData);
+        hasFetchedRef.current = true;
+        
+        if (patientsData.length === 0) {
+          console.log('⚠️  No patients returned from API');
+        }
       } else {
-        console.error('Failed to fetch patients:', response);
-        setError('Failed to fetch patients');
+        console.error('❌ Failed to fetch patients:', response);
+        setError(response.message || 'Failed to fetch patients');
       }
-    } catch (err) {
-      console.error('Error fetching patients:', err);
-      setError('Error loading patients. Please try again.');
+    } catch (err: any) {
+      console.error('❌ Error fetching patients:', err);
+      setError(err.message || 'Error loading patients. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (hospitalId) {
-      fetchPatients();
-    }
   }, [hospitalId]);
 
+  useEffect(() => {
+    // Only fetch if hospitalId changed or it's the first fetch
+    if (hospitalId && (!hasFetchedRef.current || currentHospitalIdRef.current !== hospitalId)) {
+      console.log('🏥 PatientList: hospitalId changed, fetching patients:', hospitalId);
+      currentHospitalIdRef.current = hospitalId;
+      fetchPatients();
+    } else if (hospitalId && hasFetchedRef.current) {
+      console.log('✅ PatientList: Data already loaded for this hospital, skipping refetch');
+    }
+  }, [hospitalId, fetchPatients]);
+
   const filteredPatients = patients.filter(patient => {
+    // Safety check: skip patients without user data
+    if (!patient.user || !patient.user.name) {
+      console.warn('⚠️  Patient missing user data:', patient._id);
+      return false;
+    }
+    
     const matchesSearch = 
       patient.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.nationalId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -97,6 +119,13 @@ const PatientList: React.FC<PatientListProps> = ({ hospitalId, onViewPatient }) 
     const matchesStatus = statusFilter === 'all' || patient.status === statusFilter;
     
     return matchesSearch && matchesStatus;
+  });
+
+  console.log('🔍 Filter Debug:', {
+    totalPatients: patients.length,
+    filteredCount: filteredPatients.length,
+    searchTerm,
+    statusFilter
   });
 
   const formatDate = (dateString: string) => {
@@ -177,6 +206,8 @@ const PatientList: React.FC<PatientListProps> = ({ hospitalId, onViewPatient }) 
         });
         
         handleCloseAddPatientForm();
+        // Force refetch by resetting the flag
+        hasFetchedRef.current = false;
         fetchPatients(); // Refresh the patient list
       }
     } catch (error) {

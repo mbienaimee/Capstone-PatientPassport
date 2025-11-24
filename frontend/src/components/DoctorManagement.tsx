@@ -9,6 +9,7 @@ import {
   Users,
   Mail,
   Shield,
+  UserCircle,
 } from "lucide-react";
 
 interface Doctor {
@@ -412,61 +413,59 @@ const DoctorManagement: React.FC<DoctorManagementProps> = ({ hospitalId }) => {
               {doctors.map((doctor) => (
                 <div
                   key={doctor._id}
-                  className="border border-green-200 group rounded-lg p-4 hover:bg-green-50 transition-colors"
+                  className="border-b border-green-100 group py-4 hover:bg-green-50 transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <Stethoscope className="h-5 w-5 text-green-600" />
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="h-14 w-14 bg-green-50 rounded-lg flex items-center justify-center shadow-sm">
+                        <UserCircle className="h-7 w-7 text-green-600" />
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <h4 className="font-medium text-gray-900">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h4 className="text-lg font-bold text-gray-900">
                             Dr. {doctor.user.name}
                           </h4>
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                               doctor.isActive
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
                             }`}
                           >
                             {doctor.isActive ? "Active" : "Inactive"}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                        <div className="flex items-center flex-wrap gap-4 text-sm text-gray-600">
                           <span className="flex items-center">
-                            <Mail className="h-3 w-3 mr-1" />
+                            <Mail className="h-4 w-4 mr-1.5 text-gray-400" />
                             {doctor.user.email}
                           </span>
                           <span className="flex items-center">
-                            <Shield className="h-3 w-3 mr-1" />
+                            <Shield className="h-4 w-4 mr-1.5 text-gray-400" />
                             {doctor.licenseNumber}
                           </span>
                           <span className="flex items-center">
-                            <Users className="h-3 w-3 mr-1" />
-                            {doctor.patients.length} patients
+                            <Users className="h-4 w-4 mr-1.5 text-gray-400" />
+                            {doctor.patients?.length || 0} patients
                           </span>
-                          <span className="font-medium text-green-600">
+                          <span className="font-semibold text-green-600 ml-auto">
                             {doctor.specialization}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 group-hover:opacity-100 opacity-0 transition-opacity">
+                    <div className="flex items-center space-x-2 ml-4">
                       <button
                         onClick={() => handleEditDoctor(doctor)}
-                        className="bg-white text-slate-800 py-2 px-4 rounded text-sm font-medium hover:bg-blue-700 hover:text-white transition-colors flex items-center"
+                        className="bg-white text-gray-700 border border-gray-200 py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors flex items-center"
                       >
-                        <Edit className="h-4 w-4 mr-1" />
-                        {/* Edit */}
+                        <Edit className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleRemoveDoctor(doctor._id)}
-                        className="bg-white text-red-500 border border-slate-200 py-2 px-4 rounded text-sm font-medium hover:bg-red-600 hover:text-white transition-colors flex items-center"
+                        className="bg-white text-red-500 border border-gray-200 py-2 px-3 rounded-lg text-sm font-medium hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors flex items-center"
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        {/* Delete */}
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  User, 
-  Calendar, 
-  Heart, 
-  Pill, 
-  Activity, 
-  FileText, 
-  Shield,
-  Plus,
-  Trash2,
-  Stethoscope,
-  Building
-} from 'lucide-react';
+import { FiEdit2, FiRefreshCw } from 'react-icons/fi';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService, ApiError } from '../services/api';
@@ -35,6 +23,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [editedData, setEditedData] = useState(passportData);
   const [newRecords, setNewRecords] = useState<any[]>([]); // Track newly added records
   const [doctorProfile, setDoctorProfile] = useState<{ doctorName: string; hospitalName: string } | null>(null);
@@ -293,6 +282,33 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
   const handleCancel = () => {
     setEditedData(passportData);
     setIsEditing(false);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      console.log('🔄 Refreshing patient passport data...');
+      const response = await apiService.getPatientPassport(patientId);
+      
+      if (response && response.success && response.data) {
+        console.log('✅ Passport data refreshed successfully');
+        onUpdate(response.data);
+        showNotification({
+          type: 'success',
+          title: 'Refreshed',
+          message: 'Patient passport data has been updated with the latest information.'
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing passport:', error);
+      showNotification({
+        type: 'error',
+        title: 'Refresh Failed',
+        message: 'Failed to refresh patient data. Please try again.'
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Add new historical record (complete card with diagnosis, medications, tests)
@@ -988,7 +1004,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
           <div className="bg-green-600 text-white px-6 py-3">
             <div className="flex items-center justify-center">
               <div className="text-center">
-                <p className="font-bold text-lg">EMERGENCY ACCESS ACTIVE</p>
+                <p className="font-bold text-base">EMERGENCY ACCESS ACTIVE</p>
                 <p className="text-sm text-green-100">This access is logged and will be audited • Patient has been notified</p>
               </div>
             </div>
@@ -996,21 +1012,16 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
         )}
         
         {/* Header - Green Theme */}
-        <div className={`p-6 ${isEmergencyAccess ? 'bg-gradient-to-r from-green-700 to-emerald-700' : 'bg-gradient-to-r from-green-600 to-emerald-600'} ${isEmergencyAccess ? '' : 'rounded-t-2xl'}`}>
+        <div className={`p-4 ${isEmergencyAccess ? 'bg-gradient-to-r from-green-700 to-emerald-700' : 'bg-gradient-to-r from-green-600 to-emerald-600'} ${isEmergencyAccess ? '' : 'rounded-t-2xl'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold text-white mb-1">Patient Passport</h2>
-              <p className="text-xl text-white font-medium">{editedData?.personalInfo?.fullName || 'Unknown Patient'}</p>
+              <h2 className="text-2xl font-bold text-white mb-1">Patient Passport</h2>
+              <p className="text-lg text-white font-medium">{editedData?.personalInfo?.fullName || 'Unknown Patient'}</p>
               {isEmergencyAccess && (
-                <p className="text-sm text-red-100 mt-2">⚠️ Emergency Protocol - Full Access Granted</p>
+                <p className="text-sm text-red-100 mt-2">Emergency Protocol - Full Access Granted</p>
               )}
             </div>
             <div className="flex items-center space-x-2">
-              {isDoctor && (
-                <span className="px-3 py-1 bg-white bg-opacity-20 text-white rounded-lg text-sm">
-                  👨‍⚕️ View Only
-                </span>
-              )}
               {!isDoctor && isEditing ? (
                 <>
                   <button
@@ -1035,6 +1046,17 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                   Edit
                 </button>
               ) : null}
+              {isDoctor && (
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center space-x-2 px-4 py-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 disabled:opacity-50"
+                  title="Refresh passport data"
+                >
+                  <FiRefreshCw className={isRefreshing ? 'animate-spin' : ''} />
+                  <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="flex items-center px-4 py-2 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30"
@@ -1046,12 +1068,11 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-100px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Personal Information */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <User className="h-5 w-5 mr-2 text-green-600" />
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-3">
                 Personal Information
               </h3>
               
@@ -1149,16 +1170,15 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
             </div>
 
             {/* Medical Information Summary */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Heart className="h-5 w-5 mr-2 text-red-600" />
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-3">
                 Medical Summary
               </h3>
 
               {/* Allergies */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Allergies</label>
-                  <p className="text-gray-900">
+                  <p className="text-gray-900 text-sm">
                     {(editedData?.medicalInfo?.allergies || []).length > 0 
                       ? editedData.medicalInfo.allergies.join(', ') 
                       : 'No known allergies'
@@ -1167,16 +1187,16 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white p-3 rounded border">
                   <p className="text-xs text-gray-500">Medical Conditions</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-xl font-bold text-green-600">
                     {(editedData?.medicalInfo?.medicalConditions || []).length + (editedData?.medicalRecords?.conditions || []).length}
                   </p>
                 </div>
                 <div className="bg-white p-3 rounded border">
                   <p className="text-xs text-gray-500">Current Medications</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-xl font-bold text-green-600">
                     {(editedData?.medicalInfo?.currentMedications || []).filter((m: any) => 
                       m.status === 'active' || !m.endDate || new Date(m.endDate) > new Date()
                     ).length + (editedData?.medicalRecords?.medications || []).length}
@@ -1184,13 +1204,13 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           </div>
                 <div className="bg-white p-3 rounded border">
                   <p className="text-xs text-gray-500">Test Results</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-xl font-bold text-green-600">
                     {(editedData?.testResults || []).length + (editedData?.medicalRecords?.tests || []).length}
                   </p>
                           </div>
                 <div className="bg-white p-3 rounded border">
                   <p className="text-xs text-gray-500">Hospital Visits</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-xl font-bold text-green-600">
                     {(editedData?.hospitalVisits || []).length + (editedData?.medicalRecords?.visits || []).length}
                   </p>
                         </div>
@@ -1199,14 +1219,13 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
               </div>
 
           {/* Consolidated Medical History - All in One Card */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <Activity className="h-6 w-6 mr-2 text-green-600" />
+                <h3 className="text-lg font-semibold text-gray-900">
                   Medical History
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   Complete medical records with diagnosis, medications, tests, and visit information
                 </p>
               </div>
@@ -1215,10 +1234,9 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                 <button
                   onClick={addNewHistoricalRecord}
                   disabled={!doctorProfile && isDoctor}
-                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                   title={!doctorProfile ? 'Loading doctor profile...' : 'Add a new historical record'}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
                   Add New Record
                   {!doctorProfile && isDoctor && (
                     <span className="ml-2 text-xs">(Loading...)</span>
@@ -1230,19 +1248,20 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
             <div className="space-y-4">
               {consolidatedRecords.length > 0 ? (
                 consolidatedRecords.map((record: any, index: number) => (
-                  <div 
-                    key={record.id || index}
-                    className={`bg-gradient-to-r from-green-50 to-emerald-50 border-2 ${record.isNew ? 'border-yellow-400 border-dashed' : 'border-green-200'} rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow`}
-                  >
+                <div 
+                  key={record.id || index}
+                  className="bg-white rounded-xl border border-green-500 p-4 shadow-lg hover:shadow-xl transition-all duration-300 mb-4"
+                >
+                    {/* Action buttons at top */}
                     <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
                       {record.isNew && (
                         <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                           New Record (Editable)
                         </span>
                       )}
                       {record.isFromOpenMRS && (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold flex items-center">
-                          <Activity className="h-3 w-3 mr-1" />
+                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
                           Synced from OpenMRS
                         </span>
                       )}
@@ -1252,8 +1271,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                         </span>
                       )}
                       {!record.isEditable && record.isFromOpenMRS && record.editAccess && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold flex items-center">
-                          <Shield className="h-3 w-3 mr-1" />
+                          <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
                           Locked ({record.editAccess.hoursSinceSync ? `${record.editAccess.hoursSinceSync}h ago` : 'Old'})
                         </span>
                       )}
@@ -1262,6 +1280,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           Click Edit to Add Medications
                         </span>
                       )}
+                      </div>
                       <div className="flex items-center space-x-2">
                         {(record.isEditable || (!record.isNew && isDoctor && !record.syncDate)) && editingRecordId !== record.id && (
                           <button
@@ -1273,10 +1292,10 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                               console.log('   - isDoctor:', isDoctor);
                               startEditingObservation(record);
                             }}
-                            className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-lg transition-colors flex items-center font-medium shadow-sm"
+                            className="bg-green-500 text-white hover:bg-green-600 p-2 rounded-lg transition-colors shadow-sm flex items-center justify-center"
                             title={`Edit this observation${record.editAccess?.reason ? ` - ${record.editAccess.reason}` : ' - Add medications and notes'}`}
                           >
-                            Edit Observation
+                            <FiEdit2 className="h-4 w-4" />
                           </button>
                         )}
                         {editingRecordId === record.id && (
@@ -1284,7 +1303,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                             <button
                               onClick={() => saveEditedObservation(record)}
                               disabled={isSaving}
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded transition-colors flex items-center disabled:opacity-50"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded transition-colors disabled:opacity-50 text-sm"
                               title="Save changes"
                             >
                               {isSaving ? 'Saving...' : 'Save'}
@@ -1292,7 +1311,7 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                             <button
                               onClick={cancelEditingObservation}
                               disabled={isSaving}
-                              className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 px-3 py-1 rounded transition-colors flex items-center disabled:opacity-50"
+                              className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 px-3 py-1 rounded transition-colors disabled:opacity-50 text-sm"
                               title="Cancel editing"
                             >
                               Cancel
@@ -1302,96 +1321,101 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                         {record.isNew && (
                           <button
                             onClick={() => removeNewHistoricalRecord(record.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded transition-colors"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded transition-colors text-sm"
                             title="Remove this new record"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            Remove
                           </button>
                         )}
                       </div>
                     </div>
                     
                     {/* Header */}
-                    <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
-                      <div className="flex items-start justify-between">
+                  <div className="bg-green-500 rounded-lg p-4 mb-4 -m-4">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Calendar className="h-4 w-4 text-green-600" />
                             {record.isNew && record.isEditable ? (
                               <input
                                 type="date"
                                 value={record.date || ''}
                                 onChange={(e) => updateNewHistoricalRecord(record.id, 'date', e.target.value)}
-                                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className="px-2 py-1.5 border border-white/30 bg-white/20 text-white rounded-lg text-xs font-semibold mb-2 focus:outline-none focus:ring-2 focus:ring-white"
                                 placeholder="Select date"
                               />
                             ) : (
-                              <span className="font-semibold text-gray-900">
+                          <span className="inline-block px-3 py-1 bg-green-600 text-white rounded-full text-xs font-bold mb-2">
                                 {new Date(record.date).toLocaleDateString('en-US', { 
-                                  weekday: 'short',
+                              weekday: 'long',
                                   year: 'numeric', 
-                                  month: 'short', 
+                              month: 'long', 
                                   day: 'numeric' 
                                 })}
                               </span>
                             )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Stethoscope className="h-4 w-4 text-green-600" />
                             {record.isNew && record.isEditable ? (
                               <input
                                 type="text"
                                 value={record.visitType || ''}
                                 onChange={(e) => updateNewHistoricalRecord(record.id, 'visitType', e.target.value)}
                                 placeholder="e.g., General Checkup, Emergency, Follow-up"
-                                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className="w-full px-3 py-2 bg-white/20 border border-white/30 text-white rounded-lg text-lg font-bold focus:outline-none focus:ring-2 focus:ring-white placeholder-white/70"
                               />
                             ) : (
-                              <span className="text-sm font-medium text-green-700">{record.visitType}</span>
+                          <h3 className="text-lg font-bold text-white">
+                            {record.visitType || 'Medical Visit'}
+                          </h3>
                             )}
                           </div>
-                        </div>
-                        <div className="text-right ml-4">
-                          <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900 mb-2 bg-green-50 px-3 py-1.5 rounded border border-green-200">
-                            <Building className="h-4 w-4 text-green-600" />
+                        <div className="flex flex-col gap-2 md:text-right">
                             {record.isNew && record.isEditable ? (
                               <input
                                 type="text"
                                 value={record.hospitalName || ''}
                                 onChange={(e) => updateNewHistoricalRecord(record.id, 'hospitalName', e.target.value)}
                                 placeholder="Hospital Name"
-                                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 w-40 bg-gray-50"
+                              className="px-4 py-2 bg-white text-green-600 rounded-lg text-sm font-bold shadow-md focus:outline-none focus:ring-2 focus:ring-green-500"
                                 readOnly
                                 title="Auto-detected from your profile"
                               />
                             ) : (
-                              <span className="text-green-700">{record.hospitalName}</span>
-                            )}
+                            <div className="inline-block px-4 py-2 bg-white text-green-600 rounded-lg text-sm font-bold shadow-md">
+                              {record.hospitalName || 'Hospital'}
                           </div>
-                          <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1.5 rounded border border-blue-200">
-                            <User className="h-4 w-4 text-blue-600" />
+                          )}
                             {record.isNew && record.isEditable ? (
                               <input
                                 type="text"
                                 value={record.doctorName || ''}
                                 onChange={(e) => updateNewHistoricalRecord(record.id, 'doctorName', e.target.value)}
                                 placeholder="Doctor Name"
-                                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 w-40 bg-gray-50"
+                              className="px-4 py-2 bg-white text-green-600 rounded-lg text-sm font-bold shadow-md focus:outline-none focus:ring-2 focus:ring-green-500"
                                 readOnly
                                 title="Auto-detected from your profile"
                               />
                             ) : (
-                              <span className="text-blue-700">{record.doctorName}</span>
+                            <div className="inline-block px-4 py-2 bg-white text-green-600 rounded-lg text-sm font-bold shadow-md">
+                              Dr. {record.doctorName || 'Doctor'}
+                            </div>
                             )}
                           </div>
                         </div>
                       </div>
+
+                    {/* Show OpenMRS synced banner if present */}
+                    {((record as any).openmrsData && (record as any).openmrsData.synced) || ((record as any).data && (record as any).data.openmrsData && (record as any).data.openmrsData.synced) ? (
+                      <div className="mb-4 px-4 py-3 bg-green-50 border-l-4 border-green-500 text-green-900 rounded-r-lg">
+                        <strong className="text-sm font-bold">Synced from OpenMRS</strong>
+                        <span className="ml-2 text-sm text-gray-700">{(record as any).diagnosis || (record as any).data?.name || ''}</span>
+                        {(record as any).notes || (record as any).data?.treatment ? (
+                          <div className="text-xs text-gray-600 mt-1">Treatment: {(record as any).notes || (record as any).data?.treatment}</div>
+                        ) : null}
+                        <div className="text-xs text-gray-600 mt-1">{(record as any).doctorName || (record as any).data?.doctor || ''} {(record as any).hospitalName ? `| ${ (record as any).hospitalName }` : ''}</div>
                     </div>
+                    ) : null}
 
                     {/* Diagnosis */}
                     <div className="mb-4">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                        <Activity className="h-4 w-4 mr-1 text-red-500" />
+                      <h4 className="text-sm font-bold text-gray-900 mb-2 pb-2 border-b-2 border-green-500">
                         Diagnosis
                       </h4>
                       {(record.isNew && record.isEditable) || (editingRecordId === record.id) ? (
@@ -1403,17 +1427,19 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
                         />
                       ) : (
-                        <p className="text-gray-900 bg-white p-3 rounded border border-green-200">
+                        <div className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
+                          <p className="text-gray-900 font-semibold text-base leading-relaxed">
                           {record.diagnosis || 'No diagnosis recorded'}
                         </p>
+                        </div>
                       )}
                     </div>
 
                     {/* Medications */}
+                    {((record.isNew && record.isEditable) || (editingRecordId === record.id) || (record.medications && record.medications.length > 0)) && (
                     <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 flex items-center">
-                          <Pill className="h-4 w-4 mr-1 text-blue-500" />
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b-2 border-green-500">
+                          <h4 className="text-sm font-bold text-gray-900">
                           Medications
                         </h4>
                         {((record.isNew && record.isEditable) || (editingRecordId === record.id)) && (
@@ -1426,10 +1452,9 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                                 addMedicationToNewRecord(record.id);
                               }
                             }}
-                            className="bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center transition-colors shadow-sm"
+                              className="bg-green-500 text-white hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
                             title="Add a new medication to this observation"
                           >
-                            <Plus className="h-4 w-4 mr-1" />
                             Add Medication
                           </button>
                         )}
@@ -1441,9 +1466,9 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           : (record.medications || []);
                         
                         return medicationsToShow.length > 0 ? (
-                          <div className="space-y-2">
+                            <div className="space-y-3">
                             {medicationsToShow.map((med: any, medIndex: number) => (
-                            <div key={medIndex} className="bg-white p-3 rounded border border-green-200">
+                                <div key={medIndex} className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
                               {(record.isNew && record.isEditable) || (editingRecordId === record.id) ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                   <input
@@ -1451,89 +1476,70 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                                     value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.name || '') : (med.name || '')}
                                     onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.name`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.name`, e.target.value)}
                                     placeholder="e.g., Paracetamol 500mg, Amoxicillin 250mg"
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <input
                                     type="text"
                                     value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.dosage || '') : (med.dosage || '')}
                                     onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.dosage`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.dosage`, e.target.value)}
                                     placeholder="e.g., 500mg, 1 tablet"
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <input
                                     type="text"
                                     value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.frequency || '') : (med.frequency || '')}
                                     onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.frequency`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.frequency`, e.target.value)}
                                     placeholder="e.g., Twice daily, Once every 8 hours"
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <div className="flex gap-2">
                                     <input
                                       type="date"
                                       value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.startDate || '') : (med.startDate || '')}
                                       onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.startDate`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.startDate`, e.target.value)}
-                                      className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
+                                          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
                                     />
                                     <input
                                       type="date"
                                       value={editingRecordId === record.id ? (editingRecordData?.medications?.[medIndex]?.endDate || '') : (med.endDate || '')}
                                       onChange={(e) => editingRecordId === record.id ? updateEditingRecordData(`medications.${medIndex}.endDate`, e.target.value) : updateNewHistoricalRecord(record.id, `medications.${medIndex}.endDate`, e.target.value)}
                                       placeholder="End Date"
-                                      className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
+                                          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
                                     />
                                     <button
                                       onClick={() => editingRecordId === record.id ? removeMedicationFromEditingObservation(medIndex) : removeMedicationFromNewRecord(record.id, medIndex)}
-                                      className="text-red-600 hover:text-red-700 px-2"
+                                          className="text-red-600 hover:text-red-700 px-3 py-2 rounded-md text-sm font-medium"
                                       title="Remove medication"
                                     >
-                                      <Trash2 className="h-3 w-3" />
+                                          Remove
                                     </button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
                                   <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{med.name || 'N/A'}</p>
-                                    <p className="text-sm text-gray-600">
-                                      {med.dosage || 'N/A'} - {med.frequency || 'N/A'}
+                                        <p className="font-bold text-gray-900 text-base mb-2">{med.name}</p>
+                                        <p className="text-sm text-gray-700 font-semibold mb-2">
+                                          {med.dosage} - {med.frequency}
                                     </p>
                                     {med.prescribedBy && (
-                                      <p className="text-xs text-gray-500 mt-1">
+                                          <p className="text-xs text-gray-600 mt-1">
                                         Prescribed by: {med.prescribedBy}
                                       </p>
                                     )}
                                   </div>
-                                  <div className="text-right text-xs text-gray-500">
+                                      <div className="flex flex-col items-start md:items-end gap-2">
                                     {med.startDate && (
-                                      <p>Start: {new Date(med.startDate).toLocaleDateString()}</p>
+                                          <p className="text-xs text-gray-600 font-medium">Start: {new Date(med.startDate).toLocaleDateString()}</p>
                                     )}
                                     {med.endDate && (
-                                      <p>End: {new Date(med.endDate).toLocaleDateString()}</p>
-                                    )}
-                                    {(() => {
-                                      const now = new Date();
-                                      const endDate = med.endDate ? new Date(med.endDate) : null;
-                                      
-                                      if (!endDate) {
-                                        return (
-                                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs mt-1">
+                                          <p className="text-xs text-gray-600 font-medium">End: {new Date(med.endDate).toLocaleDateString()}</p>
+                                        )}
+                                        {!med.endDate && (
+                                          <span className="inline-block px-4 py-1.5 bg-green-500 text-white rounded-full text-xs font-bold">
                                             Active
                                           </span>
-                                        );
-                                      } else if (endDate < now) {
-                                        return (
-                                          <span className="inline-block px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs mt-1">
-                                            Past
-                                          </span>
-                                        );
-                                      } else {
-                                        return (
-                                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs mt-1">
-                                            Active
-                                          </span>
-                                        );
-                                      }
-                                    })()}
+                                        )}
                                   </div>
                                 </div>
                               )}
@@ -1541,40 +1547,40 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           ))}
                         </div>
                         ) : (
-                          (record.isNew && record.isEditable) || (editingRecordId === record.id) ? null : (
-                            <div className="text-center py-4 text-gray-500 text-sm">
-                              <Pill className="h-5 w-5 mx-auto mb-2 text-gray-400" />
-                              <p>No medications recorded for this observation</p>
-                              {isDoctor && record.isEditable && (
-                                <p className="text-xs text-gray-400 mt-1">Click "Edit Observation" to add medications</p>
-                              )}
+                            // Show message when no medications but in edit mode
+                            ((record.isNew && record.isEditable) || (editingRecordId === record.id)) ? (
+                              <div className="bg-gray-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                                <p className="text-sm text-gray-600 mb-2">No medications added yet. Click "Add Medication" to add one.</p>
+                              </div>
+                            ) : (
+                              <div className="bg-gray-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                                <p className="text-sm text-gray-600">No medications recorded for this visit</p>
                             </div>
                           )
                         );
                       })()}
                     </div>
+                    )}
 
                     {/* Test Results */}
+                    {record.testResults && record.testResults.length > 0 && (
                     <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 flex items-center">
-                          <Activity className="h-4 w-4 mr-1 text-green-500" />
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b-2 border-green-500">
+                          <h4 className="text-sm font-bold text-gray-900">
                           Test Results
                         </h4>
                         {record.isNew && record.isEditable && (
                           <button
                             onClick={() => addTestResultToNewRecord(record.id)}
-                            className="text-xs text-green-600 hover:text-green-700 flex items-center"
+                              className="bg-green-500 text-white hover:bg-green-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
                           >
-                            <Plus className="h-3 w-3 mr-1" />
                             Add Test
                           </button>
                         )}
                       </div>
-                      {record.testResults && record.testResults.length > 0 ? (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {record.testResults.map((test: any, testIndex: number) => (
-                            <div key={testIndex} className="bg-white p-3 rounded border border-green-200">
+                            <div key={testIndex} className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
                               {record.isNew && record.isEditable ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                   <input
@@ -1582,19 +1588,19 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                                     value={test.testType || ''}
                                     onChange={(e) => updateNewHistoricalRecord(record.id, `testResults.${testIndex}.testType`, e.target.value)}
                                     placeholder="e.g., Blood Test, X-Ray, ECG"
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <input
                                     type="text"
                                     value={test.results || ''}
                                     onChange={(e) => updateNewHistoricalRecord(record.id, `testResults.${testIndex}.results`, e.target.value)}
                                     placeholder="e.g., Normal, Elevated glucose levels, Clear"
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   />
                                   <select
                                     value={test.status || 'normal'}
                                     onChange={(e) => updateNewHistoricalRecord(record.id, `testResults.${testIndex}.status`, e.target.value)}
-                                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                                   >
                                     <option value="normal">Normal</option>
                                     <option value="abnormal">Abnormal</option>
@@ -1605,45 +1611,61 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                                       type="date"
                                       value={test.date || ''}
                                       onChange={(e) => updateNewHistoricalRecord(record.id, `testResults.${testIndex}.date`, e.target.value)}
-                                      className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
+                                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 flex-1"
                                     />
                                     <button
                                       onClick={() => removeTestResultFromNewRecord(record.id, testIndex)}
-                                      className="text-red-600 hover:text-red-700 px-2"
+                                      className="text-red-600 hover:text-red-700 px-3 py-2 rounded-md text-sm font-medium"
                                       title="Remove test"
                                     >
-                                      <Trash2 className="h-3 w-3" />
+                                      Remove
                                     </button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex justify-between items-start">
+                                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
                                   <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{test.testType || 'N/A'}</p>
-                                    <p className="text-sm text-gray-700 mt-1">{test.results || 'N/A'}</p>
+                                    <p className="font-bold text-gray-900 text-base mb-2">{test.testType}</p>
+                                    <p className="text-sm text-gray-700 font-semibold">{test.results}</p>
                                   </div>
-                                  <span className={`px-2 py-1 rounded text-xs ${
-                                    test.status === 'normal' ? 'bg-green-100 text-green-800' :
-                                    test.status === 'abnormal' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-red-100 text-red-800'
+                                  <span className={`px-4 py-2 rounded-full text-xs font-bold ${
+                                    test.status === 'normal' ? 'bg-green-500 text-white' :
+                                    test.status === 'abnormal' ? 'bg-green-500 text-white' :
+                                    'bg-green-500 text-white'
                                   }`}>
-                                    {test.status || 'normal'}
+                                    {test.status?.toUpperCase() || 'NORMAL'}
                                   </span>
                                 </div>
                               )}
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        record.isNew && record.isEditable ? null : (
-                          <p className="text-gray-500 text-sm">No test results recorded</p>
-                        )
-                      )}
+                      </div>
+                    )}
+                    
+                    {/* Add Test Button for empty state */}
+                    {record.isNew && record.isEditable && (!record.testResults || record.testResults.length === 0) && (
+                      <div className="mb-5">
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b-2 border-green-500">
+                          <h4 className="text-base font-bold text-gray-900">
+                            Test Results
+                          </h4>
+                          <button
+                            onClick={() => addTestResultToNewRecord(record.id)}
+                            className="bg-green-500 text-white hover:bg-green-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                          >
+                            Add Test
+                          </button>
                     </div>
+                      </div>
+                    )}
 
                     {/* Notes */}
-                    <div className="mt-4 pt-4 border-t border-green-300">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Notes</h4>
+                    {record.notes && (
+                      <div className="mt-4 pt-4 border-t-2 border-gray-200">
+                        <h4 className="text-sm font-bold text-gray-900 mb-2 pb-2 border-b-2 border-green-500">
+                          Additional Notes
+                        </h4>
                       {(record.isNew && record.isEditable) || (editingRecordId === record.id) ? (
                         <textarea
                           value={editingRecordId === record.id ? (editingRecordData?.notes || '') : (record.notes || '')}
@@ -1653,15 +1675,18 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
                         />
                       ) : (
-                        <p className="text-sm text-gray-600 bg-white p-3 rounded border border-green-200">
-                          {record.notes || 'No notes recorded'}
+                          <div className="bg-gray-50 border-l-4 border-green-500 p-5 rounded-r-lg">
+                            <p className="text-sm text-gray-700 leading-relaxed font-medium">
+                              {record.notes}
                         </p>
+                          </div>
                       )}
                     </div>
+                    )}
 
                     {/* No medications or tests message */}
                     {(!record.medications || record.medications.length === 0) && 
-                     (!record.testResults || record.testResults.length === 0) && (
+                     (!record.testResults || record.testResults.length === 0) && !record.isNew && (
                       <div className="text-center py-4 text-gray-500 text-sm">
                         No medications or test results recorded for this visit
                 </div>
@@ -1670,7 +1695,6 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
                 ))
               ) : (
                 <div className="bg-gray-50 rounded-lg p-8 text-center">
-                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-500">No medical history records available</p>
                 </div>
               )}
@@ -1691,9 +1715,8 @@ const PatientPassportView: React.FC<PatientPassportViewProps> = ({
           )}
 
           {/* Access History */}
-          <div className="mt-6 bg-gray-50 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Shield className="h-5 w-5 mr-2 text-green-600" />
+          <div className="mt-4 bg-gray-50 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">
               Access History
             </h3>
             

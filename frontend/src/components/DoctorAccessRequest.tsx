@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { User, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 
 const DoctorAccessRequest: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { patientId, patientName, doctorName, licenseNumber } = location.state || {};
+  const { user } = useAuth();
+  const { showNotification } = useNotification();
+  const { patientId, patientName, doctorName, licenseNumber, emergencyAccess, emergencyOverrideId } = location.state || {};
 
   const [formData, setFormData] = useState({
     requestType: 'view',
@@ -48,20 +53,71 @@ const DoctorAccessRequest: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (formData.requestedData.length === 0) {
+      showNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please select at least one data type to access'
+      });
+      return;
+    }
+    
+    if (formData.reason.trim().length < 10) {
+      showNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please provide a detailed reason (at least 10 characters)'
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Get doctor profile to get hospitalId
+      const doctorProfile = JSON.parse(localStorage.getItem('user') || '{}');
+      const hospitalId = doctorProfile.profile?.hospital || doctorProfile.hospitalId;
       
-      // Show success message
-      alert('Access request sent successfully! The patient will be notified.');
+      if (!hospitalId) {
+        throw new Error('Hospital information not found. Please ensure you are associated with a hospital.');
+      }
       
-      // Navigate back to patient list
-      navigate('/doctor-patient-passport');
-    } catch (error) {
+      // Call the access request API
+      const response = await apiService.request('/access-control/request', {
+        method: 'POST',
+        body: JSON.stringify({
+          patientId,
+          hospitalId,
+          requestType: formData.requestType,
+          reason: formData.reason,
+          requestedData: formData.requestedData,
+          expiresInHours: formData.expiresInHours
+        })
+      });
+      
+      if (response.success) {
+        showNotification({
+          type: 'success',
+          title: 'Access Request Sent',
+          message: `Your ${formData.requestType} access request has been sent to ${patientName}. You will be notified when they respond.`
+        });
+        
+        // Navigate back to patient list
+        setTimeout(() => {
+          navigate('/doctor-patient-passport');
+        }, 2000);
+      } else {
+        throw new Error(response.message || 'Failed to send access request');
+      }
+    } catch (error: any) {
       console.error('Error sending access request:', error);
-      alert('Error sending access request. Please try again.');
+      showNotification({
+        type: 'error',
+        title: 'Request Failed',
+        message: error.message || 'Error sending access request. Please try again.'
+      });
     } finally {
       setIsSubmitting(false);
     }

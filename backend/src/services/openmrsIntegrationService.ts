@@ -226,7 +226,44 @@ export const getPatientDataForOpenMRS = async (
     // Format diagnosis data - grouped by hospital
     const diagnosisByHospital: any = {};
     
-    // From medical conditions
+    // ===== 1. Get observations from MedicalRecord collection (synced from OpenMRS) =====
+    console.log(`📊 Fetching MedicalRecord observations for patient ${patient._id}...`);
+    const medicalRecords = await MedicalRecord.find({ 
+      patientId: patient._id 
+    })
+    .populate('createdBy', 'name')
+    .sort({ createdAt: -1 }); // Most recent first
+    
+    console.log(`   Found ${medicalRecords.length} medical records`);
+    
+    // Add MedicalRecord observations to diagnosis/medication by hospital
+    for (const record of medicalRecords) {
+      const hospitalName = record.data?.hospital || record.openmrsData?.locationName || 'Unknown Hospital';
+      
+      if (record.type === 'condition') {
+        if (!diagnosisByHospital[hospitalName]) {
+          diagnosisByHospital[hospitalName] = [];
+        }
+        
+        diagnosisByHospital[hospitalName].push({
+          type: 'diagnosis',
+          conceptName: 'DIAGNOSIS',
+          valueCoded: record.data.name || record.data.diagnosis || 'Unknown Condition',
+          valueText: record.data.details || record.data.notes,
+          obsDatetime: record.openmrsData?.obsDatetime || record.createdAt,
+          provider: (record.createdBy as any)?.name || record.data.doctor || record.openmrsData?.creatorName || 'Unknown Doctor',
+          hospital: hospitalName,
+          status: record.data.status,
+          notes: record.data.notes,
+          source: 'medical_record',
+          recordId: record._id,
+          openmrsData: record.openmrsData,
+          syncDate: record.syncDate
+        });
+      }
+    }
+    
+    // ===== 2. From medical conditions (legacy/manual entries) =====
     if (patient.medicalHistory && patient.medicalHistory.length > 0) {
       for (const condition of patient.medicalHistory as any[]) {
         const hospitalName = condition.hospital?.name || 'Unknown Hospital';
@@ -277,6 +314,56 @@ export const getPatientDataForOpenMRS = async (
     // Format medication data - grouped by hospital
     const medicationsByHospital: any = {};
     
+    // ===== 1. Get medications from MedicalRecord collection (synced from OpenMRS) =====
+    for (const record of medicalRecords) {
+      const hospitalName = record.data?.hospital || record.openmrsData?.locationName || 'Unknown Hospital';
+      
+      if (record.type === 'medication') {
+        if (!medicationsByHospital[hospitalName]) {
+          medicationsByHospital[hospitalName] = [];
+        }
+        
+        // Handle multiple medications in single record or single medication
+        const meds = record.data.medications && record.data.medications.length > 0 
+          ? record.data.medications 
+          : [{ 
+              name: record.data.medicationName || 'Unknown Medication', 
+              dosage: record.data.dosage, 
+              frequency: record.data.frequency,
+              startDate: record.data.startDate,
+              endDate: record.data.endDate,
+              prescribedBy: record.data.prescribedBy,
+              medicationStatus: record.data.medicationStatus
+            }];
+        
+        for (const med of meds) {
+          if (med.name) {
+            medicationsByHospital[hospitalName].push({
+              type: 'medication',
+              conceptName: 'MEDICATION',
+              valueCoded: med.name,
+              valueText: `${med.dosage || ''} ${med.frequency || ''}`.trim(),
+              obsDatetime: record.openmrsData?.obsDatetime || record.createdAt,
+              provider: (record.createdBy as any)?.name || med.prescribedBy || record.data.doctor || record.openmrsData?.creatorName || 'Unknown Doctor',
+              hospital: hospitalName,
+              medicationName: med.name,
+              dosage: med.dosage,
+              frequency: med.frequency,
+              startDate: med.startDate || record.createdAt,
+              endDate: med.endDate,
+              medicationStatus: med.medicationStatus,
+              notes: record.data.notes,
+              source: 'medical_record',
+              recordId: record._id,
+              openmrsData: record.openmrsData,
+              syncDate: record.syncDate
+            });
+          }
+        }
+      }
+    }
+    
+    // ===== 2. From patient.medications array (legacy/manual entries) =====
     if (patient.medications && patient.medications.length > 0) {
       for (const med of patient.medications as any[]) {
         const hospitalName = med.hospital?.name || 'Unknown Hospital';

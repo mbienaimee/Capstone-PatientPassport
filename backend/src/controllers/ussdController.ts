@@ -11,14 +11,29 @@ import { asyncHandler } from '@/middleware/errorHandler';
 // @route   POST /api/ussd/callback
 // @access  Public (Africa's Talking webhook)
 export const handleUSSDCallback = asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Check if response is already sent or connection is closed
+  if (res.headersSent) {
+    console.warn('⚠️ Headers already sent, aborting USSD response');
+    return;
+  }
+
+  // Check socket connection state
+  const socket = (req as any).socket || (req as any).connection;
+  if (socket && (socket.destroyed || !socket.writable)) {
+    console.warn('⚠️ Socket already closed or not writable, aborting');
+    return;
+  }
+
   // Set USSD-specific headers immediately to prevent any HTML responses
   res.set('Content-Type', 'text/plain; charset=utf-8');
   res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
+  res.set('Connection', 'close'); // Explicitly close connection after response
   
   // Log incoming request for debugging
   console.log('📱 USSD Callback received:');
+  console.log('   Connection State:', socket ? { destroyed: socket.destroyed, writable: socket.writable } : 'no socket');
   console.log('   Origin:', req.headers.origin || 'unknown');
   console.log('   User-Agent:', req.headers['user-agent'] || 'unknown');
   console.log('   Headers:', JSON.stringify(req.headers, null, 2));
@@ -64,17 +79,58 @@ export const handleUSSDCallback = asyncHandler(async (req: Request, res: Respons
 
     console.log(`✅ USSD Response: ${ussdResponse.substring(0, 100)}...`);
 
+    // Final socket check before sending
+    if (res.headersSent) {
+      console.warn('⚠️ Headers already sent before final response');
+      return;
+    }
+
+    if (socket && (socket.destroyed || !socket.writable)) {
+      console.warn('⚠️ Socket closed before sending response');
+      return;
+    }
+
     // Send response with proper content type and headers for Africa's Talking
-    res.status(200).send(ussdResponse);
+    try {
+      res.status(200).send(ussdResponse);
+      
+      // Force connection close after response
+      if (socket && !socket.destroyed) {
+        socket.end();
+      }
+    } catch (sendError: any) {
+      console.error('❌ Error sending USSD response:', sendError.message);
+      // Don't throw - connection might already be closed
+    }
 
   } catch (error: any) {
     console.error('❌ USSD Error:', error);
     console.error('   Error message:', error?.message);
     console.error('   Stack:', error?.stack);
     
-    // Ensure error response is always plain text
-    const errorMessage = 'END An error occurred. Please try again later.';
-    res.status(200).send(errorMessage);
+    // Check if we can still send a response
+    if (!res.headersSent && socket && !socket.destroyed && socket.writable) {
+      try {
+        // Ensure error response is always plain text
+        const errorMessage = 'END An error occurred. Please try again later.';
+        res.status(200).send(errorMessage);
+        
+        // Force close connection
+        if (socket && !socket.destroyed) {
+          socket.end();
+        }
+      } catch (sendError: any) {
+        console.error('❌ Failed to send error response:', sendError.message);
+        // Socket likely already closed
+      }
+    } else {
+      console.warn('⚠️ Cannot send error response - connection already closed');
+    }
+  }
+
+  // Ensure connection is closed
+  if (socket && !socket.destroyed) {
+    socket.end();
   }
 });
 
