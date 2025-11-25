@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { DEPLOYED_API_URL } from '../config/api.config';
 
 // ✅ SOCKET.IO ENABLED FOR REAL-TIME FEATURES
 // Real-time notifications and updates via WebSocket
@@ -25,7 +26,7 @@ class SocketService {
     this.token = token;
     this.isDisconnecting = false;
     
-    this.socket = io(import.meta.env.VITE_SOCKET_URL || 'https://patientpassport-api.azurewebsites.net', {
+    this.socket = io(import.meta.env.VITE_SOCKET_URL || DEPLOYED_API_URL, {
       auth: {
         token: token
       },

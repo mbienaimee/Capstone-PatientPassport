@@ -26,6 +26,7 @@ import DoctorAccessRequest from './components/DoctorAccessRequest';
 import DoctorLoginPage from './components/DoctorLoginPage';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
+import ApiIntegrationStatus from './components/ApiIntegrationStatus';
 
 // Wrapper component for OTP verification to handle state
 const OTPVerificationWrapper: React.FC = () => {
@@ -95,6 +96,9 @@ export default function App() {
               
               {/* Receptionist Routes */}
               <Route path="/receptionist-dashboard" element={<ReceptionistDashboard />} />
+              
+              {/* API Integration Status (for debugging/verification) */}
+              <Route path="/api-status" element={<ApiIntegrationStatus />} />
               
               {/* Fallback Route */}
               <Route path="*" element={<PatientPassportLanding />} />

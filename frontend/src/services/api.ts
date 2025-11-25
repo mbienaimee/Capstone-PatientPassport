@@ -105,7 +105,10 @@ class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://patientpassport-api.azurewebsites.net/api';
+// Import API configuration
+import { DEPLOYED_API_BASE_URL } from '../config/api.config';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEPLOYED_API_BASE_URL;
 
 class ApiService {
   private baseURL = API_BASE_URL;
