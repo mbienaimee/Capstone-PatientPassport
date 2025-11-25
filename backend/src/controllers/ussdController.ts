@@ -29,6 +29,9 @@ export const handleUSSDCallback = asyncHandler(async (req: Request, res: Respons
   res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
   res.set('Connection', 'close'); // Explicitly close connection after response
   
   // Log incoming request for debugging

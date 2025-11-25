@@ -2,7 +2,7 @@ import 'dotenv/config';
 import app from './server';
 import mongoose from 'mongoose';
 import { createServer } from 'http';
-// import SocketService from './services/socketService'; // DISABLED
+import SocketService from './services/socketService';
 import openmrsSyncService from './services/openmrsSyncService';
 import { directDBSyncService } from './services/directDBSyncService';
 import { getOpenMRSConfigurations, syncConfig } from './config/openmrsConfig';
@@ -61,10 +61,9 @@ const startServer = async () => {
     const server = createServer(app);
 
     // Initialize Socket.IO (socket functionality does not require MongoDB)
-    // DISABLED: Socket.io causes conflicts with Africa's Talking USSD simulator
-    // new SocketService(server);
-    console.log('⚠️  Socket.io is DISABLED (prevents Africa\'s Talking simulator conflicts)');
-    console.log('ℹ️  USSD works via HTTP POST /api/ussd/callback');
+    new SocketService(server);
+    console.log('✅ Socket.io initialized (real-time notifications enabled)');
+    console.log('ℹ️  USSD works via HTTP POST /api/ussd/callback (separate from Socket.io)');
 
     // Only initialize MongoDB-dependent services if DB connection succeeded
     if (dbConnected) {

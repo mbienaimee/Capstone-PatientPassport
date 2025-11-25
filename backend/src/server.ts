@@ -68,16 +68,21 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "blob:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "blob:", "https://developers.africastalking.com"],
       workerSrc: ["'self'", "blob:"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: [
         "'self'",
         "https://simulator.africastalking.com",
         "https://account.africastalking.com",
+        "https://developers.africastalking.com",
+        "https://api.africastalking.com",
         "https://*.africastalking.com",
-        "https://*.at-uat.org"
-      ]
+        "https://*.at-uat.org",
+        "wss://*.africastalking.com",
+        "ws://*.africastalking.com"
+      ],
+      frameSrc: ["'self'", "https://developers.africastalking.com", "https://*.africastalking.com"]
     }
   }
 }));
@@ -96,8 +101,8 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, Postman, Africa's Talking webhooks)
     if (!origin) return callback(null, true);
     
-    // Always allow Africa's Talking domains (for USSD callbacks)
-    if (origin && (origin.includes('africastalking.com') || origin.includes('at-uat.org'))) {
+    // Always allow Africa's Talking domains (for USSD callbacks and simulator)
+    if (origin && (origin.includes('africastalking.com') || origin.includes('at-uat.org') || origin.includes('ngrok'))) {
       return callback(null, true);
     }
     
@@ -116,7 +121,8 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Access-Token', 'x-access-token']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Access-Token', 'x-access-token', 'Accept'],
+  exposedHeaders: ['Content-Type', 'Content-Length']
 }));
 
 // Compression middleware
@@ -256,25 +262,6 @@ app.use('/api-docs', (req, res, next) => {
   next();
 });
 
-// Handle socket.io client library requests BEFORE static files
-// SOCKET.IO IS DISABLED - Return 404 to prevent connection attempts
-app.get('/socket.io/socket.io.js', (_req, res) => {
-  res.set('Content-Type', 'text/plain');
-  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.set('Access-Control-Allow-Origin', '*');
-  res.status(404).send('Socket.io is disabled. USSD uses HTTP POST /api/ussd/callback');
-});
-
-// Block ALL socket.io WebSocket upgrade requests
-app.use((req, res, next) => {
-  if (req.headers.upgrade === 'websocket' || req.url.startsWith('/socket.io')) {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.status(404).end();
-    return;
-  }
-  next();
-});
-
 // Serve static files (for USSD simulator and other tools)
 app.use(express.static('public', {
   maxAge: '1d',
@@ -312,7 +299,7 @@ app.get('/', (_req, res) => {
     documentation: '/api-docs',
     health: '/health',
     ussdSimulator: '/ussd-simulator',
-    socketIO: '/socket.io (WebSocket server)'
+    socketIO: '/socket.io (WebSocket enabled - real-time notifications active)'
   });
 });
 

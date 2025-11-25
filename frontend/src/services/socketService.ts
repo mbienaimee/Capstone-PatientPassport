@@ -1,9 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 
-// 🔇 SOCKET.IO DISABLED FOR STABILITY
-// Real-time features are currently disabled to prevent connection errors
-// USSD and all other features work via REST API (not affected)
-const SOCKET_ENABLED = false;
+// ✅ SOCKET.IO ENABLED FOR REAL-TIME FEATURES
+// Real-time notifications and updates via WebSocket
+// Note: USSD uses HTTP POST callbacks (separate from Socket.io)
+const SOCKET_ENABLED = true;
 
 class SocketService {
   private socket: Socket | null = null;
