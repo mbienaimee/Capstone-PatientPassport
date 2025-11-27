@@ -169,14 +169,32 @@ class ApiService {
         console.log('Request failed with status:', response.status, 'Message:', data?.message);
         
         // Handle specific error cases
-        if (response.status === 401 && data?.message?.includes('user no longer exists')) {
-          console.warn('User no longer exists, clearing authentication data');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('hospitalAuth');
-          // Optionally redirect to login page
-          if (typeof window !== 'undefined') {
-            window.location.href = '/hospital-login';
+        if (response.status === 401) {
+          // Check for specific 401 error messages
+          if (data?.message?.includes('user no longer exists')) {
+            console.warn('User no longer exists, clearing authentication data');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('hospitalAuth');
+            // Optionally redirect to login page
+            if (typeof window !== 'undefined') {
+              window.location.href = '/hospital-login';
+            }
+          } else if (data?.message?.includes('Invalid credentials') || data?.message?.includes('invalid credentials')) {
+            // Provide more helpful error message for invalid credentials
+            const errorMessage = data?.message || 'Invalid credentials. Please check your email/national ID and password.';
+            console.warn('Authentication failed:', errorMessage);
+            throw new ApiError(errorMessage, response.status, {
+              ...data,
+              userFriendlyMessage: 'The email or password you entered is incorrect. Please try again or use the "Forgot Password" option if you need to reset your password.'
+            });
+          } else {
+            // Generic 401 error
+            throw new ApiError(
+              data?.message || 'Authentication failed. Please check your credentials and try again.',
+              response.status,
+              data
+            );
           }
         }
         

@@ -1,271 +1,487 @@
 # Patient Passport System
 
-Digital patient passport platform with: patient profiles, doctor/hospital workflows,
-real-time notifications, OTP-protected passport access, and USSD support for feature phones.
+Digital patient passport platform with patient profiles, doctor/hospital workflows, real-time notifications, and OTP-protected passport access.
 
-This README provides concise, step-by-step install/run instructions, links to the
-deployed app and API, related files, and a short 5-minute demo plan focused on core features.
+## Table of Contents
 
-## Quick links
+- [Overview](#overview)
+- [Technology Stack](#technology-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Environment Configuration](#environment-configuration)
+- [Running the Project](#running-the-project)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
+- [Deployment](#deployment)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-- Deployed frontend (primary): https://patient-passpo.netlify.app/  
-- Alternate frontend URL (used in some docs): https://jade-pothos-e432d0.netlify.app/patient-passport  
-- Deployed backend API: https://patientpassport-api.azurewebsites.net/api
-- Video Link: https://www.mediafire.com/file/dcrv0fvb8fhgxrq/demo-video.mp4.mp4/file
+## Overview
 
-If you need an installable package (APK / .exe), tell me which platform and I can
-produce a packaged artifact or guide you through building one.
+Patient Passport is a comprehensive medical records management system that enables:
 
-## 1 — 1‑minute summary
+- Secure patient medical record storage and access
+- Doctor and hospital management workflows
+- Real-time notifications and updates
+- OTP-protected passport access
+- Multi-language support (English and Kinyarwanda)
+- Role-based access control (Patient, Doctor, Hospital, Admin)
 
-- Backend: Node.js + TypeScript + Express + MongoDB
-- Frontend: React + TypeScript + Vite + Tailwind
-- USSD/SMS: Africa's Talking integration (optional)
+## Technology Stack
 
-## 2 — Installation & run (step-by-step)
+### Backend
+- Node.js (v18+)
+- TypeScript
+- Express.js
+- MongoDB with Mongoose
+- Socket.io (real-time communication)
+- JWT (authentication)
+- Nodemailer (email services)
 
-Prerequisites
-- Node.js v18+, npm, Git
-- MongoDB (Atlas or local)
+### Frontend
+- React 19
+- TypeScript
+- Vite
+- TailwindCSS
+- React Router
+- Socket.io Client
+- Framer Motion
 
-Start backend (development)
-1) Open PowerShell and go to backend:
+## Prerequisites
 
-   cd c:\Users\user\OneDrive\Desktop\capp\Capstone-PatientPassport\backend
+Before installing and running the project, ensure you have the following installed:
 
-2) Install deps:
+- **Node.js** (v18 or higher) - [Download](https://nodejs.org/)
+- **npm** (comes with Node.js) or **yarn**
+- **Git** - [Download](https://git-scm.com/)
+- **MongoDB Atlas account** (or local MongoDB instance) - [Sign up](https://www.mongodb.com/cloud/atlas)
+- **Email service account** (Gmail with App Password or SendGrid)
 
-   npm install
+Optional:
+- **Docker** (for containerized deployment)
 
-3) Create `.env` from template and edit values:
+## Installation
 
-   copy env.example .env
+### Step 1: Clone the Repository
 
-   # Edit .env: set MONGODB_URI, JWT_SECRET, EMAIL_* and (optionally) AFRICASTALKING_*
-
-4) Run dev server:
-
-   npm run dev
-
-Backend dev URL: http://localhost:5000  (API base: http://localhost:5000/api)
-
-Start frontend (development)
-1) In a new PowerShell window:
-
-   cd c:\Users\user\OneDrive\Desktop\capp\Capstone-PatientPassport\frontend
-
-2) Install deps and create env:
-
-   npm install
-   copy env.example .env
-
-   # Edit .env: set VITE_API_BASE_URL=http://localhost:5000/api and VITE_SOCKET_URL=http://localhost:5000
-
-3) Run dev server:
-
-   npm run dev
-
-Frontend dev URL: http://localhost:5173
-
-Run both concurrently (simple):
-
-- Start backend in one terminal and frontend in another (recommended).
-
-Docker (quick production-like run)
-
-Backend
-   cd backend
-   docker build -t patient-passport-api .
-   docker run -p 5000:5000 --env-file .env patient-passport-api
-
-Frontend (serve built assets)
-   cd frontend
-   npm run build
-   # deploy dist/ to a static host (Netlify/Vercel/Azure Static Web Apps)
-
-## 3 — Related files (short map)
-
-- `backend/` — API server, docs, Dockerfile, tests.  See `backend/README.md` for details.
-- `frontend/` — React app (Vite), Dockerfile, public/static assets.
-- `openmrs-patient-passport-module/` — OpenMRS integration (Maven project).
-- `backend/docs/` — USSD guides: `USSD_GUIDE.md`, `USSD_DEPLOYMENT.md`, `USSD_QUICKSTART.md`.
-- `QUICK_START_TESTING_GUIDE.md` — high-level testing and quickstart notes.
-- `HOSPITAL_DOCTOR_WORKFLOW_IMPLEMENTATION.md` — workflow docs for clinical users.
-- `AZURE_DEPLOYMENT_FIX.md`, `DEPLOYMENT_FIXES_SUMMARY.md` — deployment notes used in past deployments.
-
-## 4 — 5‑minute demo video (what to include)
-
-Place a 5-minute file named `demo-video.mp4` in the project root or upload to YouTube and replace the link below.
-
-Provided download (MediaFire): https://www.mediafire.com/file/dcrv0fvb8fhgxrq/demo-video.mp4.mp4/file
-
-To download directly into the repository root using PowerShell, run:
-
-```powershell
-Invoke-WebRequest -Uri 'https://www.mediafire.com/file/dcrv0fvb8fhgxrq/demo-video.mp4.mp4/file' -OutFile .\demo-video.mp4
+```bash
+git clone https://github.com/mbienaimee/Capstone-PatientPassport
+cd Capstone-PatientPassport
 ```
 
+### Step 2: Install Backend Dependencies
 
-## 5 — Deployed apps & packages
+```bash
+cd backend
+npm install
+```
 
-- Frontend (UI): https://patient-passpo.netlify.app/  
-- Backend API: https://patientpassport-api.azurewebsites.net/api  
-- Alternate frontend path used in docs: https://jade-pothos-e432d0.netlify.app/patient-passport
+### Step 3: Install Frontend Dependencies
 
-If you want an installable package (APK for Android or an Electron-based .exe for Windows), I can:
-- build a production frontend bundle and produce an Electron wrapper (Windows .exe)
-- produce an Android WebView APK (or PWA) and provide the .apk
+Open a new terminal window:
 
-Tell me target platform and I will add build commands and produce the artifact.
+```bash
+cd frontend
+npm install
+```
 
-## 6 — How to test core features quickly
+## Environment Configuration
 
-1) Start backend + frontend (see section 2).  
-2) Use seeded/demo user or create a lightweight test user (skip heavy sign-up).  
-3) Create a patient record (POST /api/patients).  
-4) From doctor dashboard, request passport access and verify with OTP route (focus on OTP flow, not sign-in screens).  
-5) Run USSD test endpoint:
-   cd backend
-   node test/ussd.test.js
+### Backend Environment Setup
 
-## 7 — Notes & next steps
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
 
-- I added concise run instructions, related file map, the live deployment links found in repo docs,
-  and a 5-minute demo plan focused on core functionality.  
-- Current placeholders you may want to provide (or I can help create):
-  - `demo-video.mp4` file or a YouTube URL to embed
-  - If you want an installable package, specify platform (Android/Windows) so I can produce artifacts
+2. Copy the environment example file:
+```bash
+copy env.example .env
+```
 
-If you'd like, I can also:
-- produce the demo-video script and a short narration file
-- build an Electron .exe or Android .apk and upload the artifact into the repo `releases/` folder
+On Linux/Mac:
+```bash
+cp env.example .env
+```
 
----
+3. Edit the `.env` file with your configuration:
 
+```env
+NODE_ENV=development
+PORT=5000
+HOST=localhost
 
-Credits & license: See `LICENSE` file in repo.
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
 
+JWT_SECRET=your-super-secret-jwt-key-here-REPLACE-WITH-128-CHAR-HEX
+JWT_EXPIRE=7d
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-here-REPLACE-WITH-128-CHAR-HEX
+JWT_REFRESH_EXPIRE=30d
+JWT_RESET_SECRET=your-reset-secret-key-here-REPLACE-WITH-128-CHAR-HEX
+JWT_RESET_EXPIRE=10m
 
-## Hospital & Doctor Workflow
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-16-char-app-password
+EMAIL_FROM=PatientPassport <your-email@gmail.com>
 
-### Hospital Workflow
+CORS_ORIGIN=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
 
-1. **Hospital Login**
-   - Hospitals log in via `/hospital-login`
-   - Access dashboard with tabs: Overview, Doctors, Patients
+BCRYPT_ROUNDS=12
+SESSION_SECRET=your-session-secret-here-REPLACE-WITH-64-CHAR-HEX
+```
 
-2. **Doctor Management**
-   - Add doctors with automatic user account creation
-   - View all hospital doctors
-   - Remove doctors from hospital
-   - Doctors can immediately login with provided credentials
+**Important Security Notes:**
+- Generate secure JWT secrets using: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+- For Gmail, use App Password (not regular password) from [Google App Passwords](https://myaccount.google.com/apppasswords)
+- Never commit `.env` files to version control
 
-3. **Patient Management**
-   - View all patients associated with hospital
-   - Search and filter patients
-   - View patient details and assigned doctors
+**Optional Configuration:**
+```env
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
 
-### Doctor Workflow
+### Frontend Environment Setup
 
-1. **Doctor Login**
-   - Login with email/password (provided by hospital)
-   - 2FA OTP verification via email
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
 
-2. **Patient Access**
-   - View all patients in database
-   - Request access to patient passport
-   - OTP sent to patient's email
-   - Enter OTP to view full medical history
+2. Copy the environment example file:
+```bash
+copy env.example .env
+```
 
-3. **Medical Record Viewing**
-   - View complete patient passport (read-only)
-   - See medical conditions, medications, test results
-   - View hospital visits and immunizations
+On Linux/Mac:
+```bash
+cp env.example .env
+```
 
-##  Deployment
+3. Edit the `.env` file:
 
-### Production Deployment
+For local development:
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+VITE_APP_NAME=Patient Passport
+VITE_APP_VERSION=1.0.0
+VITE_ENABLE_DEBUG=true
+VITE_ENABLE_NOTIFICATIONS=true
+VITE_ENABLE_SOCKET_IO=true
+```
 
-#### Backend Deployment
+For production:
+```env
+VITE_API_BASE_URL=https://patientpassport-api.azurewebsites.net/api
+VITE_SOCKET_URL=https://patientpassport-api.azurewebsites.net
+VITE_APP_NAME=Patient Passport
+VITE_APP_VERSION=1.0.0
+VITE_ENABLE_DEBUG=false
+VITE_ENABLE_NOTIFICATIONS=true
+VITE_ENABLE_SOCKET_IO=true
+```
 
-1. **Build the application**
-   ```bash
-   cd backend
-   npm run build
-   ```
+## Running the Project
 
-2. **Start production server**
-   ```bash
-   npm start
-   ```
+### Development Mode
 
-3. **Environment Setup**
-   - Configure production environment variables
-   - Set up MongoDB Atlas cluster
-   - Configure email service (SendGrid recommended)
-   - Set up Africa's Talking for USSD/SMS
+#### Start Backend Server
 
-#### Frontend Deployment
+1. Open a terminal and navigate to the backend directory:
+```bash
+cd backend
+```
 
-1. **Build for production**
-   ```bash
-   cd frontend
-   npm run build
-   ```
+2. Start the development server:
+```bash
+npm run dev
+```
 
-2. **Deploy dist/ folder**
-   - Deploy to Netlify, Vercel, or Azure Static Web Apps
-   - Or use any static hosting service
+The backend server will start on `http://localhost:5000`
+API base URL: `http://localhost:5000/api`
 
+Expected output:
+```
+MongoDB Connected: ...
+Server running on port 5000
+```
 
-#### Frontend
+#### Start Frontend Server
+
+1. Open a **new terminal** and navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+2. Start the development server:
+```bash
+npm run dev
+```
+
+The frontend will start on `http://localhost:5173`
+
+Expected output:
+```
+VITE v... ready in ... ms
+
+➜  Local:   http://localhost:5173/
+➜  Network: use --host to expose
+```
+
+### Production Mode
+
+#### Build and Run Backend
+
+```bash
+cd backend
+npm run build
+npm start
+```
+
+#### Build and Run Frontend
+
+```bash
+cd frontend
+npm run build
+npm run preview
+```
+
+The production build will be available in the `frontend/dist` directory.
+
+## Project Structure
+
+```
+Capstone-PatientPassport/
+├── backend/
+│   ├── src/
+│   │   ├── controllers/       # Request handlers
+│   │   ├── middleware/        # Custom middleware
+│   │   ├── models/            # Database models
+│   │   ├── routes/            # API routes
+│   │   ├── services/          # Business logic
+│   │   ├── utils/             # Utility functions
+│   │   ├── types/             # TypeScript definitions
+│   │   ├── app.ts             # Application setup
+│   │   └── server.ts          # Server entry point
+│   ├── docs/                  # API documentation
+│   ├── scripts/               # Utility scripts
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── .env                   # Environment variables (create from env.example)
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # React components
+│   │   ├── contexts/          # React contexts
+│   │   ├── services/          # API services
+│   │   ├── types/             # TypeScript definitions
+│   │   ├── config/            # Configuration files
+│   │   ├── App.tsx            # Main app component
+│   │   └── main.tsx           # Entry point
+│   ├── public/                # Static assets
+│   ├── dist/                  # Production build output
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   └── .env                   # Environment variables (create from env.example)
+│
+└── openmrs-patient-passport-module/
+    └── ...                    # OpenMRS integration module
+```
+
+## Available Scripts
+
+### Backend Scripts
+
+```bash
+npm run dev          # Start development server with hot reload
+npm run dev:mock     # Start with mock data
+npm run build        # Build TypeScript to JavaScript
+npm start           # Start production server
+npm test            # Run test suite
+npm run test:watch  # Run tests in watch mode
+npm run lint        # Run ESLint
+npm run lint:fix    # Fix ESLint issues
+npm run docs        # Serve API documentation
+```
+
+### Frontend Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run lint        # Run ESLint
+npm run build:prod   # Build with production environment variables
+```
+
+## Deployment
+
+### Backend Deployment
+
+#### Docker Deployment
+
+```bash
+cd backend
+docker build -t patient-passport-api .
+docker run -p 5000:5000 --env-file .env patient-passport-api
+```
+
+#### Azure App Service
+
+1. Build the application:
+```bash
+cd backend
+npm run build
+```
+
+2. Deploy to Azure App Service using Azure CLI or portal
+
+3. Configure environment variables in Azure Portal
+
+#### Environment Checklist
+
+- [ ] MongoDB Atlas cluster configured
+- [ ] Environment variables set in production
+- [ ] Email service configured (SendGrid recommended for production)
+- [ ] JWT secrets generated and secured
+- [ ] CORS origins configured
+- [ ] SSL certificates installed
+- [ ] Monitoring and logging setup
+- [ ] Backup strategy implemented
+
+### Frontend Deployment
+
+#### Netlify
+
+1. Build the application:
+```bash
+cd frontend
+npm run build
+```
+
+2. Deploy the `dist` folder to Netlify
+
+3. Configure environment variables in Netlify dashboard
+
+#### Vercel
+
+1. Connect your repository to Vercel
+2. Configure build command: `npm run build`
+3. Set output directory: `dist`
+4. Add environment variables in Vercel dashboard
+
+#### Docker Deployment
+
 ```bash
 cd frontend
 docker build -t patient-passport-frontend .
 docker run -p 5173:5173 patient-passport-frontend
 ```
 
-
-### Environment Checklist
-
-- [ ] MongoDB Atlas cluster configured
-- [ ] Environment variables set
-- [ ] Email service configured
-- [ ] JWT secrets generated
-- [ ] CORS origins configured
-- [ ] SSL certificates installed
-- [ ] Africa's Talking configured (if using USSD)
-- [ ] Monitoring and logging setup
-- [ ] Backup strategy implemented
-
-##  Testing
+## Testing
 
 ### Backend Tests
+
 ```bash
 cd backend
-npm test              # Run all tests
-npm run test:watch    # Run tests in watch mode
+npm test
+npm run test:watch
 ```
 
 ### Frontend Tests
+
 ```bash
 cd frontend
-npm run test          # Run tests (if configured)
+npm run test
 ```
 
-### USSD Testing
-```bash
-cd backend
-node test/ussd.test.js
-```
+### Integration Tests
 
-### Integration Testing
 ```bash
 cd frontend
 npm run test:integration
 ```
 
-##  Contributing
+## Troubleshooting
+
+### Backend Issues
+
+**Backend won't start:**
+- Check MongoDB connection string in `.env`
+- Verify all required environment variables are set
+- Check if port 5000 is available: `netstat -ano | findstr :5000` (Windows) or `lsof -i :5000` (Mac/Linux)
+- Review terminal output for specific error messages
+
+**MongoDB connection failed:**
+- Verify MongoDB Atlas connection string
+- Check network firewall settings
+- Ensure IP address is whitelisted in MongoDB Atlas
+- Verify database credentials
+
+**JWT errors:**
+- Ensure JWT_SECRET is set and is at least 64 characters
+- Verify JWT secrets are different for access and refresh tokens
+- Check token expiration settings
+
+### Frontend Issues
+
+**Frontend can't connect to API:**
+- Verify `VITE_API_BASE_URL` in `.env` matches backend URL
+- Check backend server is running
+- Verify CORS settings in backend
+- Check browser console for specific errors
+
+**Build errors:**
+- Clear node_modules and reinstall: `rm -rf node_modules && npm install`
+- Clear Vite cache: `rm -rf node_modules/.vite`
+- Check TypeScript errors: `npm run build`
+
+**Socket connection errors:**
+- Verify `VITE_SOCKET_URL` is set correctly
+- Check backend Socket.io is running
+- Review browser console for connection errors
+
+**OTP not received:**
+- Check email service configuration
+- Verify patient email address is correct
+- Check spam folder
+- Review email service logs
+- For Gmail, ensure App Password is used (not regular password)
+
+### General Issues
+
+**Port already in use:**
+Windows:
+```powershell
+$processId = (Get-NetTCPConnection -LocalPort 5000).OwningProcess
+Stop-Process -Id $processId -Force
+```
+
+Mac/Linux:
+```bash
+lsof -ti:5000 | xargs kill -9
+```
+
+**Dependencies installation fails:**
+- Clear npm cache: `npm cache clean --force`
+- Delete `node_modules` and `package-lock.json`
+- Reinstall: `npm install`
+- Check Node.js version: `node --version` (should be v18+)
+
+**TypeScript errors:**
+- Run: `npm run build` to see all TypeScript errors
+- Check `tsconfig.json` configuration
+- Verify all type definitions are installed
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -275,68 +491,25 @@ npm run test:integration
 
 ### Development Guidelines
 
-#### Code Style
 - Use TypeScript for type safety
 - Follow ESLint configuration
 - Write meaningful commit messages
-- Add JSDoc comments for functions
-- Use descriptive variable and function names
-
-#### Testing
-- Write unit tests for business logic
-- Test API endpoints
-- Test React components
+- Add tests for new functionality
 - Maintain test coverage above 80%
-
-#### Security
 - Never commit sensitive information
 - Use environment variables for configuration
 - Implement proper input validation
-- Follow OWASP security guidelines
 
-##  Development Scripts
+## License
 
-### Backend Scripts
-```bash
-npm run dev          # Start development server
-npm run build        # Build TypeScript
-npm start           # Start production server
-npm test            # Run tests
-npm run lint        # Run ESLint
-npm run docs        # Serve API documentation
-```
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
-### Frontend Scripts
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint        # Run ESLint
-```
+## Quick Links
 
-##  Troubleshooting
+- **Deployed Frontend**: https://patient-passpo.netlify.app/
+- **Deployed Backend API**: https://patientpassport-api.azurewebsites.net/api
+- **Demo Video**: https://drive.google.com/drive/home
 
-### Common Issues
+## Support
 
-**Backend won't start:**
-- Check MongoDB connection string
-- Verify all environment variables are set
-- Check port 5000 is not in use
-
-**Frontend can't connect to API:**
-- Verify `VITE_API_BASE_URL` in `.env`
-- Check backend server is running
-- Verify CORS settings
-
-**USSD not working:**
-- Verify Africa's Talking credentials
-- Check webhook URL is correct
-- Ensure server has SSL certificate (HTTPS)
-
-**OTP not received:**
-- Check email service configuration
-- Verify patient email address
-- Check spam folder
-
-
----
+For issues, questions, or contributions, please open an issue on the repository or contact the development team.
